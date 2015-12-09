@@ -167,7 +167,7 @@ def run_test(test, test_filter):
     if test_filter:
         command += " --gtest_filter={}".format(string.join(test_filter, ":"))
     print("Run {}".format(command))
-    print(subprocess.check_output(command, shell=True))
+    print(subprocess.check_output(command, shell=True, universal_newlines=True))
 
 def failing_tests(output, patterns):
     print(output)
@@ -182,6 +182,20 @@ def failing_tests(output, patterns):
                 matches = matcher.search(line)
                 failed.append(matches.group(0).strip())
     return failed
+
+class Path(object):
+    def __init__(self, path):
+        self.path = os.path.abspath(path)
+
+    def missing(self):
+        return not os.path.exists(self.path)
+
+    def missing(self, filename):
+        return not os.path.exists(os.path.join(self.path, filename))
+
+    def create(self):
+        print("Creating {}".format(self.path))
+        os.makedirs(self.path)
 
 def main():
     watch_area = sys.argv[1]
