@@ -10,6 +10,8 @@ import collections
 import platform
 import string
 
+from cmake import CMakeContext
+
 WatchedFile = collections.namedtuple(
     "WatchedFile",
     [ "filename", "mtime" ]
@@ -34,32 +36,6 @@ BUILD_SYSTEMS = {
 RUNNING = 1
 STOPPING = 2
 FORCED_RUNNING = 3
-
-def cmake_initialise(source_directory, build_directory):
-    command = "cmake {}".format(source_directory)
-    print(command)
-    subprocess.call(command, shell=True)
-
-def derive_build_command(buildcommand, buildfile):
-    parallelism = multiprocessing.cpu_count() + 2
-    print("Determining build command for {}".format(buildfile))
-    return "{} {}".format(buildcommand.format(parallelism), buildfile)
-
-def find_build_file(search_path):
-    print("Searching for build file {}".format(search_path))
-    matches = glob.glob(search_path)
-    if not matches:
-        return None
-    if len(matches) > 1:
-        print("WARNING: Multiple build files detected!")
-    return os.path.basename(matches[0])
-
-def discover_build_command(directory):
-    for (buildfile_pattern, buildcommand) in BUILD_SYSTEMS.items():
-        buildfile = find_build_file(os.path.join(directory, buildfile_pattern))
-        if buildfile and os.path.exists(buildfile):
-            return derive_build_command(buildcommand, buildfile)
-    return None
 
 def is_watchable(filename, patterns):
     for pattern in patterns:
@@ -183,38 +159,8 @@ def failing_tests(output, patterns):
                 failed.append(matches.group(0).strip())
     return failed
 
-class Path(object):
-    def __init__(self, path):
-        self.path = os.path.abspath(path)
-
-    def missing(self):
-        return not os.path.exists(self.path)
-
-    def missing(self, filename):
-        return not os.path.exists(os.path.join(self.path, filename))
-
-    def create(self):
-        print("Creating {}".format(self.path))
-        os.makedirs(self.path)
-
 def main():
-    watch_area = sys.argv[1]
-    watch_path = os.path.abspath(watch_area)
-    build_path = os.path.join(
-        os.getcwd(),
-        "{}-build".format(os.path.basename(watch_path))
-    )
-    print("Watching {}...".format(watch_path))
-    if not os.path.exists(build_path):
-        print("Creating build area {}".format(build_path))
-        os.makedirs(build_path)
-    os.chdir(build_path)
-    if not os.path.exists(os.path.join(build_path, 'CMakeFiles')):
-        cmake_initialise(watch_path, build_path)
-    command = discover_build_command(build_path)
-    if command is None:
-        print("Unsupported build system.")
-        sys.exit()
+    ctx = CMakeContext(sys.argv[1])
 
     source_patterns = [
         re.compile('\.cc$'),
@@ -223,6 +169,8 @@ def main():
         re.compile('CMakeLists.txt$'),
     ]
 
+    watch_path = ctx.watch_path
+    build_path = ctx.build_path
     filelist = get_watched_files(watch_path, source_patterns)
     testpatterns = derive_test_patterns(filelist, 'test_')
 
@@ -240,8 +188,7 @@ def main():
 
             if watchstate.has_changed() or runstate == FORCED_RUNNING:
                 runstate = RUNNING
-                print(command)
-                subprocess.call(command, shell=True) # build
+                ctx.build()
 
                 # test
                 try:

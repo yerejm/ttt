@@ -115,19 +115,18 @@ class CMakeContext(object):
 
     def _execute(self, command):
         try:
-            print(subprocess.check_output(command, stderr=subprocess.STDOUT, universal_newlines=True))
+            subprocess.check_call(command, stderr=subprocess.STDOUT, universal_newlines=True)
         except subprocess.CalledProcessError as e:
-            raise CMakeError(command, e.output)
+            raise CMakeError(command)
 
 class CMakeError(Exception):
     """ Exception raised when a cmake command fails."""
 
-    def __init__(self, command, message):
+    def __init__(self, command):
         self.command = command
-        self.message = message
 
     def __str__(self):
-        return '{}\n{}'.format(repr(self.command), self.message)
+        return '{}'.format(repr(self.command))
 
 class InvalidCMakeGenerator(Exception):
     """ Exception raised for a generator that is invalid on the current

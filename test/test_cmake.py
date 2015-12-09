@@ -38,22 +38,21 @@ class TestCreateBuildArea:
         ctx.build()
         assert ctx.build_file() is not None
 
-    def test_cmake_error_captures_output(self):
+    def test_cmake_error(self):
         source_path = '{}'.format(os.path.join(os.getcwd(), 'dummy'))
+        expected = [
+            'cmake',
+            '-G', 'Unix Makefiles',
+            '-H{}'.format(source_path),
+            '-B{}'.format(os.path.join(os.getcwd(), 'dummy-build'))
+        ]
 
         ctx = CMakeContext('dummy')
         try:
             ctx.build()
         except CMakeError as e:
-            assert e.command == [
-                'cmake',
-                '-G', 'Unix Makefiles',
-                '-H{}'.format(source_path),
-                '-B{}'.format(os.path.join(os.getcwd(), 'dummy-build'))
-            ]
-
-            error = 'The source directory "{}" does not exist.'.format(source_path)
-            assert error in e.message
+            assert e.command == expected
+            assert str(e) == str(expected)
 
     def test_create_build_area_in_cwd(self):
         ctx = CMakeContext('source')
