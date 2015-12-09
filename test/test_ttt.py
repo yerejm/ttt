@@ -8,23 +8,13 @@ test_ttt
 Tests for `ttt` module.
 """
 
-import unittest
-
-from ttt import ttt
-
-
-class TestPat(unittest.TestCase):
-
-    def setUp(self):
+class Test:
+    def setup(self):
         pass
 
-    def tearDown(self):
+    def teardown(self):
         pass
 
-    def test_000_something(self):
+    def test_(self):
         pass
 
-
-if __name__ == '__main__':
-    import sys
-    sys.exit(unittest.main())
