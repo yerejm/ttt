@@ -14,7 +14,7 @@ import re
 import pytest
 from testfixtures import TempDirectory
 
-from ttt.cmake import CMakeContext, CMakeError, InvalidCMakeGenerator
+from ttt.cmake import CMakeContext, CMakeError
 
 def is_windows():
     return platform.system() == 'Windows'

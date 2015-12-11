@@ -79,8 +79,3 @@ class CMakeError(Exception):
     def __str__(self):
         return '{}'.format(repr(self.command))
 
-class InvalidCMakeGenerator(Exception):
-    """ Exception raised for a generator that is invalid on the current
-    platform."""
-    pass
-
