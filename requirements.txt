@@ -1,0 +1,8 @@
+tox
+tox-pyenv
+py
+pytest
+pytest-xdist
+pytest-cov
+testfixtures
+MacFSEvents
