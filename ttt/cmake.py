@@ -5,6 +5,8 @@ import platform
 import glob
 import collections
 
+from ttt import subproc
+
 BuildSystem = collections.namedtuple('BuildSystem', [
     'file',
     'command',
@@ -68,7 +70,10 @@ class CMakeContext(object):
         try:
             return self._build_file
         except AttributeError:
-            self._build_file = self._find_build_file()
+            build_file = self._find_build_file()
+            if build_file is None:
+                return None
+            self._build_file = build_file
             return self._build_file
 
     def build_command(self):
@@ -82,26 +87,19 @@ class CMakeContext(object):
         """
         if not os.path.exists(os.path.join(self.build_path, 'CMakeFiles')):
             self._cmake_generate()
-            self._build_file = self._find_build_file()
         self._build()
 
     def _build(self):
         build = BUILD_SYSTEMS[self.build_system]
-        old_path = os.getcwd()
-        try:
-            os.chdir(self.build_path)
-            self._execute([
-                build.command,
-                build.parallel_opt.format(multiprocessing.cpu_count() + 2),
-                build.file_opt.format(self._build_file)
-            ])
-        finally:
-            os.chdir(old_path)
+        self._execute([
+            build.command,
+            build.parallel_opt.format(multiprocessing.cpu_count() + 2),
+            build.file_opt.format(self.build_file())
+        ], cwd=self.build_path)
 
     def _find_build_file(self):
         build_file_pattern = BUILD_SYSTEMS[self.build_system].file
         search_path = os.path.join(self.build_path, build_file_pattern)
-        print("Search for {}".format(search_path))
         matches = glob.glob(search_path)
         return os.path.basename(matches[0]) if matches else None
 
@@ -113,9 +111,14 @@ class CMakeContext(object):
             '-B{}'.format(self.build_path)
         ])
 
-    def _execute(self, command):
+    def _execute(self, command, cwd=None):
         try:
-            subprocess.check_call(command, stderr=subprocess.STDOUT, universal_newlines=True)
+            subprocess.check_call(
+                command,
+                stderr=subprocess.STDOUT,
+                universal_newlines=True,
+                cwd=cwd
+            )
         except subprocess.CalledProcessError as e:
             raise CMakeError(command)
 

@@ -12,11 +12,9 @@ import os
 import platform
 import re
 import pytest
-
-from ttt import cmake
-from ttt.cmake import CMakeContext
-from ttt.cmake import CMakeError, InvalidCMakeGenerator
 from testfixtures import TempDirectory
+
+from ttt.cmake import CMakeContext, CMakeError, InvalidCMakeGenerator
 
 def is_windows():
     return platform.system() == 'Windows'
