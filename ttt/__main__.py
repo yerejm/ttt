@@ -10,7 +10,8 @@ import collections
 import platform
 import string
 
-from cmake import CMakeContext
+from ttt import cmake
+from ttt import subproc
 
 WatchedFile = collections.namedtuple(
     "WatchedFile",
@@ -64,9 +65,8 @@ def is_executable_test(dirpath, filename, patterns):
 
 def create_test(path):
     try:
-        output = subprocess.check_output(
-            "{} --gtest_list_tests".format(path),
-            shell=True,
+        output = subproc.call_output(
+            [path, '--gtest_list_tests'],
             universal_newlines=True
         )
         lines = output.splitlines()
@@ -139,11 +139,12 @@ def derive_test_patterns(source_files, test_prefix):
     return test_patterns
 
 def run_test(test, test_filter):
-    command = test.abspath
+    command = [test.abspath]
+    command.append('--gtest_color=yes')
     if test_filter:
-        command += " --gtest_filter={}".format(string.join(test_filter, ":"))
+        command.append("--gtest_filter={}".format(string.join(test_filter, ":")))
     print("Run {}".format(command))
-    print(subprocess.check_output(command, shell=True, universal_newlines=True))
+    subproc.call_output(command, universal_newlines=True)
 
 def failing_tests(output, patterns):
     print(output)
@@ -160,7 +161,7 @@ def failing_tests(output, patterns):
     return failed
 
 def main():
-    ctx = CMakeContext(sys.argv[1])
+    ctx = cmake.CMakeContext(sys.argv[1])
 
     source_patterns = [
         re.compile('\.cc$'),
