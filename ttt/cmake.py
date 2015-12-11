@@ -7,32 +7,6 @@ import collections
 
 from ttt import subproc
 
-BuildSystem = collections.namedtuple('BuildSystem', [
-    'file',
-    'command',
-    'parallel_opt',
-    'file_opt',
-])
-BUILD_SYSTEMS = {
-    'Unix Makefiles': BuildSystem(
-        file='Makefile',
-        command='make',
-        parallel_opt='-j{}',
-        file_opt='-f{}'
-    ),
-    'Ninja': BuildSystem(
-        file='build.ninja',
-        command='ninja',
-        parallel_opt='-j{}',
-        file_opt='-f{}'
-    ),
-    'Visual Studio 14 2015': BuildSystem(
-        file='*.sln',
-        command='msbuild',
-        parallel_opt='/m:{}',
-        file_opt='{}'
-    ),
-}
 DEFAULT_BUILD_WINDOWS = 'Visual Studio 14 2015'
 DEFAULT_BUILD_UNIX = 'Unix Makefiles'
 DEFAULT_BUILD_PATH_SUFFIX = '-build'
@@ -57,28 +31,9 @@ class CMakeContext(object):
     """
 
     def __init__(self, watch_path, build_path=None, build_system=default_build_system()):
-        if build_system not in BUILD_SYSTEMS:
-            raise InvalidCMakeGenerator()
-        self.build_system = build_system
         self.watch_path = os.path.abspath(watch_path)
         self.build_path = make_build_path(watch_path) if build_path is None else build_path
         self.build_system = build_system
-
-    def build_file(self):
-        """ Get the build file for the cmake build area, e.g. Makefile."""
-        # Cache the build file to avoid repeating path traversal.
-        try:
-            return self._build_file
-        except AttributeError:
-            build_file = self._find_build_file()
-            if build_file is None:
-                return None
-            self._build_file = build_file
-            return self._build_file
-
-    def build_command(self):
-        """ Get the build command for the cmake build area, e.g. make."""
-        return BUILD_SYSTEMS[self.build_system].command
 
     def build(self):
         """
@@ -90,18 +45,11 @@ class CMakeContext(object):
         self._build()
 
     def _build(self):
-        build = BUILD_SYSTEMS[self.build_system]
         self._execute([
-            build.command,
-            build.parallel_opt.format(multiprocessing.cpu_count() + 2),
-            build.file_opt.format(self.build_file())
-        ], cwd=self.build_path)
-
-    def _find_build_file(self):
-        build_file_pattern = BUILD_SYSTEMS[self.build_system].file
-        search_path = os.path.join(self.build_path, build_file_pattern)
-        matches = glob.glob(search_path)
-        return os.path.basename(matches[0]) if matches else None
+            'cmake',
+            '--build',
+            self.build_path
+        ])
 
     def _cmake_generate(self):
         self._execute([

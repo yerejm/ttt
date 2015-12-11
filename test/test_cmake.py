@@ -32,9 +32,7 @@ class TestCreateBuildArea:
 
     def test_build_file_requires_build(self):
         ctx = CMakeContext('source')
-        assert ctx.build_file() is None
         ctx.build()
-        assert ctx.build_file() is not None
 
     def test_cmake_error(self):
         source_path = '{}'.format(os.path.join(os.getcwd(), 'dummy'))
@@ -83,11 +81,6 @@ class TestDefaultBuildArea:
         ctx = CMakeContext(cmake_source_path, cmake_build_path)
         ctx.build()
 
-        default_build_command = 'msbuild' if is_windows() else 'make'
-        default_build_file_pattern = 'test.sln' if is_windows() else 'Makefile'
-
-        assert ctx.build_command() == default_build_command
-        assert ctx.build_file() == default_build_file_pattern
         assert os.path.exists(os.path.join(ctx.build_path, 'CMakeFiles'))
         assert os.path.exists(os.path.join(ctx.build_path, 'Makefile'))
         assert ctx.watch_path == cmake_source_path
@@ -108,8 +101,6 @@ class TestNinjaBuildArea:
         ctx = CMakeContext(cmake_source_path, cmake_build_path, 'Ninja')
         ctx.build()
 
-        assert ctx.build_command() == 'ninja'
-        assert ctx.build_file() == 'build.ninja'
         assert os.path.exists(os.path.join(ctx.build_path, 'CMakeFiles'))
         assert os.path.exists(os.path.join(ctx.build_path, 'build.ninja'))
         assert ctx.watch_path == cmake_source_path
@@ -130,8 +121,6 @@ class TestMakeBuildArea:
         ctx = CMakeContext(cmake_source_path, cmake_build_path, 'Unix Makefiles')
         ctx.build()
 
-        assert ctx.build_command() == 'make'
-        assert ctx.build_file() == 'Makefile'
         assert os.path.exists(os.path.join(ctx.build_path, 'CMakeFiles'))
         assert os.path.exists(os.path.join(ctx.build_path, 'Makefile'))
         assert ctx.watch_path == cmake_source_path
@@ -149,7 +138,8 @@ class TestInvalidBuildArea:
         cmake_build_path = cmake_build_directory.path
         cmake_source_directory.write('CMakeLists.txt', b'project(test)')
 
-        with pytest.raises(InvalidCMakeGenerator):
-            CMakeContext(cmake_source_path, cmake_build_path, 'dummy')
+        ctx = CMakeContext(cmake_source_path, cmake_build_path, 'dummy')
+        with pytest.raises(CMakeError):
+            ctx.build()
         assert not os.path.exists(os.path.join(cmake_build_path, 'CMakeFiles'))
 
