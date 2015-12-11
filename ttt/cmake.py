@@ -13,8 +13,8 @@ DEFAULT_BUILD_PATH_SUFFIX = '-build'
 
 def default_build_system():
     default = DEFAULT_BUILD_UNIX
-    if platform.system() is 'Windows':
-        DEFAULT_BUILD_WINDOWS
+    if platform.system() == 'Windows':
+        default = DEFAULT_BUILD_WINDOWS
     return default
 
 def make_build_path(watch_path, suffix=DEFAULT_BUILD_PATH_SUFFIX):
