@@ -1,7 +1,7 @@
-from __future__ import print_function
 import subprocess
 import threading
 import re
+import sys
 
 def read_stream(stream_id, stream, io_q):
     if not stream:
@@ -57,10 +57,13 @@ def run(*popenargs, **kwargs):
             else:
                 raw_message = ansi_escape.sub('', message)
                 if stream_id == 'stdout':
+                    outstream = sys.stdout
                     stdout_output.append(raw_message)
                 elif stream_id == 'stderr':
+                    outstream = sys.stderr
                     stderr_output.append(raw_message)
-                print(message, end='')
+                outstream.write(message)
+                outstream.flush()
 
     process.wait()
 
