@@ -8,18 +8,45 @@ test_subproc
 Tests for `subproc` module.
 """
 import subprocess
+import os
+from testfixtures import TempDirectory
+
 from ttt.subproc import call_output
 
+PROGRAM_NAME = 'test.py'
+
+def create_program(exit_code=None):
+    program = [
+        'import time',
+        'import sys',
+        'for x in range(1, 3):',
+        '    print("blah blah blah " + str(x))',
+        '    time.sleep(1)'
+    ]
+    if exit_code is None:
+        raise "Exit code must be given"
+    program.append('sys.exit({})'.format(exit_code))
+    return os.linesep.join(program).encode('utf-8')
+
 class TestSubprocess:
+    def setup(self):
+        self.tmp = TempDirectory()
+        self.command = ['python', os.path.join(self.tmp.path, PROGRAM_NAME)]
+
+    def teardown(self):
+        TempDirectory.cleanup_all()
+
     def test_call(self):
-        output = call_output('for i in {5..1}; do echo blah blah blah $i; sleep 1; done', shell=True, universal_newlines=True)
-        assert output == 'blah blah blah 5\nblah blah blah 4\nblah blah blah 3\nblah blah blah 2\nblah blah blah 1\n'
+        self.tmp.write(PROGRAM_NAME, create_program(exit_code=0))
+        output = call_output(self.command, universal_newlines=True)
+        assert output == 'blah blah blah 1\nblah blah blah 2\n'
 
     def test_call_raise(self):
-        cmd = 'for i in {5..1}; do echo blah blah blah $i; sleep 1; done; false'
+        self.tmp.write(PROGRAM_NAME, create_program(exit_code=1))
         try:
-            call_output(cmd, shell=True, universal_newlines=True)
+            call_output(self.command, universal_newlines=True)
         except subprocess.CalledProcessError as e:
-            assert e.returncode == 1
-            assert e.cmd == cmd
-            assert e.output == 'blah blah blah 5\nblah blah blah 4\nblah blah blah 3\nblah blah blah 2\nblah blah blah 1\n'
+            assert e.returncode != 0
+            assert e.cmd == self.command
+            assert e.output == 'blah blah blah 1\nblah blah blah 2\n'
+

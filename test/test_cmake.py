@@ -9,15 +9,20 @@ Tests for `cmake` module.
 """
 
 import os
-import platform
-import re
 import pytest
+import platform
+import subprocess
 from testfixtures import TempDirectory
 
-from ttt.cmake import CMakeContext, CMakeError
+from ttt.cmake import CMakeContext, CMakeError, default_build_system
 
-def is_windows():
-    return platform.system() == 'Windows'
+def command_missing(command):
+    locator = 'where' if platform.system() == 'Windows' else 'which'
+    try:
+        subprocess.check_call([locator, command])
+        return False
+    except:
+        return True
 
 class TestCreateBuildArea:
     def setup(self):
@@ -38,7 +43,7 @@ class TestCreateBuildArea:
         source_path = '{}'.format(os.path.join(os.getcwd(), 'dummy'))
         expected = [
             'cmake',
-            '-G', 'Unix Makefiles',
+            '-G', default_build_system(),
             '-H{}'.format(source_path),
             '-B{}'.format(os.path.join(os.getcwd(), 'dummy-build'))
         ]
@@ -72,6 +77,7 @@ class TestDefaultBuildArea:
         TempDirectory.cleanup_all()
 
     def test_default_build(self):
+        build_file = 'test.sln' if platform.system() == 'Windows' else 'Makefile'
         cmake_source_directory = TempDirectory()
         cmake_source_path = cmake_source_directory.path
         cmake_build_directory = TempDirectory()
@@ -82,10 +88,11 @@ class TestDefaultBuildArea:
         ctx.build()
 
         assert os.path.exists(os.path.join(ctx.build_path, 'CMakeFiles'))
-        assert os.path.exists(os.path.join(ctx.build_path, 'Makefile'))
+        assert os.path.exists(os.path.join(ctx.build_path, build_file))
         assert ctx.watch_path == cmake_source_path
         assert ctx.build_path == cmake_build_path
 
+@pytest.mark.skipif(command_missing('ninja') is True, reason="ninja not installed")
 class TestNinjaBuildArea:
 
     def teardown(self):
@@ -106,6 +113,7 @@ class TestNinjaBuildArea:
         assert ctx.watch_path == cmake_source_path
         assert ctx.build_path == cmake_build_path
 
+@pytest.mark.skipif(command_missing('make') is True, reason="make not installed")
 class TestMakeBuildArea:
 
     def teardown(self):
