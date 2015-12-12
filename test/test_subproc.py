@@ -9,11 +9,25 @@ Tests for `subproc` module.
 """
 import subprocess
 import os
+import io
+import sys
+import re
 from testfixtures import TempDirectory
 
 from ttt.subproc import call_output
 
+from contextlib import contextmanager
+
 PROGRAM_NAME = 'test.py'
+
+@contextmanager
+def stdout_redirector(stream):
+    old_stdout = sys.stdout
+    sys.stdout = stream
+    try:
+        yield
+    finally:
+        sys.stdout = old_stdout
 
 def create_program(exit_code=None):
     program = [
@@ -38,15 +52,53 @@ class TestSubprocess:
 
     def test_call(self):
         self.tmp.write(PROGRAM_NAME, create_program(exit_code=0))
-        output = call_output(self.command, universal_newlines=True)
-        assert output == 'blah blah blah 1\nblah blah blah 2\n'
+        rc = call_output(self.command, universal_newlines=True)
+        assert rc == 0
 
     def test_call_raise(self):
         self.tmp.write(PROGRAM_NAME, create_program(exit_code=1))
-        try:
-            call_output(self.command, universal_newlines=True)
-        except subprocess.CalledProcessError as e:
-            assert e.returncode != 0
-            assert e.cmd == self.command
-            assert e.output == 'blah blah blah 1\nblah blah blah 2\n'
+        rc = call_output(self.command, universal_newlines=True)
+        assert rc != 0
+
+    def test_call_with_read_handler(self):
+        output = []
+        def line_handler(line):
+            output.append(line)
+            output.append('boo')
+
+        self.tmp.write(PROGRAM_NAME, create_program(exit_code=0))
+        rc = call_output(self.command, universal_newlines=True,
+                line_handler=line_handler)
+        assert rc == 0
+        assert output == ['blah blah blah 1\n', 'boo', 'blah blah blah 2\n', 'boo']
+
+    def test_call_with_rewrite_handler(self):
+        f = io.StringIO()
+
+        def line_handler(line):
+            return 'boo'
+
+        self.tmp.write(PROGRAM_NAME, create_program(exit_code=0))
+
+        with stdout_redirector(f):
+            rc = call_output(self.command, universal_newlines=True,
+                    line_handler=line_handler)
+
+        assert rc == 0
+        assert f.getvalue() == 'booboo'
+
+    def test_call_with_write_handler(self):
+        f = io.StringIO()
+
+        def line_handler(line):
+            return line.replace('blah ', '')
+
+        self.tmp.write(PROGRAM_NAME, create_program(exit_code=0))
+
+        with stdout_redirector(f):
+            rc = call_output(self.command, universal_newlines=True,
+                    line_handler=line_handler)
+
+        assert rc == 0
+        assert f.getvalue() == '1\n2\n'
 

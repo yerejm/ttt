@@ -65,7 +65,7 @@ def is_executable_test(dirpath, filename, patterns):
 
 def create_test(path):
     try:
-        output = subproc.call_output(
+        output = subprocess.check_output(
             [path, '--gtest_list_tests'],
             universal_newlines=True
         )
@@ -139,17 +139,21 @@ def derive_test_patterns(source_files, test_prefix):
     return test_patterns
 
 def run_test(test, test_filter):
+    test_results = []
+    def fails(line):
+        test_results.append(line)
+
     command = [test.abspath]
-    command.append('--gtest_color=yes')
+    # command.append('--gtest_color=yes')
     if test_filter:
         command.append("--gtest_filter={}".format(string.join(test_filter, ":")))
     print("Run {}".format(command))
-    subproc.call_output(command, universal_newlines=True)
+    subproc.call_output(command, universal_newlines=True, line_handler=fails)
+    return test_results 
 
-def failing_tests(output, patterns):
-    print(output)
+def failing_tests(failures, patterns):
     failed = []
-    for line in reversed(output.splitlines()):
+    for line in reversed(failures):
         if "==========" in line:
             break;
         for pattern in patterns:
@@ -192,16 +196,21 @@ def main():
                 ctx.build()
 
                 # test
+                fails = []
+                testlist = get_test_files(build_path, testpatterns)
                 try:
-                    testlist = get_test_files(build_path, testpatterns)
                     if test_filter:
                         for test in testlist:
-                            run_test(test, test_filter)
+                            results = run_test(test, test_filter)
+                            test_filter = failing_tests(results, testpatterns)
+                            if test_filter:
+                                raise
                     test_filter = []
                     for test in testlist:
-                        run_test(test, test_filter)
-                except subprocess.CalledProcessError as e:
-                    test_filter = failing_tests(e.output, testpatterns)
+                        results = run_test(test, test_filter)
+                        test_filter = failing_tests(results, testpatterns)
+                except:
+                    pass
 
             filelist = current_filelist
         except KeyboardInterrupt:

@@ -3,47 +3,49 @@ import threading
 import re
 import sys
 
-def read_stream(stream_id, stream, io_q):
-    if not stream:
-        io_q.put((stream_id, 'EXIT'))
+def read_stream(output_stream, input_stream, io_q):
+    if not input_stream:
+        io_q.put((output_stream, 'EXIT'))
         return
-    for line in stream:
-        io_q.put((stream_id, line))
-    if not stream.closed:
-        stream.close()
-    io_q.put((stream_id, 'EXIT'))
+    for line in input_stream:
+        io_q.put((output_stream, line))
+    if not input_stream.closed:
+        input_stream.close()
+    io_q.put((output_stream, 'EXIT'))
 
 def call_output(*popenargs, **kwargs):
     if 'stdout' in kwargs:
         raise ValueError('stdout argument not allowed, it will be overridden.')
     kwargs['stdin'] = subprocess.PIPE
 
-    return run(*popenargs, stdout=subprocess.PIPE, **kwargs)
+    line_handler = None
+    if 'line_handler' in kwargs:
+        line_handler = kwargs['line_handler']
+        del kwargs['line_handler']
 
-def run(*popenargs, **kwargs):
+    process = create_process(*popenargs, stdout=subprocess.PIPE, **kwargs)
+    return run(process, line_handler)
 
+def create_process(*popenargs, **kwargs):
+    return subprocess.Popen(*popenargs, **kwargs)
+
+def run(process, line_handler):
     try:
         from queue import Queue, Empty
     except ImportError:
         from Queue import Queue, Empty
     io_q = Queue(5)
     threads = {}
-    process = subprocess.Popen(*popenargs, **kwargs)
-    threads['stdout'] = threading.Thread(
+    threads[sys.stdout] = threading.Thread(
         target=read_stream,
-        name='stdout',
-        args=('stdout', process.stdout, io_q)
+        args=(sys.stdout, process.stdout, io_q)
     ).start()
 
-    threads['stderr'] = threading.Thread(
+    threads[sys.stderr] = threading.Thread(
         target=read_stream,
-        name='stderr',
-        args=('stderr', process.stderr, io_q)
+        args=(sys.stderr, process.stderr, io_q)
     ).start()
 
-    stdout_output = []
-    stderr_output = []
-    ansi_escape = re.compile(r'')
     while threads:
         try:
             item = io_q.get(True, 1)
@@ -51,32 +53,23 @@ def run(*popenargs, **kwargs):
             if process.poll() is not None:
                 break
         else:
-            stream_id, message = item
+            outstream, message = item
             if message == 'EXIT':
-                del threads[stream_id]
+                del threads[outstream]
             else:
-                raw_message = ansi_escape.sub('', message)
-                if stream_id == 'stdout':
-                    outstream = sys.stdout
-                    stdout_output.append(raw_message)
-                elif stream_id == 'stderr':
-                    outstream = sys.stderr
-                    stderr_output.append(raw_message)
-                outstream.write(message)
+                if line_handler is not None:
+                    handled_message = line_handler(message)
+                    if handled_message is None:
+                        outstream.write(message)
+                    else:
+                        try:
+                            handled_message = handled_message.decode('utf-8')
+                        except AttributeError:
+                            pass
+                        outstream.write(handled_message)
+                else:
+                    outstream.write(message)
                 outstream.flush()
 
     process.wait()
-
-    retcode = process.returncode
-    stdout = ''.join(stdout_output)
-    stderr = ''.join(stderr_output)
-    if retcode:
-        try:
-            args = process.args
-            raise subprocess.CalledProcessError(retcode, args,
-                                     output=stdout, stderr=stderr)
-        except AttributeError:
-            args = popenargs[0]
-            raise subprocess.CalledProcessError(retcode, args,
-                                     output=stdout)
-    return stdout
+    return process.returncode
