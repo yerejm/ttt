@@ -92,7 +92,7 @@ class TestDefaultBuildArea:
         assert ctx.watch_path == cmake_source_path
         assert ctx.build_path == cmake_build_path
 
-@pytest.mark.skipif(command_missing('ninja') is True, reason="ninja not installed")
+@pytest.mark.skipif(command_missing('ninja'), reason="ninja not installed")
 class TestNinjaBuildArea:
 
     def teardown(self):
@@ -113,7 +113,7 @@ class TestNinjaBuildArea:
         assert ctx.watch_path == cmake_source_path
         assert ctx.build_path == cmake_build_path
 
-@pytest.mark.skipif(command_missing('make') is True, reason="make not installed")
+@pytest.mark.skipif(command_missing('make'), reason="make not installed")
 class TestMakeBuildArea:
 
     def teardown(self):
