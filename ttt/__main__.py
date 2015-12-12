@@ -10,6 +10,9 @@ import collections
 import platform
 import string
 
+import termstyle
+import colorama
+
 from ttt import cmake
 from ttt import subproc
 
@@ -142,6 +145,10 @@ def run_test(test, test_filter):
     test_results = []
     def fails(line):
         test_results.append(line)
+        colorer = termstyle.red if 'FAILED' in line else termstyle.green
+        brightness = colorama.Style.BRIGHT if platform.system() == 'Windows' else colorama.Style.NORMAL
+        if line[:1] == '[':
+            return '{}{}{}{}'.format(brightness, colorer(line[:13]), termstyle.reset, line[13:])
 
     command = [test.abspath]
     # command.append('--gtest_color=yes')
@@ -223,5 +230,6 @@ def main():
     print("\nWatching stopped.")
 
 if __name__ == "__main__":
+    colorama.init()
     main()
 
