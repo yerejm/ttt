@@ -1,8 +1,6 @@
-tox
-tox-pyenv
-py
-pytest
-pytest-xdist
-pytest-cov
-testfixtures
-MacFSEvents
+tox>=2.3.0
+tox-pyenv>=1.0.2
+pytest>=2.8.4
+pytest-xdist>=1.13.1
+pytest-cov>=2.2.0
+testfixtures>=4.7.0
