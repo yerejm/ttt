@@ -5,4 +5,4 @@ pytest=py.test
 if [ "${version}" != "3.5" ]; then
     pytest=py.test-2.7
 fi
-${pytest} --lf -f --color=yes --cov ttt --cov-report term-missing test
+${pytest} -rw --lf -f --color=yes --cov ttt --cov-report term-missing test
