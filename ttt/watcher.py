@@ -1,6 +1,7 @@
 import re
 import os
 import collections
+import time
 
 DEFAULT_SOURCE_PATTERNS = [
     '\.cc$',
@@ -24,13 +25,8 @@ class WatchState(object):
     def has_changed(self):
         return self.inserts or self.deletes or self.updates
 
-    def print_changes(self):
-        for filename in self.inserts:
-            print("INSERT: {}".format(filename))
-        for filename in self.deletes:
-            print("DELETE: {}".format(filename))
-        for filename in self.updates:
-            print("UPDATE: {}".format(filename))
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
 
 class Watcher(object):
     """
@@ -45,10 +41,8 @@ class Watcher(object):
     def poll(self):
         current_filelist = get_watched_files(self.watch_path, self.source_patterns)
         watchstate = create_watchstate(self.filelist, current_filelist)
-        watchstate.print_changes()
         self.filelist = current_filelist
-        return watchstate.has_changed()
-
+        return watchstate
 
 def is_watchable(filename, patterns):
     for pattern in patterns:

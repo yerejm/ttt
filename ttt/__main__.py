@@ -24,7 +24,8 @@ def main():
         try:
             time.sleep(delay)
 
-            if w.poll() or runstate == FORCED_RUNNING:
+            watchstate = w.poll()
+            if watchstate.has_changed() or runstate == FORCED_RUNNING:
                 runstate = RUNNING
                 ctx.build()
                 t.test(w.filelist)
