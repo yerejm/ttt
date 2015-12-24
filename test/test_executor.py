@@ -18,7 +18,7 @@ from ttt.executor import FileProvider
 from ttt.executor import FileSystem
 from ttt.watcher import WatchedFile
 
-from ttt.executor import derive_test_files, get_tests, Test, run_test, failing_tests
+from ttt.executor import derive_test_files
 import stat
 
 from contextlib import contextmanager
@@ -329,158 +329,13 @@ class TestExecutor:
 
     def test_derive_test_files(self):
         filelist = {
-            'dummy.c': WatchedFile(filename='dummy.c', mtime=1),
-            'test_dummy.c': WatchedFile(filename='test_dummy.c', mtime=1)
+            '/path/to/dummy.c': WatchedFile(filename='dummy.c', mtime=1),
+            '/path/to/test_dummy.c': WatchedFile(filename='test_dummy.c', mtime=1)
         }
         testfiles = derive_test_files(filelist, 'test_')
-        assert testfiles == set(['test_dummy'])
-
-    def test_get_tests(self):
-        bf1 = BuildFile('test_dummy', '/path/to/test_dummy', stat.S_IXUSR)
-        bf2 = BuildFile('test_dummy.c', '/path/to/test_dummy.c', stat.S_IRUSR)
-        filelist = [ bf1, bf2 ]
-
-        class FileSystem(object):
-            def walk(self):
-                for file in filelist:
-                    yield file
-
-            def execute(self, cmd):
-                if '/path/to/test_dummy' in cmd:
-                    return "\n".join([
-                        "Running main() from gtest_main.cc",
-                        "dummy.",
-                        "  test1",
-                        "  test2",
-                    ])
-
-        provider = FileProvider(FileSystem())
-        testfiles = get_tests(provider, set(['test_dummy']))
-        assert testfiles == { '/path/to/test_dummy': Test(
-            testgroup='dummy', testcases=['test1', 'test2'],
-            abspath='/path/to/test_dummy'
-            ) }
-
-    def test_run_test_without_filter(self):
-        wd = TempDirectory()
-        testfile = wd.write('test_dummy', b'#!/bin/sh\necho "args: $@"')
-        os.chmod(testfile, os.stat(testfile).st_mode | stat.S_IXUSR)
-
-        test = Test(
-            testgroup='dummy', testcases=['test1', 'test2'],
-            abspath=os.path.join(wd.path, 'test_dummy')
-            )
-        testfilter = []
-        results = [ line.strip() for line in run_test(testfile, testfilter) ]
-        assert results == [ 'args:' ]
-
-    def test_run_test_with_filter(self):
-        wd = TempDirectory()
-        testfile = wd.write('test_dummy', b'#!/bin/sh\necho "args: $@"')
-        os.chmod(testfile, os.stat(testfile).st_mode | stat.S_IXUSR)
-
-        test = Test(
-            testgroup='dummy', testcases=['test1', 'test2'],
-            abspath=os.path.join(wd.path, 'test_dummy')
-            )
-        testfilter = ['dummy.test1']
-        results = [ line.strip() for line in run_test(testfile, testfilter) ]
-        assert results == [ 'args: --gtest_filter=dummy.test1' ]
-
-    def test_run_test_with_multiple_filters(self):
-        wd = TempDirectory()
-        testfile = wd.write('test_dummy', b'#!/bin/sh\necho "args: $@"')
-        os.chmod(testfile, os.stat(testfile).st_mode | stat.S_IXUSR)
-
-        test = Test(
-            testgroup='dummy', testcases=['test1', 'test2'],
-            abspath=os.path.join(wd.path, 'test_dummy')
-            )
-        testfilter = ['dummy.test1', 'dummy.test2']
-        results = [ line.strip() for line in run_test(testfile, testfilter) ]
-        assert results == [ 'args: --gtest_filter=dummy.test1:dummy.test2' ]
-
-    def test_failing_tests_on_success_results(self):
-        test = Test(testgroup='dummy', testcases=['test1', 'test2'], abspath='/path/to/test_dummy')
-        results = [
-'Running main() from gtest_main.cc\n',
-'[==========] Running 2 tests from 1 test case.\n',
-'[----------] Global test environment set-up.\n',
-'[----------] 2 tests from dummy\n',
-'[ RUN      ] dummy.test1\n',
-'[       OK ] dummy.test1 (0 ms)\n',
-'[ RUN      ] dummy.test2\n',
-'[       OK ] dummy.test2 (0 ms)\n',
-'[----------] 2 tests from dummy (0 ms total)\n',
-'\n',
-'[----------] Global test environment tear-down\n',
-'[==========] 2 tests from 1 test case ran. (0 ms total)\n',
-'[  PASSED  ] 2 tests.\n'
-                ]
-        test_filter = failing_tests(results, test)
-        assert test_filter == []
-
-    def test_failing_tests_on_failure_results(self):
-        test = Test(testgroup='dummy', testcases=['test1', 'test2'], abspath='/path/to/test_dummy')
-        results = [
-'Running main() from gtest_main.cc\n',
-'[==========] Running 2 tests from 1 test case.\n',
-'[----------] Global test environment set-up.\n',
-'[----------] 2 tests from dummy\n',
-'[ RUN      ] dummy.test1\n',
-'[       OK ] dummy.test1 (0 ms)\n',
-'[ RUN      ] dummy.test2\n',
-'/path/to/test_dummy.cc:16: Failure\n',
-'Value of: 2\n',
-'Expected: ok()\n',
-'Which is: 42\n',
-'[  FAILED  ] dummy.test2 (0 ms)\n',
-'[----------] 2 tests from dummy (0 ms total)\n',
-'\n',
-'[----------] Global test environment tear-down\n',
-'[==========] 2 tests from 1 test case ran. (0 ms total)\n',
-'[  PASSED  ] 1 tests.\n',
-'[  FAILED  ] 1 test, listed below:\n',
-'[  FAILED  ] dummy.test1\n',
-'\n',
-' 1 FAILED TEST\n',
-                ]
-        test_filter = failing_tests(results, test)
-        assert test_filter == [ 'dummy.test1' ]
-
-    def test_failing_tests_on_multiple_failure_results(self):
-        test = Test(testgroup='dummy', testcases=['test1', 'test2'], abspath='/path/to/test_dummy')
-        results = [
-'Running main() from gtest_main.cc\n',
-'[==========] Running 2 tests from 1 test case.\n',
-'[----------] Global test environment set-up.\n',
-'[----------] 2 tests from dummy\n',
-'[ RUN      ] dummy.test1\n',
-'/path/to/test_dummy.cc:12: Failure\n',
-'Value of: 2\n',
-'Expected: ok()\n',
-'Which is: 42\n',
-'[  FAILED  ] dummy.test1 (0 ms)\n',
-'[ RUN      ] dummy.test2\n',
-'/path/to/test_dummy.cc:16: Failure\n',
-'Value of: 2\n',
-'Expected: ok()\n',
-'Which is: 42\n',
-'[  FAILED  ] dummy.test2 (0 ms)\n',
-'[----------] 2 tests from dummy (0 ms total)\n',
-'\n',
-'[----------] Global test environment tear-down\n',
-'[==========] 2 tests from 1 test case ran. (0 ms total)\n',
-'[  PASSED  ] 0 tests.\n',
-'[  FAILED  ] 2 tests, listed below:\n',
-'[  FAILED  ] dummy.test1\n',
-'[  FAILED  ] dummy.test2\n',
-'\n',
-' 2 FAILED TESTS\n',
-                ]
-        test_filter = failing_tests(results, test)
-        assert test_filter == [ 'dummy.test1', 'dummy.test2' ]
-
+        assert testfiles == {
+                'test_dummy': '/path/to/test_dummy.c'
+                }
 
 class TestFileSystem:
     def setup(self):

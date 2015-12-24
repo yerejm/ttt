@@ -126,12 +126,6 @@ class GTest(object):
                     failures.add(test)
         return failures
 
-Test = collections.namedtuple(
-    "Test",
-    [ "testgroup", "testcases", "abspath" ]
-)
-Test.__new__.__defaults__ = (None, None, None)
-
 class Executor(object):
     def __init__(self, build_path):
         self.test_filter = {}
@@ -160,70 +154,25 @@ class Executor(object):
                     return { test.executable(): failures }
         return {}
 
-def create_test(provider, path):
-    lines = provider.execute([path, '--gtest_list_tests'])
-    testgroup = lines[1][0:-1]
-    testcases = [ case.strip() for case in lines[2:] ]
-    print("{} -> {}".format(testgroup, testcases))
-    return Test(abspath=path, testgroup=testgroup, testcases=testcases)
-
 def create_tests(provider, testfiles):
     tests = []
     for buildfile in provider.glob_files(lambda x: x in testfiles):
         if buildfile.is_executable_file():
             filepath = buildfile.path()
-            tests.append(GTest(filepath))
+            tests.append(GTest(testfiles[os.path.basename(filepath)], filepath))
     return tests
 
-def get_tests(provider, testfiles):
-    tests = {}
-    for buildfile in provider.glob_files(lambda x: x in testfiles):
-        if buildfile.is_executable_file():
-            filepath = buildfile.path()
-            tests[filepath] = create_test(provider, filepath)
-    return tests
-
-def exe_suffix():
-    return ".exe" if platform.system() == 'Windows' else ""
+EXE_SUFFIX = ".exe" if platform.system() == 'Windows' else ""
 
 def derive_test_files(source_files, test_prefix):
     """ Derive from source files a set of the associated build files """
-    testfiles = set()
+    testfiles = dict()
     for filepath, watchedfile in source_files.items():
-        filename = watchedfile.filename
-        if filename.startswith(test_prefix):
-            testfiles.add(filename[:filename.rfind('.')] + exe_suffix())
+        source_file = watchedfile.filename
+        if source_file.startswith(test_prefix):
+            test_file = source_file[:source_file.rfind('.')] + EXE_SUFFIX
+            testfiles[test_file] = filepath
     return testfiles
-
-def run_test(test, test_filter):
-    test_results = []
-    def fails(line):
-        test_results.append(line)
-        colorer = termstyle.red if 'FAILED' in line else termstyle.green
-        brightness = colorama.Style.BRIGHT if platform.system() == 'Windows' else colorama.Style.NORMAL
-        if line[:1] == '[':
-            return '{}{}{}{}'.format(brightness, colorer(line[:13]), termstyle.reset, line[13:])
-
-    command = [test]
-    # command.append('--gtest_color=yes')
-    if test_filter:
-        command.append("--gtest_filter={}".format(':'.join(test_filter)))
-    print("Run {}".format(command))
-    subproc.call_output(command, universal_newlines=True, line_handler=fails)
-    return test_results
-
-def failing_tests(test_results, test_details):
-    failed = []
-    testgroup = test_details.testgroup
-    tests = set([ '{}.{}'.format(testgroup, test) for test in test_details.testcases ])
-    for line in test_results[::-1]:
-        if "==========" in line:
-            break;
-            # print("search: {} in {}".format(pattern.testname, line))
-        for test in tests:
-            if test in line and "FAILED" in line:
-                failed.append(test)
-    return failed[::-1]
 
 class BuildFile(object):
     def __init__(self, name, path, statmode):
