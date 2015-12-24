@@ -1,9 +1,11 @@
 import sys
 import time
 
+import colorama
+
 from ttt import cmake
 from ttt import watcher
-from ttt import tester
+from ttt import executor
 
 RUNNING = 1
 STOPPING = 2
@@ -15,7 +17,7 @@ def main():
     watch_path = ctx.watch_path
     build_path = ctx.build_path
     w = watcher.Watcher(watch_path)
-    t = tester.Tester(build_path)
+    t = executor.Executor(build_path)
 
     runstate = FORCED_RUNNING
 
@@ -40,5 +42,6 @@ def main():
     print("\nWatching stopped.")
 
 if __name__ == "__main__":
+    colorama.init()
     main()
 

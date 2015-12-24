@@ -60,7 +60,7 @@ class TestSubprocess:
         rc = call_output(self.command, universal_newlines=True)
         assert rc != 0
 
-    def test_call_with_read_handler(self):
+    def test_call_with_handler(self):
         output = []
         def line_handler(line):
             output.append(line)
@@ -71,34 +71,3 @@ class TestSubprocess:
                 line_handler=line_handler)
         assert rc == 0
         assert output == ['blah blah blah 1\n', 'boo', 'blah blah blah 2\n', 'boo']
-
-    def test_call_with_rewrite_handler(self):
-        f = io.StringIO()
-
-        def line_handler(line):
-            return 'boo'
-
-        self.tmp.write(PROGRAM_NAME, create_program(exit_code=0))
-
-        with stdout_redirector(f):
-            rc = call_output(self.command, universal_newlines=True,
-                    line_handler=line_handler)
-
-        assert rc == 0
-        assert f.getvalue() == 'booboo'
-
-    def test_call_with_write_handler(self):
-        f = io.StringIO()
-
-        def line_handler(line):
-            return line.replace('blah ', '')
-
-        self.tmp.write(PROGRAM_NAME, create_program(exit_code=0))
-
-        with stdout_redirector(f):
-            rc = call_output(self.command, universal_newlines=True,
-                    line_handler=line_handler)
-
-        assert rc == 0
-        assert f.getvalue() == '1\n2\n'
-

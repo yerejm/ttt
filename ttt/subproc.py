@@ -58,18 +58,10 @@ def run(process, line_handler):
                 del threads[outstream]
             else:
                 if line_handler is not None:
-                    handled_message = line_handler(message)
-                    if handled_message is None:
-                        outstream.write(message)
-                    else:
-                        try:
-                            handled_message = handled_message.decode('utf-8')
-                        except AttributeError:
-                            pass
-                        outstream.write(handled_message)
+                    line_handler(message)
                 else:
                     outstream.write(message)
-                outstream.flush()
+                    outstream.flush()
 
     process.wait()
     return process.returncode
