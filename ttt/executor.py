@@ -4,11 +4,12 @@ import stat
 
 from ttt import subproc
 from ttt.gtest import GTest
+from ttt.systemcontext import SystemContext
 
 class Executor(object):
     def __init__(self, build_path):
         self.test_filter = {}
-        self.provider = FileProvider(FileSystem(build_path))
+        self.provider = FileProvider(SystemContext(build_path))
 
     def test(self, testfiles):
         test_filter = self.test_filter
@@ -43,7 +44,7 @@ def create_tests(provider, testfiles):
 class BuildFile(object):
     """ Represents a file located within the build area. """
 
-    def __init__(self, name, path, statmode):
+    def __init__(self, path, name, statmode):
         self._name = name
         self._path = path
         self._statmode = statmode
@@ -54,7 +55,7 @@ class BuildFile(object):
 
     def path(self):
         """ The absolute path to the file """
-        return self._path
+        return os.path.join(self._path, self._name)
 
     def is_executable_file(self):
         """ Indicates the file is executable """
@@ -76,33 +77,14 @@ class BuildFile(object):
                 self._statmode
             )
 
-class FileSystem(object):
-    def __init__(self, root_directory):
-        self.root_directory = root_directory
-
-    def walk(self):
-        try:
-            from os import scandir, walk
-        except ImportError:
-            from scandir import scandir, walk
-        for dirpath, _, filelist in walk(self.root_directory):
-            for filename in filelist:
-                path = os.path.join(dirpath, filename)
-                statmode = os.stat(path).st_mode
-                if stat.S_ISREG(statmode):
-                    yield BuildFile(filename, path, statmode)
-
-    def execute(self, cmd):
-        return subprocess.check_output(cmd, universal_newlines=True)
-
 class FileProvider(object):
     def __init__(self, file_system):
         self.file_system = file_system
 
     def glob_files(self, selector):
-        for file in self.file_system.walk():
-            if selector(file.name()):
-                yield file
+        for dirpath, filename, statmode in self.file_system.walk():
+            if selector(filename):
+                yield BuildFile(dirpath, filename, statmode)
 
     def execute(self, cmd):
         return self.file_system.execute(cmd).splitlines()
