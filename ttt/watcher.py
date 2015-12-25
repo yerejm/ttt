@@ -2,19 +2,22 @@ import re
 import os
 import collections
 import time
+import platform
 
-DEFAULT_SOURCE_PATTERNS = [
-    '\.cc$',
-    '\.c$',
-    '\.h$',
-    'CMakeLists.txt$',
-]
-
-WatchedFile = collections.namedtuple(
-    "WatchedFile",
-    [ "filename", "mtime" ]
-)
-WatchedFile.__new__.__defaults__ = (None, None)
+class WatchedFile(object):
+    def __init__(self, root_directory='', relative_directory='', filename='', mtime=0):
+        self._root = root_directory
+        self._relative = relative_directory
+        self._filename = filename
+        self._mtime = mtime
+    def name(self):
+        return self._filename
+    def relativepath(self):
+        return os.path.join(self._relative, self.name())
+    def absolutepath(self):
+        return os.path.join(self._root, self._relative, self.name())
+    def last_modified(self):
+        return self._mtime
 
 class WatchState(object):
     def __init__(self, inserts, deletes, updates):
@@ -29,13 +32,25 @@ class WatchState(object):
         return self.__dict__ == other.__dict__
 
 class Watcher(object):
+    EXE_SUFFIX = ".exe" if platform.system() == 'Windows' else ""
+    DEFAULT_SOURCE_PATTERNS = [
+        '\.cc$',
+        '\.c$',
+        '\.h$',
+        'CMakeLists.txt$',
+    ]
+    DEFAULT_TEST_PREFIX = 'test_'
+
     """
     Watch the file system for changes.
     This could be additions, deletions, or modifications.
     """
-    def __init__(self, watch_path, source_patterns=DEFAULT_SOURCE_PATTERNS):
+    def __init__(self, watch_path,
+            source_patterns=DEFAULT_SOURCE_PATTERNS,
+            test_prefix=DEFAULT_TEST_PREFIX):
         self.watch_path = watch_path
         self.source_patterns = [ re.compile(pattern) for pattern in source_patterns ]
+        self.test_prefix = test_prefix
         self.filelist = get_watched_files(self.watch_path, self.source_patterns)
 
     def poll(self):
@@ -43,6 +58,20 @@ class Watcher(object):
         watchstate = create_watchstate(self.filelist, current_filelist)
         self.filelist = current_filelist
         return watchstate
+
+    def testlist(self):
+        """
+        Derive from source files a dictionary of the associated expected test file
+        names.  The dictionary has keys of expected test file names, and values of
+        paths to the associated test source file relative to the watched directory.
+        """
+        testfiles = dict()
+        for filepath, watchedfile in self.filelist.items():
+            source_file = watchedfile.name()
+            if source_file.startswith(self.test_prefix):
+                test_file = source_file[:source_file.rfind('.')] + Watcher.EXE_SUFFIX
+                testfiles[test_file] = watchedfile.relativepath()
+        return testfiles
 
 def is_watchable(filename, patterns):
     for pattern in patterns:
@@ -52,14 +81,17 @@ def is_watchable(filename, patterns):
 
 def get_watched_files(root_directory, patterns):
     files = dict()
+    rootdir_end_index = len(root_directory) + 1
     for dirpath, dirlist, filelist in os.walk(root_directory):
         for filename in filelist:
             if is_watchable(filename, patterns):
                 watched_file = os.path.join(dirpath, filename)
                 files[watched_file] = WatchedFile(
-                    filename=filename,
-                    mtime=os.path.getmtime(watched_file)
-                )
+                        root_directory,
+                        dirpath[rootdir_end_index:],
+                        filename,
+                        os.path.getmtime(watched_file)
+                    )
     return files
 
 def create_watchstate(dictA, dictB):
@@ -69,7 +101,7 @@ def create_watchstate(dictA, dictB):
     deletes = dictAKeys - dictBKeys
     updates = set()
     for filename in dictA.keys():
-        if filename in dictB and dictB[filename].mtime != dictA[filename].mtime:
+        if filename in dictB and dictB[filename].last_modified() != dictA[filename].last_modified():
             updates.add(filename)
     return WatchState(inserts, deletes, updates)
 

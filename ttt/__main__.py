@@ -30,7 +30,7 @@ def main():
             if watchstate.has_changed() or runstate == FORCED_RUNNING:
                 runstate = RUNNING
                 ctx.build()
-                t.test(w.filelist)
+                t.test(w.testlist())
 
         except KeyboardInterrupt:
             test_filter = []

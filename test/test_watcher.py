@@ -32,7 +32,7 @@ class TestWatcher:
         w = Watcher(work_directory.path)
 
         filelist = w.filelist
-        assert set([ filelist[f].filename for f in filelist ]) == set(['a.h', 'a.c', 'a.cc', 'CMakeLists.txt'])
+        assert set([ filelist[f].name() for f in filelist ]) == set(['a.h', 'a.c', 'a.cc', 'CMakeLists.txt'])
 
     def test_custom_watcher(self):
         work_directory = TempDirectory()
@@ -44,7 +44,7 @@ class TestWatcher:
         w = Watcher(work_directory.path, ['CMakeLists.txt'])
 
         filelist = w.filelist
-        assert [ filelist[f].filename for f in filelist ] == ['CMakeLists.txt']
+        assert [ filelist[f].name() for f in filelist ] == ['CMakeLists.txt']
 
     def test_poll(self):
         work_directory = TempDirectory()
@@ -60,6 +60,14 @@ class TestWatcher:
         work_directory.write('b.c', b'')
         assert w.poll().has_changed()
 
+    def test_testlist(self):
+        work_directory = TempDirectory()
+        work_directory.makedir('test')
+        testfile_path = work_directory.write(['test', 'test_dummy.c'], b'')
+        w = Watcher(work_directory.path)
+
+        assert w.testlist() == { 'test_dummy': 'test/test_dummy.c' }
+
 class TestWatchState:
     def test_create(self):
         ws = create_watchstate(dict(), dict())
@@ -68,8 +76,8 @@ class TestWatchState:
         assert ws.has_changed() == set()
 
     def test_equality(self):
-        before = { 'test': WatchedFile(filename='test', mtime=1) }
-        after = { 'test': WatchedFile(filename='test', mtime=1) }
+        before = { 'test': WatchedFile() }
+        after = { 'test': WatchedFile() }
 
         ws1 = create_watchstate(before, after)
         ws2 = create_watchstate(dict(), dict())
@@ -89,9 +97,9 @@ class TestWatchState:
 
     def test_unchanged_watchstate(self):
         before = dict()
-        before['test'] = WatchedFile(filename='test', mtime=1)
+        before['test'] = WatchedFile()
         after = dict()
-        after['test'] = WatchedFile(filename='test', mtime=1)
+        after['test'] = WatchedFile()
 
         ws = create_watchstate(before, after)
 
@@ -101,7 +109,7 @@ class TestWatchState:
     def test_addition_watchstate(self):
         before = dict()
         after = dict()
-        after['test'] = WatchedFile(filename='test', mtime=1)
+        after['test'] = WatchedFile()
 
         ws = create_watchstate(before, after)
         assert ws.has_changed()
@@ -109,9 +117,9 @@ class TestWatchState:
 
     def test_modification_watchstate(self):
         before = dict()
-        before['test'] = WatchedFile(filename='test', mtime=1)
+        before['test'] = WatchedFile('', '', '', 1)
         after = dict()
-        after['test'] = WatchedFile(filename='test', mtime=2)
+        after['test'] = WatchedFile('', '', '', 2)
 
         ws = create_watchstate(before, after)
         assert ws.has_changed()
@@ -119,7 +127,7 @@ class TestWatchState:
 
     def test_deletion_watchstate(self):
         before = dict()
-        before['test'] = WatchedFile(filename='test', mtime=1)
+        before['test'] = WatchedFile()
         after = dict()
 
         ws = create_watchstate(before, after)
