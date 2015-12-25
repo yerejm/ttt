@@ -29,6 +29,8 @@ class CMakeContext(object):
         ])
 
     def _cmake_generate(self, watch_path, build_path):
+        check_abspath('watch', watch_path)
+        check_abspath('build', build_path)
         command = ['cmake']
         if self.build_system is not None:
             command.append('-G')
@@ -46,6 +48,10 @@ class CMakeContext(object):
             )
         except subprocess.CalledProcessError as e:
             raise CMakeError(command)
+
+def check_abspath(ident, path):
+    if not os.path.isabs(path):
+        raise Exception("{} path {} must be absolute".format(ident, path))
 
 class CMakeError(Exception):
     """ Exception raised when a cmake command fails."""

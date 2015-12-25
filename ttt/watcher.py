@@ -57,7 +57,7 @@ class Watcher(object):
         self.filelist = current_filelist
         return watchstate
 
-    def testlist(self):
+    def testdict(self):
         """
         Derive from source files a dictionary of the associated expected test file
         names.  The dictionary has keys of expected test file names, and values of

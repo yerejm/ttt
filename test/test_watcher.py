@@ -74,7 +74,7 @@ class TestWatcher:
         watchstate = w.poll(work_directory.path)
         assert watchstate.has_changed()
 
-    def test_testlist(self):
+    def test_testdict(self):
         work_directory = TempDirectory()
         work_directory.makedir('test')
         testfile_path = work_directory.write(['test', 'test_dummy.c'], b'')
@@ -83,7 +83,7 @@ class TestWatcher:
         w = Watcher(sc)
         w.poll(work_directory.path)
 
-        assert w.testlist() == { 'test_dummy': 'test/test_dummy.c' }
+        assert w.testdict() == { 'test_dummy': 'test/test_dummy.c' }
 
 class TestWatchState:
     def test_create(self):

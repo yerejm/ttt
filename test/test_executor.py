@@ -27,16 +27,17 @@ def stdout_redirector(stream):
     finally:
         sys.stdout = old_stdout
 
-class MockProcess:
-    def __init__(self, output):
-        self.output = output
-        self.command = None
-
+class MockContext:
     def streamed_call(self, command, listener):
-        self.command = command
-        for line in self.output:
-            listener(line)
+        pass
+    def glob_files(self, path, selector):
+        return []
 
 class TestExecutor:
-    pass
+    def test_test(self):
+        buildpath = '/path/to/build'
+        testdict = {}
+        sc = MockContext()
+        e = Executor(sc)
+        e.test(buildpath, testdict)
 

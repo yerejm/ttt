@@ -39,7 +39,7 @@ def main():
             if watchstate.has_changed() or runstate == FORCED_RUNNING:
                 runstate = RUNNING
                 ctx.build(watch_path, build_path)
-                t.test(build_path, w.testlist())
+                t.test(build_path, w.testdict())
 
         except KeyboardInterrupt:
             test_filter = []
