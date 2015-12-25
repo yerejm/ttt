@@ -1,4 +1,5 @@
 import sys
+import os
 import time
 
 import colorama
@@ -6,18 +7,26 @@ import colorama
 from ttt import cmake
 from ttt import watcher
 from ttt import executor
+from ttt import systemcontext
 
-RUNNING = 1
-STOPPING = 2
-FORCED_RUNNING = 3
+RUNNING, STOPPING, FORCED_RUNNING = range(3)
+DEFAULT_BUILD_PATH_SUFFIX = '-build'
+
+def make_build_path(watch_path, suffix=DEFAULT_BUILD_PATH_SUFFIX):
+    return os.path.join(
+        os.getcwd(),
+        "{}{}".format(os.path.basename(watch_path), suffix)
+    )
 
 def main():
-    ctx = cmake.CMakeContext(sys.argv[1])
+    watch_path = os.path.abspath(sys.argv[1])
+    build_path = make_build_path(watch_path)
 
-    watch_path = ctx.watch_path
-    build_path = ctx.build_path
-    w = watcher.Watcher(watch_path)
-    t = executor.Executor(build_path)
+    sc = systemcontext.SystemContext()
+    ctx = cmake.CMakeContext(sc)
+
+    w = watcher.Watcher(sc)
+    t = executor.Executor(sc)
 
     runstate = FORCED_RUNNING
 
@@ -26,11 +35,11 @@ def main():
         try:
             time.sleep(delay)
 
-            watchstate = w.poll()
+            watchstate = w.poll(watch_path)
             if watchstate.has_changed() or runstate == FORCED_RUNNING:
                 runstate = RUNNING
-                ctx.build()
-                t.test(w.testlist())
+                ctx.build(watch_path, build_path)
+                t.test(build_path, w.testlist())
 
         except KeyboardInterrupt:
             test_filter = []

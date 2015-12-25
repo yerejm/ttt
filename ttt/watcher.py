@@ -1,7 +1,5 @@
 import re
 import os
-import collections
-import time
 import platform
 
 class WatchedFile(object):
@@ -45,16 +43,16 @@ class Watcher(object):
     Watch the file system for changes.
     This could be additions, deletions, or modifications.
     """
-    def __init__(self, watch_path,
+    def __init__(self, context,
             source_patterns=DEFAULT_SOURCE_PATTERNS,
             test_prefix=DEFAULT_TEST_PREFIX):
-        self.watch_path = watch_path
+        self.context = context
         self.source_patterns = [ re.compile(pattern) for pattern in source_patterns ]
         self.test_prefix = test_prefix
-        self.filelist = get_watched_files(self.watch_path, self.source_patterns)
+        self.filelist = {}
 
-    def poll(self):
-        current_filelist = get_watched_files(self.watch_path, self.source_patterns)
+    def poll(self, watch_path):
+        current_filelist = get_watched_files(self.context, watch_path, self.source_patterns)
         watchstate = create_watchstate(self.filelist, current_filelist)
         self.filelist = current_filelist
         return watchstate
@@ -79,19 +77,18 @@ def is_watchable(filename, patterns):
             return True
     return False
 
-def get_watched_files(root_directory, patterns):
+def get_watched_files(context, root_directory, patterns):
     files = dict()
     rootdir_end_index = len(root_directory) + 1
-    for dirpath, dirlist, filelist in os.walk(root_directory):
-        for filename in filelist:
-            if is_watchable(filename, patterns):
-                watched_file = os.path.join(dirpath, filename)
-                files[watched_file] = WatchedFile(
-                        root_directory,
-                        dirpath[rootdir_end_index:],
-                        filename,
-                        os.path.getmtime(watched_file)
-                    )
+    for dirpath, filename, _ in context.walk(root_directory):
+        if is_watchable(filename, patterns):
+            watched_file = os.path.join(dirpath, filename)
+            files[watched_file] = WatchedFile(
+                    root_directory,
+                    dirpath[rootdir_end_index:],
+                    filename,
+                    os.path.getmtime(watched_file)
+                )
     return files
 
 def create_watchstate(dictA, dictB):

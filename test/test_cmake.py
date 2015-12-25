@@ -14,7 +14,17 @@ import platform
 import subprocess
 from testfixtures import TempDirectory
 
-from ttt.cmake import CMakeContext, CMakeError, default_build_system
+from ttt.cmake import CMakeContext, CMakeError
+from ttt.systemcontext import SystemContext
+
+DEFAULT_BUILD_WINDOWS = 'Visual Studio 14 2015'
+DEFAULT_BUILD_UNIX = 'Unix Makefiles'
+
+def default_build_system():
+    default = DEFAULT_BUILD_UNIX
+    if platform.system() == 'Windows':
+        default = DEFAULT_BUILD_WINDOWS
+    return default
 
 def command_missing(command):
     locator = 'where' if platform.system() == 'Windows' else 'which'
@@ -35,41 +45,21 @@ class TestCreateBuildArea:
         os.chdir(self.old_cwd)
         TempDirectory.cleanup_all()
 
-    def test_build_file_requires_build(self):
-        ctx = CMakeContext('source')
-        ctx.build()
-
-    def test_cmake_error(self):
+    def test_cmake_invalid_source_error(self):
         source_path = '{}'.format(os.path.join(os.getcwd(), 'dummy'))
+        build_path = os.path.join(os.getcwd(), 'dummy-build')
         expected = [
             'cmake',
-            '-G', default_build_system(),
             '-H{}'.format(source_path),
-            '-B{}'.format(os.path.join(os.getcwd(), 'dummy-build'))
+            '-B{}'.format(build_path)
         ]
 
-        ctx = CMakeContext('dummy')
+        ctx = CMakeContext(SystemContext())
         try:
-            ctx.build()
+            ctx.build(source_path, build_path)
         except CMakeError as e:
             assert e.command == expected
             assert str(e) == str(expected)
-
-    def test_create_build_area_in_cwd(self):
-        ctx = CMakeContext('source')
-        ctx.build()
-
-        assert os.path.exists(os.path.join(os.getcwd(), 'source'))
-        assert os.path.exists(os.path.join(os.getcwd(), 'source-build', 'CMakeFiles'))
-
-    def test_create_existing_build_area(self):
-        ctx = CMakeContext('source')
-        ctx.build()
-        create_time = os.path.getctime(os.path.join(os.getcwd(), 'source-build', 'CMakeFiles'))
-        ctx.build()
-        recreate_time = os.path.getctime(os.path.join(os.getcwd(), 'source-build', 'CMakeFiles'))
-
-        assert create_time == recreate_time
 
 class TestDefaultBuildArea:
 
@@ -84,13 +74,11 @@ class TestDefaultBuildArea:
         cmake_build_path = cmake_build_directory.path
         cmake_source_directory.write('CMakeLists.txt', b'project(test)')
 
-        ctx = CMakeContext(cmake_source_path, cmake_build_path)
-        ctx.build()
+        ctx = CMakeContext(SystemContext())
+        ctx.build(cmake_source_path, cmake_build_path)
 
-        assert os.path.exists(os.path.join(ctx.build_path, 'CMakeFiles'))
-        assert os.path.exists(os.path.join(ctx.build_path, build_file))
-        assert ctx.watch_path == cmake_source_path
-        assert ctx.build_path == cmake_build_path
+        assert os.path.exists(os.path.join(cmake_build_path, 'CMakeFiles'))
+        assert os.path.exists(os.path.join(cmake_build_path, build_file))
 
 @pytest.mark.skipif(command_missing('ninja'), reason="ninja not installed")
 class TestNinjaBuildArea:
@@ -105,13 +93,11 @@ class TestNinjaBuildArea:
         cmake_build_path = cmake_build_directory.path
         cmake_source_directory.write('CMakeLists.txt', b'project(test)')
 
-        ctx = CMakeContext(cmake_source_path, cmake_build_path, 'Ninja')
-        ctx.build()
+        ctx = CMakeContext(SystemContext(), 'Ninja')
+        ctx.build(cmake_source_path, cmake_build_path)
 
-        assert os.path.exists(os.path.join(ctx.build_path, 'CMakeFiles'))
-        assert os.path.exists(os.path.join(ctx.build_path, 'build.ninja'))
-        assert ctx.watch_path == cmake_source_path
-        assert ctx.build_path == cmake_build_path
+        assert os.path.exists(os.path.join(cmake_build_path, 'CMakeFiles'))
+        assert os.path.exists(os.path.join(cmake_build_path, 'build.ninja'))
 
 @pytest.mark.skipif(command_missing('make'), reason="make not installed")
 class TestMakeBuildArea:
@@ -126,13 +112,11 @@ class TestMakeBuildArea:
         cmake_build_path = cmake_build_directory.path
         cmake_source_directory.write('CMakeLists.txt', b'project(test)')
 
-        ctx = CMakeContext(cmake_source_path, cmake_build_path, 'Unix Makefiles')
-        ctx.build()
+        ctx = CMakeContext(SystemContext(), 'Unix Makefiles')
+        ctx.build(cmake_source_path, cmake_build_path)
 
-        assert os.path.exists(os.path.join(ctx.build_path, 'CMakeFiles'))
-        assert os.path.exists(os.path.join(ctx.build_path, 'Makefile'))
-        assert ctx.watch_path == cmake_source_path
-        assert ctx.build_path == cmake_build_path
+        assert os.path.exists(os.path.join(cmake_build_path, 'CMakeFiles'))
+        assert os.path.exists(os.path.join(cmake_build_path, 'Makefile'))
 
 class TestInvalidBuildArea:
 
@@ -146,8 +130,8 @@ class TestInvalidBuildArea:
         cmake_build_path = cmake_build_directory.path
         cmake_source_directory.write('CMakeLists.txt', b'project(test)')
 
-        ctx = CMakeContext(cmake_source_path, cmake_build_path, 'dummy')
+        ctx = CMakeContext(SystemContext(), 'dummy')
         with pytest.raises(CMakeError):
-            ctx.build()
+            ctx.build(cmake_source_path, cmake_build_path)
         assert not os.path.exists(os.path.join(cmake_build_path, 'CMakeFiles'))
 

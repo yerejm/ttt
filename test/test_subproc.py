@@ -68,6 +68,6 @@ class TestSubprocess:
 
         self.tmp.write(PROGRAM_NAME, create_program(exit_code=0))
         rc = call_output(self.command, universal_newlines=True,
-                line_handler=line_handler)
+                listener=line_handler)
         assert rc == 0
         assert output == ['blah blah blah 1\n', 'boo', 'blah blah blah 2\n', 'boo']

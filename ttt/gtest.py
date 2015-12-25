@@ -37,11 +37,11 @@ class GTest(object):
     def run_time(self):
         return self._elapsed
 
-    def execute(self, provider, test_filters):
+    def execute(self, context, test_filters):
         command = [ self._executable ]
         if test_filters:
             command.append("--gtest_filter={}".format(':'.join(test_filters)))
-        provider.streamed_call(command, self)
+        context.streamed_call(command, listener=self)
 
     def __call__(self, line):
         def testcase_starts_at(line):

@@ -1,27 +1,5 @@
 import os
 import subprocess
-import multiprocessing
-import platform
-import glob
-import collections
-
-from ttt import subproc
-
-DEFAULT_BUILD_WINDOWS = 'Visual Studio 14 2015'
-DEFAULT_BUILD_UNIX = 'Unix Makefiles'
-DEFAULT_BUILD_PATH_SUFFIX = '-build'
-
-def default_build_system():
-    default = DEFAULT_BUILD_UNIX
-    if platform.system() == 'Windows':
-        default = DEFAULT_BUILD_WINDOWS
-    return default
-
-def make_build_path(watch_path, suffix=DEFAULT_BUILD_PATH_SUFFIX):
-    return os.path.join(
-        os.getcwd(),
-        "{}{}".format(os.path.basename(watch_path), suffix)
-    )
 
 class CMakeContext(object):
     """
@@ -30,41 +8,40 @@ class CMakeContext(object):
     provide a means to call the build command in that area.
     """
 
-    def __init__(self, watch_path, build_path=None, build_system=default_build_system()):
-        self.watch_path = os.path.abspath(watch_path)
-        self.build_path = make_build_path(watch_path) if build_path is None else build_path
+    def __init__(self, context, build_system=None):
+        self.context = context
         self.build_system = build_system
 
-    def build(self):
+    def build(self, watch_path, build_path):
         """
         Calls the build command in the build area. If no build area exists, it
         will be created.
         """
-        if not os.path.exists(os.path.join(self.build_path, 'CMakeFiles')):
-            self._cmake_generate()
-        self._build()
+        if not os.path.exists(os.path.join(build_path, 'CMakeFiles')):
+            self._cmake_generate(watch_path, build_path)
+        self._build(build_path)
 
-    def _build(self):
+    def _build(self, build_path):
         self._execute([
             'cmake',
             '--build',
-            self.build_path
+            build_path
         ])
 
-    def _cmake_generate(self):
-        self._execute([
-            'cmake',
-            '-G', self.build_system,
-            '-H{}'.format(self.watch_path),
-            '-B{}'.format(self.build_path)
-        ])
+    def _cmake_generate(self, watch_path, build_path):
+        command = ['cmake']
+        if self.build_system is not None:
+            command.append('-G')
+            command.append(self.build_system)
+        command.append('-H{}'.format(watch_path))
+        command.append('-B{}'.format(build_path))
+        self._execute(command)
 
     def _execute(self, command, cwd=None):
         try:
-            subprocess.check_call(
+            self.context.checked_call(
                 command,
                 stderr=subprocess.STDOUT,
-                universal_newlines=True,
                 cwd=cwd
             )
         except subprocess.CalledProcessError as e:

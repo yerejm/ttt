@@ -14,6 +14,7 @@ from testfixtures import TempDirectory
 from ttt.watcher import WatchedFile
 from ttt.watcher import create_watchstate
 from ttt.watcher import Watcher
+from ttt.systemcontext import SystemContext
 
 class TestWatcher:
     def setup(self):
@@ -29,7 +30,10 @@ class TestWatcher:
         work_directory.write('a.cc', b'')
         work_directory.write('CMakeLists.txt', b'')
         work_directory.write('blah.txt', b'')
-        w = Watcher(work_directory.path)
+
+        sc = SystemContext()
+        w = Watcher(sc)
+        w.poll(work_directory.path)
 
         filelist = w.filelist
         assert set([ filelist[f].name() for f in filelist ]) == set(['a.h', 'a.c', 'a.cc', 'CMakeLists.txt'])
@@ -41,7 +45,10 @@ class TestWatcher:
         work_directory.write('a.cc', b'')
         work_directory.write('CMakeLists.txt', b'')
         work_directory.write('blah.txt', b'')
-        w = Watcher(work_directory.path, ['CMakeLists.txt'])
+
+        sc = SystemContext()
+        w = Watcher(sc, ['CMakeLists.txt'])
+        w.poll(work_directory.path)
 
         filelist = w.filelist
         assert [ filelist[f].name() for f in filelist ] == ['CMakeLists.txt']
@@ -53,18 +60,28 @@ class TestWatcher:
         work_directory.write('a.cc', b'')
         work_directory.write('CMakeLists.txt', b'')
         work_directory.write('blah.txt', b'')
-        w = Watcher(work_directory.path)
 
-        assert not w.poll().has_changed()
+        sc = SystemContext()
+        w = Watcher(sc)
+
+        watchstate = w.poll(work_directory.path)
+        assert watchstate.has_changed()
+
+        watchstate = w.poll(work_directory.path)
+        assert not watchstate.has_changed()
 
         work_directory.write('b.c', b'')
-        assert w.poll().has_changed()
+        watchstate = w.poll(work_directory.path)
+        assert watchstate.has_changed()
 
     def test_testlist(self):
         work_directory = TempDirectory()
         work_directory.makedir('test')
         testfile_path = work_directory.write(['test', 'test_dummy.c'], b'')
-        w = Watcher(work_directory.path)
+
+        sc = SystemContext()
+        w = Watcher(sc)
+        w.poll(work_directory.path)
 
         assert w.testlist() == { 'test_dummy': 'test/test_dummy.c' }
 

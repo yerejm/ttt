@@ -19,9 +19,9 @@ def call_output(*popenargs, **kwargs):
     kwargs['stdin'] = subprocess.PIPE
 
     line_handler = None
-    if 'line_handler' in kwargs:
-        line_handler = kwargs['line_handler']
-        del kwargs['line_handler']
+    if 'listener' in kwargs:
+        line_handler = kwargs['listener']
+        del kwargs['listener']
 
     process = create_process(*popenargs, stdout=subprocess.PIPE, **kwargs)
     return run(process, line_handler)
