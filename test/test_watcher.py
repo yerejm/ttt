@@ -83,7 +83,8 @@ class TestWatcher:
         w = Watcher(sc)
         w.poll(work_directory.path)
 
-        assert w.testdict() == { 'test_dummy': 'test/test_dummy.c' }
+        exefile = 'test_dummy' + Watcher.EXE_SUFFIX
+        assert w.testdict() == { exefile: os.path.join('test', 'test_dummy.c') }
 
 class TestWatchState:
     def test_create(self):

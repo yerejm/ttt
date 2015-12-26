@@ -38,7 +38,7 @@ class TestSystemContext:
 
         wdpathlen = len(self.wd.path) + 1
         paths = [ os.path.join(d[wdpathlen:], f) for d, f, m in sc.walk(self.wd.path) ]
-        assert paths == [ 'dummy2.txt', 'test1.txt', 'test/test3.txt' ]
+        assert paths == [ 'dummy2.txt', 'test1.txt', os.path.join('test', 'test3.txt') ]
 
     def test_glob_files(self):
         sc = SystemContext()

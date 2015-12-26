@@ -44,12 +44,14 @@ class MockContext:
         for x, y, z in self.files:
             yield x, y, z
 
+BUILDPATH = os.path.join('path', 'to', 'build')
+DUMMYPATH = os.path.join(BUILDPATH, 'test_core')
+
 class TestExecutor:
     def test_passed(self):
-        buildpath = '/path/to/build'
-        testdict = { 'test_dummy': 'test/test_dummy.c' }
+        testdict = { 'test_core': 'test_core.c' }
         sc = MockContext(
-                [['/path/to/build', 'test_dummy', stat.S_IXUSR]],
+                [[BUILDPATH, 'test_core', stat.S_IXUSR]],
                 [[
                     '[==========] Running 1 test from 1 test case.\n',
                     '[----------] Global test environment set-up.\n',
@@ -66,25 +68,24 @@ class TestExecutor:
         e = Executor(sc)
         f = io.StringIO()
         with stdout_redirector(f):
-            results = e.test(buildpath, testdict)
+            results = e.test(BUILDPATH, testdict)
         test = next(iter(results))
         assert test.failures() == []
-        assert f.getvalue() == 'test/test_dummy.c :: core .\n'
+        assert f.getvalue() == 'test_core.c :: core .\n'
         assert sc.command == [
-                ['/path/to/build/test_dummy'],
+                [DUMMYPATH],
                 ]
 
     def test_failed(self):
-        buildpath = '/path/to/build'
-        testdict = { 'test_dummy': 'test/test_dummy.c' }
+        testdict = { 'test_core': 'test_core.c' }
         sc = MockContext(
-                [['/path/to/build', 'test_dummy', stat.S_IXUSR]],
+                [[BUILDPATH, 'test_core', stat.S_IXUSR]],
                 [[
                     '[==========] Running 1 test from 1 test case.\n',
                     '[----------] Global test environment set-up.\n',
                     '[----------] 1 test from core\n',
                     '[ RUN      ] core.ok\n',
-                    '/test/test_core.cc:12: Failure\n',
+                    'test_core.cc:12: Failure\n',
                     'Value of: 2\n',
                     'Expected: ok()\n',
                     'Which is: 42\n',
@@ -103,19 +104,18 @@ class TestExecutor:
         e = Executor(sc)
         f = io.StringIO()
         with stdout_redirector(f):
-            results = e.test(buildpath, testdict)
+            results = e.test(BUILDPATH, testdict)
         assert len(results) == 1
         assert next(iter(results)).failures() == ['core.ok']
-        assert f.getvalue() == 'test/test_dummy.c :: core F\n'
+        assert f.getvalue() == 'test_core.c :: core F\n'
         assert sc.command == [
-                ['/path/to/build/test_dummy'],
+                [DUMMYPATH],
                 ]
 
     def test_failed_filter(self):
-        buildpath = '/path/to/build'
-        testdict = { 'test_dummy': 'test/test_dummy.c' }
+        testdict = { 'test_core': 'test_core.c' }
         sc = MockContext(
-                [['/path/to/build', 'test_dummy', stat.S_IXUSR]],
+                [[BUILDPATH, 'test_core', stat.S_IXUSR]],
                 [[
                     '[==========] Running 2 tests from 1 test case.\n',
                     '[----------] Global test environment set-up.\n',
@@ -123,7 +123,7 @@ class TestExecutor:
                     '[ RUN      ] core.test\n',
                     '[       OK ] core.test (0 ms)\n',
                     '[ RUN      ] core.ok\n',
-                    '/test/test_core.cc:12: Failure\n',
+                    'test_core.cc:12: Failure\n',
                     'Value of: 2\n',
                     'Expected: ok()\n',
                     'Which is: 42\n',
@@ -143,7 +143,7 @@ class TestExecutor:
                     '[----------] Global test environment set-up.\n',
                     '[----------] 1 test from core\n',
                     '[ RUN      ] core.ok\n',
-                    '/test/test_core.cc:12: Failure\n',
+                    'test_core.cc:12: Failure\n',
                     'Value of: 2\n',
                     'Expected: ok()\n',
                     'Which is: 42\n',
@@ -160,31 +160,30 @@ class TestExecutor:
                 ]]
             )
         e = Executor(sc)
-        e.test(buildpath, testdict)
-        assert sc.command == [['/path/to/build/test_dummy']]
-        e.test(buildpath, testdict)
+        e.test(BUILDPATH, testdict)
+        assert sc.command == [[DUMMYPATH]]
+        e.test(BUILDPATH, testdict)
         assert sc.command == [
-                ['/path/to/build/test_dummy'],
-                ['/path/to/build/test_dummy', '--gtest_filter=core.ok'],
+                [DUMMYPATH],
+                [DUMMYPATH, '--gtest_filter=core.ok'],
                 ]
 
     def test_multiple_failed_filter(self):
-        buildpath = '/path/to/build'
-        testdict = { 'test_dummy': 'test/test_dummy.c' }
+        testdict = { 'test_core': 'test_core.c' }
         sc = MockContext(
-                [['/path/to/build', 'test_dummy', stat.S_IXUSR]],
+                [[BUILDPATH, 'test_core', stat.S_IXUSR]],
                 [[
                     '[==========] Running 2 tests from 1 test case.\n',
                     '[----------] Global test environment set-up.\n',
                     '[----------] 2 test from core\n',
                     '[ RUN      ] core.test\n',
-                    '/test/test_core.cc:12: Failure\n',
+                    'test_core.cc:12: Failure\n',
                     'Value of: 2\n',
                     'Expected: ok()\n',
                     'Which is: 42\n',
                     '[  FAILED  ] core.test (0 ms)\n',
                     '[ RUN      ] core.ok\n',
-                    '/test/test_core.cc:12: Failure\n',
+                    'test_core.cc:12: Failure\n',
                     'Value of: 2\n',
                     'Expected: ok()\n',
                     'Which is: 42\n',
@@ -205,13 +204,13 @@ class TestExecutor:
                     '[----------] Global test environment set-up.\n',
                     '[----------] 2 test from core\n',
                     '[ RUN      ] core.test\n',
-                    '/test/test_core.cc:12: Failure\n',
+                    'test_core.cc:12: Failure\n',
                     'Value of: 2\n',
                     'Expected: ok()\n',
                     'Which is: 42\n',
                     '[  FAILED  ] core.test (0 ms)\n',
                     '[ RUN      ] core.ok\n',
-                    '/test/test_core.cc:12: Failure\n',
+                    'test_core.cc:12: Failure\n',
                     'Value of: 2\n',
                     'Expected: ok()\n',
                     'Which is: 42\n',
@@ -229,25 +228,24 @@ class TestExecutor:
                 ]]
             )
         e = Executor(sc)
-        e.test(buildpath, testdict)
-        assert sc.command == [['/path/to/build/test_dummy']]
-        e.test(buildpath, testdict)
+        e.test(BUILDPATH, testdict)
+        assert sc.command == [[DUMMYPATH]]
+        e.test(BUILDPATH, testdict)
         assert sc.command == [
-                ['/path/to/build/test_dummy'],
-                ['/path/to/build/test_dummy', '--gtest_filter=core.test:core.ok'],
+                [DUMMYPATH],
+                [DUMMYPATH, '--gtest_filter=core.test:core.ok'],
                 ]
 
     def test_failure_then_success_reruns_all(self):
-        buildpath = '/path/to/build'
-        testdict = { 'test_dummy': 'test/test_dummy.c' }
+        testdict = { 'test_core': 'test_core.c' }
         sc = MockContext(
-                [['/path/to/build', 'test_dummy', stat.S_IXUSR]],
+                [[BUILDPATH, 'test_core', stat.S_IXUSR]],
                 [[
                     '[==========] Running 1 test from 1 test case.\n',
                     '[----------] Global test environment set-up.\n',
                     '[----------] 1 test from core\n',
                     '[ RUN      ] core.ok\n',
-                    '/test/test_core.cc:12: Failure\n',
+                    'test_core.cc:12: Failure\n',
                     'Value of: 2\n',
                     'Expected: ok()\n',
                     'Which is: 42\n',
@@ -276,12 +274,12 @@ class TestExecutor:
                 ]]
             )
         e = Executor(sc)
-        e.test(buildpath, testdict)
-        assert sc.command == [['/path/to/build/test_dummy']]
-        e.test(buildpath, testdict)
+        e.test(BUILDPATH, testdict)
+        assert sc.command == [[DUMMYPATH]]
+        e.test(BUILDPATH, testdict)
         assert sc.command == [
-                ['/path/to/build/test_dummy'],
-                ['/path/to/build/test_dummy', '--gtest_filter=core.ok'],
-                ['/path/to/build/test_dummy'],
+                [DUMMYPATH],
+                [DUMMYPATH, '--gtest_filter=core.ok'],
+                [DUMMYPATH],
                 ]
 
