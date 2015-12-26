@@ -2,23 +2,13 @@ import subprocess
 import threading
 import re
 import sys
+from six.moves import queue
 
-try:
-    from queue import Queue, Empty
-except ImportError:
-    from Queue import Queue, Empty
-
-def read_stream(output_stream, input_stream, io_q):
-    if not input_stream:
-        io_q.put((output_stream, 'EXIT'))
-        return
-    for line in input_stream:
-        io_q.put((output_stream, line))
-    if not input_stream.closed:
-        input_stream.close()
-    io_q.put((output_stream, 'EXIT'))
 
 def call_output(*popenargs, **kwargs):
+    def create_process(*popenargs, **kwargs):
+        return subprocess.Popen(*popenargs, **kwargs)
+
     if 'stdout' in kwargs:
         raise ValueError('stdout argument not allowed, it will be overridden.')
     if 'stdin' in kwargs:
@@ -34,11 +24,18 @@ def call_output(*popenargs, **kwargs):
     process = create_process(*popenargs, stdout=subprocess.PIPE, **kwargs)
     return run(process, line_handler)
 
-def create_process(*popenargs, **kwargs):
-    return subprocess.Popen(*popenargs, **kwargs)
-
 def run(process, line_handler):
-    io_q = Queue(5)
+    def read_stream(output_stream, input_stream, io_q):
+        if not input_stream:
+            io_q.put((output_stream, 'EXIT'))
+            return
+        for line in input_stream:
+            io_q.put((output_stream, line))
+        if not input_stream.closed:
+            input_stream.close()
+        io_q.put((output_stream, 'EXIT'))
+
+    io_q = queue.Queue(5)
     threads = {}
     threads[sys.stdout] = threading.Thread(
         target=read_stream,
@@ -53,7 +50,7 @@ def run(process, line_handler):
     while threads:
         try:
             item = io_q.get(True, 1)
-        except Empty:
+        except queue.Empty:
             if process.poll() is not None:
                 break
         else:

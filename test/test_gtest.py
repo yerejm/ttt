@@ -84,7 +84,9 @@ class TestGTest:
 
         assert f.getvalue() == '/test/test_core.cc :: core .\n'
         assert gtest.results() == { 'core.ok': [], }
-        assert gtest.failures() == set()
+        assert gtest.failures() == []
+        assert gtest.fails() == 0
+        assert gtest.passes() == 1
 
     def test_one_testcase_success(self):
         results = [
@@ -109,7 +111,9 @@ class TestGTest:
 
         assert f.getvalue() == '/test/test_core.cc :: dummy ..\n'
         assert gtest.results() == { 'dummy.test1': [], 'dummy.test2': [], }
-        assert gtest.failures() == set()
+        assert gtest.failures() == []
+        assert gtest.fails() == 0
+        assert gtest.passes() == 2
 
     def test_multiple_testcase_success(self):
         results = [
@@ -153,7 +157,9 @@ class TestGTest:
                 'blah.test1': [],
                 'blah.test2': [],
             }
-        assert gtest.failures() == set()
+        assert gtest.failures() == []
+        assert gtest.fails() == 0
+        assert gtest.passes() == 6
 
     def test_one_testcase_failure(self):
         results = [
@@ -205,7 +211,9 @@ class TestGTest:
                     'Which is: 42',
                     ],
             }
-        assert gtest.failures() == set(['core.ok', 'core.okshadow'])
+        assert gtest.failures() == ['core.ok', 'core.okshadow']
+        assert gtest.fails() == 2
+        assert gtest.passes() == 0
 
     def test_multiple_testcase_failure(self):
         results = [
@@ -269,7 +277,9 @@ class TestGTest:
                     'Expected: true',
                     ],
             }
-        assert gtest.failures() == set([ 'core.okshadow', 'blah.test2' ])
+        assert gtest.failures() == [ 'core.okshadow', 'blah.test2' ]
+        assert gtest.fails() == 2
+        assert gtest.passes() == 4
 
     def test_command_filter_none(self):
         process = MockProcess([])

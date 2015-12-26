@@ -26,11 +26,14 @@ class SystemContext(object):
                 yield dirpath, filename, statmode
 
     def execute(self, *args, **kwargs):
+        kwargs['universal_newlines'] = True
         return subprocess.check_output(*args, **kwargs).splitlines()
 
     def checked_call(self, *args, **kwargs):
+        kwargs['universal_newlines'] = True
         return subprocess.check_call(*args, **kwargs)
 
     def streamed_call(self, *args, **kwargs):
+        kwargs['universal_newlines'] = True
         return subproc.call_output(*args, **kwargs)
 

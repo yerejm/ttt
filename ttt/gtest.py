@@ -21,11 +21,19 @@ class GTest(object):
 
     def _reset(self):
         self._output = []
-        self._tests = collections.defaultdict(dict)
+        self._tests = collections.OrderedDict()
         self._state = GTest.WAITING_TESTCASE
         self._testcase = None
         self._test = None
         self._elapsed = 0
+        self._pass_count = 0
+        self._fail_count = 0
+
+    def passes(self):
+        return self._pass_count
+
+    def fails(self):
+        return self._fail_count
 
     def executable(self):
         return self._executable
@@ -102,15 +110,20 @@ class GTest(object):
         self._tests[self._test] = self._output[:-1]
         self._current_test = None
 
-        stdout_write('F' if '[  FAILED  ]' in line else '.')
+        if '[  FAILED  ]' in line:
+            self._fail_count += 1
+            stdout_write('F')
+        else:
+            self._pass_count += 1
+            stdout_write('.')
 
     def results(self):
         return self._tests
 
     def failures(self):
-        failures = set()
+        failures = []
         for test, results in self._tests.items():
             if results:
-                failures.add(test)
+                failures.append(test)
         return failures
 

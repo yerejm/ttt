@@ -1,17 +1,9 @@
-from __future__ import unicode_literals
 import sys
 import os
 import time
-
+from six import text_type
+import termstyle
 import colorama
-
-if sys.version_info < (3,):
-    text_type = unicode
-    binary_type = str
-else:
-    text_type = str
-    binary_type = bytes
-
 
 from ttt import cmake
 from ttt import watcher
@@ -35,6 +27,7 @@ def main():
     ctx = cmake.CMakeContext(sc)
 
     w = watcher.Watcher(sc)
+    w.poll(watch_path)
     t = executor.Executor(sc)
 
     runstate = FORCED_RUNNING
@@ -46,10 +39,21 @@ def main():
 
             watchstate = w.poll(watch_path)
             if watchstate.has_changed() or runstate == FORCED_RUNNING:
+                report_changes(watchstate)
+
                 runstate = RUNNING
                 ctx.build(watch_path, build_path)
+                stdout_write(termstyle.bold(
+                    '============================= test session starts ==============================\n'
+                ))
                 results = t.test(build_path, w.testdict())
                 report_failures(results, watch_path)
+                stdout_write(termstyle.bold(
+                    '############################## waiting for changes ##############################\n'
+                ))
+                stdout_write(termstyle.bold(
+                    '### Watching:   {}\n'.format(watch_path)
+                ))
 
         except KeyboardInterrupt:
             if runstate == FORCED_RUNNING:
@@ -65,21 +69,40 @@ def main():
 def report_failures(results, watch_path):
     runtime = 0
     fail_count = 0
-    if results:
+    pass_count = 0
+    for test in results:
+        runtime += test.run_time()
+        fail_count += test.fails()
+        pass_count += test.passes()
+
+    if fail_count > 0:
         stdout_write('=================================== FAILURES ===================================\n')
         for test in results:
-            runtime += test.run_time()
-            failures = test.failures()
-            fail_count += len(failures)
             test_results = test.results()
             for testname, testresult in test_results.items():
                 if testresult:
-                    stdout_write('\n____________________________ {} ____________________________\n'.format(testname))
+                    stdout_write(termstyle.red(termstyle.bold(
+                        '\n____________________________ {} ____________________________\n'.format(testname)
+                    )))
                     stdout_write('\n'.join(testresult[1:]))
                     stdout_write('\n\n')
                     stdout_write(testresult[0][len(watch_path) + 1:])
                     stdout_write('\n')
-        stdout_write('=========================== {} failed in {} seconds ===========================\n'.format(fail_count, runtime/1000))
+        stdout_write(termstyle.red(termstyle.bold(
+            '=========================== {} failed in {} seconds ===========================\n'.format(fail_count, runtime/1000)
+        )))
+    else:
+        stdout_write(termstyle.green(termstyle.bold(
+            '========================== {} passed in {} seconds ===========================\n'.format(pass_count, runtime/1000)
+        )))
+
+def report_changes(watch_state):
+    for f in watch_state.inserts:
+        stdout_write('# CREATED {}\n'.format(f))
+    for f in watch_state.updates:
+        stdout_write('# MODIFIED {}\n'.format(f))
+    for f in watch_state.deletes:
+        stdout_write('# DELETED {}\n'.format(f))
 
 def stdout_write(string):
     sys.stdout.write(text_type(string))
