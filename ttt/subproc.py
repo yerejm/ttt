@@ -3,6 +3,11 @@ import threading
 import re
 import sys
 
+try:
+    from queue import Queue, Empty
+except ImportError:
+    from Queue import Queue, Empty
+
 def read_stream(output_stream, input_stream, io_q):
     if not input_stream:
         io_q.put((output_stream, 'EXIT'))
@@ -16,6 +21,9 @@ def read_stream(output_stream, input_stream, io_q):
 def call_output(*popenargs, **kwargs):
     if 'stdout' in kwargs:
         raise ValueError('stdout argument not allowed, it will be overridden.')
+    if 'stdin' in kwargs:
+        raise ValueError('stdin argument not allowed, it will be overridden.')
+
     kwargs['stdin'] = subprocess.PIPE
 
     line_handler = None
@@ -30,10 +38,6 @@ def create_process(*popenargs, **kwargs):
     return subprocess.Popen(*popenargs, **kwargs)
 
 def run(process, line_handler):
-    try:
-        from queue import Queue, Empty
-    except ImportError:
-        from Queue import Queue, Empty
     io_q = Queue(5)
     threads = {}
     threads[sys.stdout] = threading.Thread(

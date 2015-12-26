@@ -34,7 +34,42 @@ class MockContext:
         return []
 
 class TestExecutor:
-    def test_test(self):
+    def test_test_success_creates_empty_filter(self):
+        buildpath = '/path/to/build'
+        testdict = {}
+        sc = MockContext()
+        e = Executor(sc)
+        e.test(buildpath, testdict)
+
+    def test_test_failure_creates_filter(self):
+        buildpath = '/path/to/build'
+        testdict = {}
+        sc = MockContext()
+        e = Executor(sc)
+        e.test(buildpath, testdict)
+
+    def test_test_failure_runs_only_failure(self):
+        buildpath = '/path/to/build'
+        testdict = {}
+        sc = MockContext()
+        e = Executor(sc)
+        e.test(buildpath, testdict)
+
+    def test_test_failure_then_success_reruns_all(self):
+        buildpath = '/path/to/build'
+        testdict = {}
+        sc = MockContext()
+        e = Executor(sc)
+        e.test(buildpath, testdict)
+
+    def test_discovers_added_tests(self):
+        buildpath = '/path/to/build'
+        testdict = {}
+        sc = MockContext()
+        e = Executor(sc)
+        e.test(buildpath, testdict)
+
+    def test_discovers_deleted_tests(self):
         buildpath = '/path/to/build'
         testdict = {}
         sc = MockContext()

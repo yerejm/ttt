@@ -7,35 +7,20 @@ test_subproc
 
 Tests for `subproc` module.
 """
-import subprocess
 import os
-import io
 import sys
-import re
+
 from testfixtures import TempDirectory
 
 from ttt.subproc import call_output
 
-from contextlib import contextmanager
-
 PROGRAM_NAME = 'test.py'
-
-@contextmanager
-def stdout_redirector(stream):
-    old_stdout = sys.stdout
-    sys.stdout = stream
-    try:
-        yield
-    finally:
-        sys.stdout = old_stdout
 
 def create_program(exit_code=None):
     program = [
-        'import time',
         'import sys',
         'for x in range(1, 3):',
         '    print("blah blah blah " + str(x))',
-        '    time.sleep(1)'
     ]
     if exit_code is None:
         raise "Exit code must be given"

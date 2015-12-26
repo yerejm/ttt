@@ -12,8 +12,6 @@ class WatchedFile(object):
         return self._filename
     def relativepath(self):
         return os.path.join(self._relative, self.name())
-    def absolutepath(self):
-        return os.path.join(self._root, self._relative, self.name())
     def last_modified(self):
         return self._mtime
 

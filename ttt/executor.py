@@ -1,3 +1,4 @@
+import sys
 import os
 import stat
 
@@ -11,24 +12,31 @@ class Executor(object):
     def test(self, build_path, testfiles):
         test_filter = self.test_filter
         testlist = create_tests(self.context, build_path, testfiles)
+        test_results = set()
 
         if test_filter:
-            test_filter = self.run_tests(testlist, test_filter)
-        if test_filter:
-            self.test_filter = test_filter
-            return test_filter
-        test_filter = self.run_tests(testlist, set())
+            test_results = run_tests(self.context, testlist, test_filter)
+            test_filter = create_filter(test_results)
+
+        if not test_filter:
+            test_results = run_tests(self.context, testlist, set())
+            test_filter = create_filter(test_results)
+
         self.test_filter = test_filter
-        return test_filter
+        return test_results
 
-    def run_tests(self, testlist, test_filter):
-        for test in testlist:
-            if not test_filter or test.executable() in test_filter:
-                test.execute(self.context, test_filter[test.executable()] if test_filter else [])
-                failures = test.failures()
-                if failures:
-                    return { test.executable(): failures }
-        return {}
+def create_filter(test_results):
+    return { test.executable(): test.failures() for test in test_results }
+
+def run_tests(context, testlist, test_filter):
+    results = set()
+    for test in testlist:
+        if not test_filter or test.executable() in test_filter:
+            if test.execute(context, test_filter[test.executable()] if test_filter else []):
+                results.add(test)
+                if test_filter:
+                    break
+    return results
 
 def create_tests(context, build_path, testfiles):
     tests = []

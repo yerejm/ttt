@@ -47,7 +47,7 @@ class CMakeContext(object):
                 cwd=cwd
             )
         except subprocess.CalledProcessError as e:
-            raise CMakeError(command)
+            raise CMakeError(e)
 
 def check_abspath(ident, path):
     if not os.path.isabs(path):
@@ -56,9 +56,7 @@ def check_abspath(ident, path):
 class CMakeError(Exception):
     """ Exception raised when a cmake command fails."""
 
-    def __init__(self, command):
-        self.command = command
-
-    def __str__(self):
-        return '{}'.format(repr(self.command))
+    def __init__(self, exception):
+        self.exception = exception
+        self.command = exception.cmd
 

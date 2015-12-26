@@ -10,6 +10,8 @@ Tests for `cmake` module.
 
 import os
 import platform
+
+import pytest
 from testfixtures import TempDirectory
 
 from ttt.cmake import CMakeContext, CMakeError
@@ -76,5 +78,11 @@ class TestCMakeContextSlow:
             ctx.build(source_path, build_path)
         except CMakeError as e:
             assert e.command == expected
-            assert str(e) == str(expected)
+
+    def test_bad_build_from_relative_path(self):
+        ctx = CMakeContext(SystemContext())
+        with pytest.raises(Exception):
+            ctx.build('dummy', self.cmake_build_path)
+        with pytest.raises(Exception):
+            ctx.build(self.cmake_source_path, 'dummy')
 

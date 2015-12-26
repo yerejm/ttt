@@ -12,6 +12,8 @@ from contextlib import contextmanager
 import io
 import sys
 
+import pytest
+
 from ttt.gtest import GTest
 
 def starts_with_test(filename):
@@ -53,7 +55,7 @@ class TestGTest:
 '[==========] 2 tests from 1 test case ran. (3 ms total)\n',
 '[  PASSED  ] 2 tests.\n'
                 ]
-        gtest = GTest()
+        gtest = GTest('/test/test_core.cc')
         f = io.StringIO()
         with stdout_redirector(f):
             gtest.execute(MockProcess(results), [])
@@ -75,17 +77,13 @@ class TestGTest:
 '[==========] 1 test from 1 test case ran. (0 ms total)\n',
 '[  PASSED  ] 1 test.\n',
                 ]
-        gtest = GTest()
+        gtest = GTest('/test/test_core.cc')
         f = io.StringIO()
         with stdout_redirector(f):
             gtest.execute(MockProcess(results), [])
 
-        assert f.getvalue() == 'core .\n'
-        assert gtest.results() == {
-                'core': {
-                    'core.ok': [],
-                    },
-                }
+        assert f.getvalue() == '/test/test_core.cc :: core .\n'
+        assert gtest.results() == { 'core.ok': [], }
         assert gtest.failures() == set()
 
     def test_one_testcase_success(self):
@@ -104,21 +102,16 @@ class TestGTest:
 '[==========] 2 tests from 1 test case ran. (0 ms total)\n',
 '[  PASSED  ] 2 tests.\n'
                 ]
-        gtest = GTest()
+        gtest = GTest('/test/test_core.cc')
         f = io.StringIO()
         with stdout_redirector(f):
             gtest.execute(MockProcess(results), [])
 
-        assert f.getvalue() == 'dummy ..\n'
-        assert gtest.results() == {
-                'dummy': {
-                    'dummy.test1': [],
-                    'dummy.test2': [],
-                    },
-                }
+        assert f.getvalue() == '/test/test_core.cc :: dummy ..\n'
+        assert gtest.results() == { 'dummy.test1': [], 'dummy.test2': [], }
         assert gtest.failures() == set()
 
-    def multiple_testcase_success(self):
+    def test_multiple_testcase_success(self):
         results = [
 'Running main() from gtest_main.cc\n',
 '[==========] Running 6 tests from 2 test cases.\n',
@@ -145,25 +138,21 @@ class TestGTest:
 '[==========] 6 tests from 2 test cases ran. (0 ms total)\n',
 '[  PASSED  ] 6 tests.\n',
                 ]
-        gtest = GTest()
+        gtest = GTest('/test/test_core.cc')
 
         f = io.StringIO()
         with stdout_redirector(f):
             gtest.execute(MockProcess(results), [])
 
-        assert f.getvalue() == 'core ....\nblah ..\n'
+        assert f.getvalue() == '/test/test_core.cc :: core ....\n/test/test_core.cc :: blah ..\n'
         assert gtest.results() == {
-                'core': {
-                    'core.ok': [],
-                    'core.okshadow': [],
-                    'core.notok': [],
-                    'core.blah': [],
-                    },
-                'blah': {
-                    'blah.test1': [],
-                    'blah.test2': [],
-                    },
-                }
+                'core.ok': [],
+                'core.okshadow': [],
+                'core.notok': [],
+                'core.blah': [],
+                'blah.test1': [],
+                'blah.test2': [],
+            }
         assert gtest.failures() == set()
 
     def test_one_testcase_failure(self):
@@ -196,31 +185,29 @@ class TestGTest:
 '\n',
 ' 2 FAILED TESTS\n',
                 ]
-        gtest = GTest()
+        gtest = GTest('/test/test_core.cc')
         f = io.StringIO()
         with stdout_redirector(f):
             gtest.execute(MockProcess(results), [])
 
-        assert f.getvalue() == 'core FF\n'
+        assert f.getvalue() == '/test/test_core.cc :: core FF\n'
         assert gtest.results() == {
-                'core': {
-                    'core.ok': [
-                        '/test/test_core.cc:12: Failure',
-                        'Value of: 2',
-                        'Expected: ok()',
-                        'Which is: 42',
-                        ],
-                    'core.okshadow': [
-                        '/test/test_core.cc:16: Failure',
-                        'Value of: 1',
-                        'Expected: ok()',
-                        'Which is: 42',
-                        ],
-                    },
-                }
+                'core.ok': [
+                    '/test/test_core.cc:12: Failure',
+                    'Value of: 2',
+                    'Expected: ok()',
+                    'Which is: 42',
+                    ],
+                'core.okshadow': [
+                    '/test/test_core.cc:16: Failure',
+                    'Value of: 1',
+                    'Expected: ok()',
+                    'Which is: 42',
+                    ],
+            }
         assert gtest.failures() == set(['core.ok', 'core.okshadow'])
 
-    def multiple_testcase_failure(self):
+    def test_multiple_testcase_failure(self):
         results = [
 'Running main() from gtest_main.cc\n',
 '[==========] Running 6 tests from 2 test cases.\n',
@@ -258,35 +245,31 @@ class TestGTest:
 '[  FAILED  ] core.okshadow\n',
 '[  FAILED  ] blah.test2\n',
                 ]
-        gtest = GTest()
+        gtest = GTest('/test/test_core.cc')
         f = io.StringIO()
         with stdout_redirector(f):
             gtest.execute(MockProcess(results), [])
 
-        assert f.getvalue() == 'core .F..\nblah .F\n'
+        assert f.getvalue() == '/test/test_core.cc :: core .F..\n/test/test_core.cc :: blah .F\n'
         assert gtest.results() == {
-                'core': {
-                    'core.ok': [],
-                    'core.okshadow': [
-                        '/test/test_core.cc:16: Failure\n',
-                        'Value of: 2\n',
-                        'Expected: ok()\n',
-                        'Which is: 42\n',
-                        ],
-                    'core.notok': [],
-                    'core.blah': [],
-                    },
-                'blah': {
-                    'blah.test1': [],
-                    'blah.test2': [
-                        '/test/test_core.cc:32: Failure\n',
-                        'Value of: false\n',
-                        '  Actual: false\n',
-                        'Expected: true\n',
-                        ],
-                    },
-                }
-        assert gtest.failures() == set([ 'core.okshadow', 'dummy.test2' ])
+                'core.ok': [],
+                'core.okshadow': [
+                    '/test/test_core.cc:16: Failure',
+                    'Value of: 2',
+                    'Expected: ok()',
+                    'Which is: 42',
+                    ],
+                'core.notok': [],
+                'core.blah': [],
+                'blah.test1': [],
+                'blah.test2': [
+                    '/test/test_core.cc:32: Failure',
+                    'Value of: false',
+                    'Actual: false',
+                    'Expected: true',
+                    ],
+            }
+        assert gtest.failures() == set([ 'core.okshadow', 'blah.test2' ])
 
     def test_command_filter_none(self):
         process = MockProcess([])
@@ -312,3 +295,21 @@ class TestGTest:
             gtest.execute(process, [ 'dummy1', 'dummy2' ])
         assert process.command == [ '/path/to/test', '--gtest_filter=dummy1:dummy2' ]
 
+    def test_corrupt_test_output_missing_testcase(self):
+        gtest = GTest()
+
+        with pytest.raises(Exception):
+            gtest.end_test('')
+
+        gtest._testcase = ''
+
+        with pytest.raises(Exception):
+            gtest.end_test('')
+
+        gtest._test = ''
+
+        f = io.StringIO()
+        with stdout_redirector(f):
+            gtest.end_test('')
+
+        assert f.getvalue() == '.'

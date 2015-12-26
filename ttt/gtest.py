@@ -1,17 +1,10 @@
-from __future__ import unicode_literals
 import collections
 import re
 import sys
-
-if sys.version_info < (3,):
-    text_type = unicode
-    binary_type = str
-else:
-    text_type = str
-    binary_type = bytes
+import six
 
 def stdout_write(string):
-    sys.stdout.write(text_type(string))
+    sys.stdout.write(six.text_type(string))
 
 class GTest(object):
     WAITING_TESTCASE, WAITING_TEST, IN_TEST = range(3)
@@ -24,6 +17,9 @@ class GTest(object):
     def __init__(self, source=None, executable=None):
         self._source = source
         self._executable = executable
+        self._reset()
+
+    def _reset(self):
         self._output = []
         self._tests = collections.defaultdict(dict)
         self._state = GTest.WAITING_TESTCASE
@@ -38,10 +34,12 @@ class GTest(object):
         return self._elapsed
 
     def execute(self, context, test_filters):
-        command = [ self._executable ]
+        command = [ self.executable() ]
         if test_filters:
             command.append("--gtest_filter={}".format(':'.join(test_filters)))
+        self._reset()
         context.streamed_call(command, listener=self)
+        return self.failures()
 
     def __call__(self, line):
         def testcase_starts_at(line):
@@ -81,9 +79,8 @@ class GTest(object):
         testcase = line[line.rfind(' ') + 1:]
         self._testcase = testcase
 
-        if self._source is not None:
-            stdout_write(self._source)
-            stdout_write(' :: ')
+        stdout_write(str(self._source))
+        stdout_write(' :: ')
         stdout_write(testcase)
         stdout_write(' ')
 
@@ -102,7 +99,7 @@ class GTest(object):
             raise Exception('Invalid current testcase')
         if self._test is None:
             raise Exception('Invalid current test')
-        self._tests[self._testcase][self._test] = self._output[:-1]
+        self._tests[self._test] = self._output[:-1]
         self._current_test = None
 
         stdout_write('F' if '[  FAILED  ]' in line else '.')
@@ -112,9 +109,8 @@ class GTest(object):
 
     def failures(self):
         failures = set()
-        for tests in self._tests.values():
-            for test, results in tests.items():
-                if results:
-                    failures.add(test)
+        for test, results in self._tests.items():
+            if results:
+                failures.add(test)
         return failures
 
