@@ -17,6 +17,7 @@ from testfixtures import TempDirectory
 from contextlib import contextmanager
 
 from ttt.executor import Executor
+from ttt.systemcontext import SystemContext
 
 @contextmanager
 def stdout_redirector(stream):
@@ -27,7 +28,7 @@ def stdout_redirector(stream):
     finally:
         sys.stdout = old_stdout
 
-class MockContext:
+class MockContext(SystemContext):
     def __init__(self, files=[], results=[]):
         self.files = files
         self.results = results[::-1]
@@ -40,11 +41,11 @@ class MockContext:
             for line in results:
                 listener(line)
 
-    def glob_files(self, path, selector):
+    def walk(self, path):
         for x, y, z in self.files:
             yield x, y, z
 
-BUILDPATH = os.path.join('path', 'to', 'build')
+BUILDPATH = os.path.join('', 'path', 'to', 'build')
 DUMMYPATH = os.path.join(BUILDPATH, 'test_core')
 
 class TestExecutor:
@@ -111,6 +112,37 @@ class TestExecutor:
         assert sc.command == [
                 [DUMMYPATH],
                 ]
+
+    def test_filter(self):
+        testdict = { 'test_core': 'test_core.c' }
+        sc = MockContext(
+                [[BUILDPATH, 'test_core', stat.S_IXUSR]],
+                [[
+                    '[==========] Running 1 test from 1 test case.\n',
+                    '[----------] Global test environment set-up.\n',
+                    '[----------] 1 test from core\n',
+                    '[ RUN      ] core.ok\n',
+                    'test_core.cc:12: Failure\n',
+                    'Value of: 2\n',
+                    'Expected: ok()\n',
+                    'Which is: 42\n',
+                    '[  FAILED  ] core.ok (0 ms)\n',
+                    '[----------] 1 test from core (0 ms total)\n',
+                    '\n',
+                    '[----------] Global test environment tear-down\n',
+                    '[==========] 1 test from 1 test case ran. (0 ms total)\n',
+                    '[  PASSED  ] 0 tests.\n',
+                    '[  FAILED  ] 1 test, listed below:\n',
+                    '[  FAILED  ] core.ok\n',
+                    '\n',
+                    ' 1 FAILED TEST\n',
+                ]]
+            )
+        e = Executor(sc)
+        e.test(BUILDPATH, testdict)
+        assert e.test_filter() == { DUMMYPATH: ['core.ok'] }
+        e.clear_filter()
+        assert e.test_filter() == {}
 
     def test_failed_filter(self):
         testdict = { 'test_core': 'test_core.c' }

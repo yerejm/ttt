@@ -12,6 +12,9 @@ class Executor(object):
     def test_filter(self):
         return self._test_filter
 
+    def clear_filter(self):
+        self._test_filter.clear()
+
     def test(self, build_path, testfiles):
         test_filter = self.test_filter()
         testlist = create_tests(self.context, build_path, testfiles)
@@ -42,10 +45,13 @@ def run_tests(context, testlist, test_filter):
     return results
 
 def create_tests(context, build_path, testfiles):
+    def is_executable_test(x):
+        d, f, m = x
+        return f in testfiles and m & stat.S_IXUSR
+
     tests = []
-    for dir, file, mode in context.glob_files(build_path, lambda x: x in testfiles):
-        if mode & stat.S_IXUSR:
-            filepath = os.path.join(dir, file)
-            tests.append(GTest(testfiles[file], filepath))
+    for dir, file, mode in filter(is_executable_test, context.walk(build_path)):
+        filepath = os.path.join(dir, file)
+        tests.append(GTest(testfiles[file], filepath))
     return tests
 

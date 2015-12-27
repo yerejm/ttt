@@ -40,13 +40,6 @@ class TestSystemContext:
         paths = [ os.path.join(d[wdpathlen:], f) for d, f, m in sc.walk(self.wd.path) ]
         assert paths == [ 'dummy2.txt', 'test1.txt', os.path.join('test', 'test3.txt') ]
 
-    def test_glob_files(self):
-        sc = SystemContext()
-
-        t = [ f for d, f, m in sc.glob_files(self.wd.path, lambda x: x.startswith('test')) ]
-
-        assert t == [ 'test1.txt', 'test3.txt' ]
-
     def test_execute(self):
         sc = SystemContext()
 
@@ -92,3 +85,32 @@ class TestSystemContext:
         command = ['python', exefile]
         assert 1 == sc.streamed_call(command, universal_newlines=True)
 
+    def test_streamed_call_with_handler(self):
+        output = []
+        def line_handler(line):
+            output.append(line)
+            output.append('boo')
+
+        exefile = self.wd.write(PROGRAM_NAME, create_program(exit_code=0))
+        command = ['python', exefile]
+        sc = SystemContext()
+        rc = sc.streamed_call(command, universal_newlines=True,
+                listener=line_handler)
+        assert rc == 0
+        assert output == ['hello\n', 'boo']
+
+    def test_streamed_call_with_stdin_fails(self):
+        exefile = self.wd.write(PROGRAM_NAME, create_program(exit_code=0))
+        command = ['python', exefile]
+        sc = SystemContext()
+        with pytest.raises(ValueError):
+            sc.streamed_call(command, universal_newlines=True,
+                    stdin=subprocess.PIPE)
+
+    def test_streamed_call_with_stdout_fails(self):
+        exefile = self.wd.write(PROGRAM_NAME, create_program(exit_code=0))
+        command = ['python', exefile]
+        sc = SystemContext()
+        with pytest.raises(ValueError):
+            sc.streamed_call(command, universal_newlines=True,
+                    stdout=subprocess.PIPE)
