@@ -4,6 +4,7 @@ import stat
 import subprocess
 import threading
 from six.moves import queue
+from six import text_type
 
 try:
     from os import scandir, walk
@@ -13,8 +14,10 @@ except ImportError:
     except ImportError:
         from os import walk
 
+TERMINAL_MAX_WIDTH = 80
 EXCLUSIONS = set([ '.git', '.hg' ])
 class SystemContext(object):
+
     def walk(self, root_directory):
         for dirpath, dirlist, filelist in walk(root_directory, topdown=True):
             dirlist[:] = [ d for d in dirlist if d not in EXCLUSIONS ]
@@ -35,6 +38,40 @@ class SystemContext(object):
     def streamed_call(self, *args, **kwargs):
         kwargs['universal_newlines'] = True
         return call_output(*args, **kwargs)
+
+    def write(self, string):
+        sys.stdout.write(text_type(string))
+        sys.stdout.flush()
+
+    def writeln(self, string='', **kwargs):
+        if 'pad' in kwargs:
+            width = kwargs['width'] if 'width' in kwargs else term_width()
+            string = pad(kwargs['pad'], string, width)
+        if 'decorator' in kwargs:
+            for d in kwargs['decorator']:
+                string = d(string)
+        self.write(string + os.linesep)
+
+def term_width():
+    try:
+        from shutil import get_terminal_size
+        ts = get_terminal_size()
+        return ts.columns
+    except ImportError:
+        return TERMINAL_MAX_WIDTH
+
+def pad(padchar, string, width):
+    pad_width = min(width, TERMINAL_MAX_WIDTH)
+    strlen = len(string) + 2
+    total_padlen = pad_width - strlen
+    left_padlen = int(total_padlen / 2)
+    right_padlen = total_padlen - left_padlen
+
+    return "{} {} {}".format(
+            ''.ljust(left_padlen, padchar),
+            string,
+            ''.ljust(right_padlen, padchar)
+        )
 
 def call_output(*popenargs, **kwargs):
     def create_process(*popenargs, **kwargs):

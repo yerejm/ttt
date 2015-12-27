@@ -7,12 +7,16 @@ test_systemcontext
 
 Tests for `systemcontext` module.
 """
+import io
+import sys
 import os
 import stat
 import subprocess
+import termstyle
 
 import pytest
 from testfixtures import TempDirectory
+from contextlib import contextmanager
 
 from ttt.systemcontext import SystemContext
 
@@ -114,3 +118,48 @@ class TestSystemContext:
         with pytest.raises(ValueError):
             sc.streamed_call(command, universal_newlines=True,
                     stdout=subprocess.PIPE)
+
+    def test_write(self):
+        sc = SystemContext()
+        f = io.StringIO()
+        with stdout_redirector(f):
+            sc.write('hello')
+        assert f.getvalue() == 'hello'
+
+    def test_writeln(self):
+        sc = SystemContext()
+        f = io.StringIO()
+        with stdout_redirector(f):
+            sc.writeln('hello')
+        assert f.getvalue() == 'hello' + os.linesep
+
+    def test_writeln_padding(self):
+        sc = SystemContext()
+        f = io.StringIO()
+        with stdout_redirector(f):
+            sc.writeln('hello', pad='.', width=15)
+        assert f.getvalue() == '.... hello ....' + os.linesep
+
+    def test_writeln_default_padding_width(self):
+        sc = SystemContext()
+        f = io.StringIO()
+        with stdout_redirector(f):
+            sc.writeln('hello', pad='.')
+        assert f.getvalue() == ''.ljust(36, '.') + ' hello ' + ''.ljust(37, '.') + os.linesep
+
+    def test_writeln_decorator(self):
+        sc = SystemContext()
+        f = io.StringIO()
+        with stdout_redirector(f):
+            sc.writeln('hello', decorator=[termstyle.bold])
+        assert f.getvalue() == termstyle.bold('hello') + os.linesep
+
+@contextmanager
+def stdout_redirector(stream):
+    old_stdout = sys.stdout
+    sys.stdout = stream
+    try:
+        yield
+    finally:
+        sys.stdout = old_stdout
+

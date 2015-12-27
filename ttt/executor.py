@@ -52,6 +52,6 @@ def create_tests(context, build_path, testfiles):
     tests = []
     for dir, file, mode in filter(is_executable_test, context.walk(build_path)):
         filepath = os.path.join(dir, file)
-        tests.append(GTest(testfiles[file], filepath))
+        tests.append(GTest(testfiles[file], filepath, context))
     return tests
 

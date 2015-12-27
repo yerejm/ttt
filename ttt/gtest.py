@@ -1,10 +1,5 @@
 import collections
 import re
-import sys
-import six
-
-def stdout_write(string):
-    sys.stdout.write(six.text_type(string))
 
 class GTest(object):
     WAITING_TESTCASE, WAITING_TEST, IN_TEST = range(3)
@@ -14,10 +9,11 @@ class GTest(object):
     TEST_END_RE       = re.compile('^\[  (FAILED |     OK) \] (.*?)$')
     TESTCASE_TIME_RE  = re.compile('^\[==========\] \d tests? from \d test cases? ran. \((\d+) ms total\)$')
 
-    def __init__(self, source=None, executable=None):
+    def __init__(self, source=None, executable=None, term=None):
         self._source = source
         self._executable = executable
         self._reset()
+        self._term = term
 
     def _reset(self):
         self._output = []
@@ -87,15 +83,16 @@ class GTest(object):
         testcase = line[line.rfind(' ') + 1:]
         self._testcase = testcase
 
-        stdout_write(str(self._source))
-        stdout_write(' :: ')
-        stdout_write(testcase)
-        stdout_write(' ')
+        term = self._term
+        if term is not None:
+            term.write('{} :: {} '.format(str(self._source), testcase))
 
     def end_testcase(self, line):
         self._testcase = None
 
-        stdout_write('\n')
+        term = self._term
+        if term is not None:
+            term.writeln()
 
     def begin_test(self, line):
         test = line[line.rfind(' ') + 1:]
@@ -110,12 +107,15 @@ class GTest(object):
         self._tests[self._test] = self._output[:-1]
         self._current_test = None
 
+        term = self._term
         if '[  FAILED  ]' in line:
             self._fail_count += 1
-            stdout_write('F')
+            if term is not None:
+                term.write('F')
         else:
             self._pass_count += 1
-            stdout_write('.')
+            if term is not None:
+                term.write('.')
 
     def results(self):
         return self._tests

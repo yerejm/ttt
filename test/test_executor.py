@@ -8,31 +8,19 @@ test_executor
 Tests for `executor` module.
 """
 import os
-import re
-import io
-import sys
 import stat
 
 from testfixtures import TempDirectory
-from contextlib import contextmanager
 
 from ttt.executor import Executor
 from ttt.systemcontext import SystemContext
-
-@contextmanager
-def stdout_redirector(stream):
-    old_stdout = sys.stdout
-    sys.stdout = stream
-    try:
-        yield
-    finally:
-        sys.stdout = old_stdout
 
 class MockContext(SystemContext):
     def __init__(self, files=[], results=[]):
         self.files = files
         self.results = results[::-1]
         self.command = []
+        self.output = ''
 
     def streamed_call(self, command, listener):
         self.command.append(command)
@@ -44,6 +32,12 @@ class MockContext(SystemContext):
     def walk(self, path):
         for x, y, z in self.files:
             yield x, y, z
+
+    def getvalue(self):
+        return self.output
+
+    def write(self, string):
+        self.output += string
 
 BUILDPATH = os.path.join('', 'path', 'to', 'build')
 DUMMYPATH = os.path.join(BUILDPATH, 'test_core')
@@ -67,12 +61,10 @@ class TestExecutor:
                 ]]
             )
         e = Executor(sc)
-        f = io.StringIO()
-        with stdout_redirector(f):
-            results = e.test(BUILDPATH, testdict)
+        results = e.test(BUILDPATH, testdict)
         test = next(iter(results))
         assert test.failures() == []
-        assert f.getvalue() == 'test_core.c :: core .\n'
+        assert sc.getvalue() == 'test_core.c :: core .' + os.linesep
         assert sc.command == [
                 [DUMMYPATH],
                 ]
@@ -103,12 +95,10 @@ class TestExecutor:
                 ]]
             )
         e = Executor(sc)
-        f = io.StringIO()
-        with stdout_redirector(f):
-            results = e.test(BUILDPATH, testdict)
+        results = e.test(BUILDPATH, testdict)
         assert len(results) == 1
         assert next(iter(results)).failures() == ['core.ok']
-        assert f.getvalue() == 'test_core.c :: core F\n'
+        assert sc.getvalue() == 'test_core.c :: core F' + os.linesep
         assert sc.command == [
                 [DUMMYPATH],
                 ]
