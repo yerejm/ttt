@@ -104,16 +104,19 @@ def run(process, line_handler):
         io_q.put((output_stream, 'EXIT'))
 
     io_q = queue.Queue(5)
-    threads = {}
-    threads[sys.stdout] = threading.Thread(
-        target=read_stream,
-        args=(sys.stdout, process.stdout, io_q)
-    ).start()
+    threads = {
+        sys.stdout: threading.Thread(
+            target=read_stream,
+            args=(sys.stdout, process.stdout, io_q)
+        ),
+        sys.stderr: threading.Thread(
+            target=read_stream,
+            args=(sys.stderr, process.stderr, io_q)
+        ),
+    }
 
-    threads[sys.stderr] = threading.Thread(
-        target=read_stream,
-        args=(sys.stderr, process.stderr, io_q)
-    ).start()
+    for thread in threads.values():
+        thread.start()
 
     while threads:
         try:
@@ -124,6 +127,7 @@ def run(process, line_handler):
         else:
             outstream, message = item
             if message == 'EXIT':
+                threads[outstream].join()
                 del threads[outstream]
             else:
                 if line_handler is not None:
