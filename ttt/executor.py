@@ -29,7 +29,27 @@ class Executor(object):
             test_filter = create_filter(test_results)
 
         self._test_filter = test_filter
-        return test_results
+        return collate(test_results)
+
+def collate(test_results):
+    runtime = 0.0
+    fail_count = 0
+    pass_count = 0
+    failures = []
+    for test in test_results:
+        runtime += test.run_time()
+        fail_count += test.fails()
+        pass_count += test.passes()
+        for failure in test.failures():
+            failures.append([ failure, test.test_results(failure) ])
+    runtime /= 1000
+
+    return {
+            'total_runtime': runtime,
+            'total_passed': pass_count,
+            'total_failed': fail_count,
+            'failures': failures,
+            }
 
 def create_filter(test_results):
     return { test.executable(): test.failures() for test in test_results if test.failures() }

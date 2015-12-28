@@ -315,3 +315,38 @@ class TestGTest:
 
         assert f.getvalue() == '.'
 
+    def test_path_stripping(self):
+        results = [
+'Running main() from gtest_main.cc\n',
+'Note: Google Test filter = core.ok:core.ok:core.okshadow\n',
+'[==========] Running 1 test from 1 test case.\n',
+'[----------] Global test environment set-up.\n',
+'[----------] 1 tests from core\n',
+'[ RUN      ] core.ok\n',
+'/path/test/test_core.cc:12: Failure\n',
+'Value of: 2\n',
+'Expected: ok()\n',
+'Which is: 42\n',
+'[  FAILED  ] core.ok (0 ms)\n',
+'[----------] 1 tests from core (0 ms total)\n',
+'\n',
+'[----------] Global test environment tear-down\n',
+'[==========] 1 test from 1 test case ran. (0 ms total)\n',
+'[  PASSED  ] 0 tests.\n',
+'[  FAILED  ] 1 test, listed below:\n',
+'[  FAILED  ] core.ok\n',
+'\n',
+' 1 FAILED TESTS\n',
+                ]
+        f = MockTerminal()
+        gtest = GTest('test/test_core.cc', term=f)
+        gtest.execute(MockProcess(results), [])
+        assert gtest.results() == {
+                'core.ok': [
+                    'test/test_core.cc:12: Failure',
+                    'Value of: 2',
+                    'Expected: ok()',
+                    'Which is: 42',
+                    ],
+            }
+

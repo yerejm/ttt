@@ -39,7 +39,7 @@ class MockContext(SystemContext):
     def write(self, string):
         self.output += string
 
-BUILDPATH = os.path.join('', 'path', 'to', 'build')
+BUILDPATH = os.path.sep + os.path.join('path', 'to', 'build')
 DUMMYPATH = os.path.join(BUILDPATH, 'test_core')
 
 class TestExecutor:
@@ -53,17 +53,21 @@ class TestExecutor:
                     '[----------] 1 test from core\n',
                     '[ RUN      ] core.ok\n',
                     '[       OK ] core.ok (0 ms)\n',
-                    '[----------] 1 test from core (0 ms total)\n',
+                    '[----------] 1 test from core (1 ms total)\n',
                     '\n',
                     '[----------] Global test environment tear-down\n',
-                    '[==========] 1 test from 1 test case ran. (0 ms total)\n',
+                    '[==========] 1 test from 1 test case ran. (1 ms total)\n',
                     '[  PASSED  ] 1 test.\n',
                 ]]
             )
         e = Executor(sc)
         results = e.test(BUILDPATH, testdict)
-        test = next(iter(results))
-        assert test.failures() == []
+        assert results == {
+                'total_runtime': 0.001,
+                'total_passed': 1,
+                'total_failed': 0,
+                'failures': []
+                }
         assert sc.getvalue() == 'test_core.c :: core .' + os.linesep
         assert sc.command == [
                 [DUMMYPATH],
@@ -83,10 +87,10 @@ class TestExecutor:
                     'Expected: ok()\n',
                     'Which is: 42\n',
                     '[  FAILED  ] core.ok (0 ms)\n',
-                    '[----------] 1 test from core (0 ms total)\n',
+                    '[----------] 1 test from core (1 ms total)\n',
                     '\n',
                     '[----------] Global test environment tear-down\n',
-                    '[==========] 1 test from 1 test case ran. (0 ms total)\n',
+                    '[==========] 1 test from 1 test case ran. (1 ms total)\n',
                     '[  PASSED  ] 0 tests.\n',
                     '[  FAILED  ] 1 test, listed below:\n',
                     '[  FAILED  ] core.ok\n',
@@ -96,9 +100,73 @@ class TestExecutor:
             )
         e = Executor(sc)
         results = e.test(BUILDPATH, testdict)
-        assert len(results) == 1
-        assert next(iter(results)).failures() == ['core.ok']
+        assert results == {
+                'total_runtime': 0.001,
+                'total_passed': 0,
+                'total_failed': 1,
+                'failures': [
+                        [
+                            'core.ok',
+                            [
+                                'test_core.cc:12: Failure',
+                                'Value of: 2',
+                                'Expected: ok()',
+                                'Which is: 42',
+                            ]
+                        ]
+                    ]
+                }
         assert sc.getvalue() == 'test_core.c :: core F' + os.linesep
+        assert sc.command == [
+                [DUMMYPATH],
+                ]
+
+    def test_mixed_results(self):
+        testdict = { 'test_core': 'test_core.c' }
+        sc = MockContext(
+                [[BUILDPATH, 'test_core', stat.S_IXUSR]],
+                [[
+                    '[==========] Running 2 tests from 1 test case.\n',
+                    '[----------] Global test environment set-up.\n',
+                    '[----------] 2 test from core\n',
+                    '[ RUN      ] core.test\n',
+                    '[       OK ] core.test (0 ms)\n',
+                    '[ RUN      ] core.ok\n',
+                    'test_core.cc:12: Failure\n',
+                    'Value of: 2\n',
+                    'Expected: ok()\n',
+                    'Which is: 42\n',
+                    '[  FAILED  ] core.ok (0 ms)\n',
+                    '[----------] 2 tests from core (1 ms total)\n',
+                    '\n',
+                    '[----------] Global test environment tear-down\n',
+                    '[==========] 2 tests from 1 test case ran. (1 ms total)\n',
+                    '[  PASSED  ] 1 test.\n',
+                    '[  FAILED  ] 1 test, listed below:\n',
+                    '[  FAILED  ] core.ok\n',
+                    '\n',
+                    ' 1 FAILED TEST\n',
+                ]]
+            )
+        e = Executor(sc)
+        results = e.test(BUILDPATH, testdict)
+        assert results == {
+                'total_runtime': 0.001,
+                'total_passed': 1,
+                'total_failed': 1,
+                'failures': [
+                        [
+                            'core.ok',
+                            [
+                                'test_core.cc:12: Failure',
+                                'Value of: 2',
+                                'Expected: ok()',
+                                'Which is: 42',
+                            ]
+                        ]
+                    ]
+                }
+        assert sc.getvalue() == 'test_core.c :: core .F' + os.linesep
         assert sc.command == [
                 [DUMMYPATH],
                 ]

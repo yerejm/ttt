@@ -59,6 +59,9 @@ class GTest(object):
 
         line = line.strip()
         if self._state == GTest.IN_TEST:
+            pos = line.find(self._source)
+            if pos > 0:
+                line = line[pos:]
             self._output.append(line)
 
         if self._state == GTest.WAITING_TESTCASE and testcase_starts_at(line):
@@ -119,6 +122,9 @@ class GTest(object):
 
     def results(self):
         return self._tests
+
+    def test_results(self, testname):
+        return self._tests[testname]
 
     def failures(self):
         failures = []

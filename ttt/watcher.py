@@ -16,7 +16,7 @@ class WatchedFile(object):
         return self._mtime
 
 class WatchState(object):
-    def __init__(self, inserts, deletes, updates):
+    def __init__(self, inserts=[], deletes=[], updates=[]):
         self.inserts = inserts
         self.deletes = deletes
         self.updates = updates

@@ -6,7 +6,6 @@ from ttt import cmake
 from ttt import watcher
 from ttt import executor
 
-RUNNING, STOPPING, FORCED_RUNNING = range(3)
 DEFAULT_BUILD_PATH_SUFFIX = '-build'
 
 def make_build_path(watch_path, suffix=DEFAULT_BUILD_PATH_SUFFIX):
@@ -30,44 +29,32 @@ class Reporter(object):
         self.writeln('### Watching:   {}'.format(watch_path),
                 decorator=[termstyle.bold])
 
-    def report_results(self, results, watch_path):
-        runtime = 0
-        fail_count = 0
-        pass_count = 0
-        for test in results:
-            runtime += test.run_time()
-            fail_count += test.fails()
-            pass_count += test.passes()
-        runtime /= 1000
-
-        shortstats = '{} passed in {} seconds'.format(pass_count, runtime)
-        if fail_count > 0:
-            self.report_failures(results, watch_path)
-            self.writeln('{} failed, {}'.format(fail_count, shortstats),
+    def report_results(self, results):
+        shortstats = '{} passed in {} seconds'.format(
+                results['total_passed'],
+                results['total_runtime']
+                )
+        total_failed = results['total_failed']
+        if total_failed > 0:
+            self.report_failures(results['failures'])
+            self.writeln('{} failed, {}'.format(total_failed, shortstats),
                     decorator=[termstyle.red,termstyle.bold], pad='=')
         else:
             self.writeln(shortstats,
                     decorator=[termstyle.green,termstyle.bold], pad='=')
 
-    def report_failures(self, results, watch_path):
+    def report_failures(self, results):
         self.writeln('FAILURES', pad='=')
-        for test in results:
-            test_results = test.results()
-            for testname, testresult in test_results.items():
-                if testresult:
-                    self.writeln(testname,
-                            decorator=[termstyle.red, termstyle.bold], pad='_')
-                    self.writeln(os.linesep.join(testresult[1:]))
-                    self.writeln()
-                    self.writeln(testresult[0][len(watch_path) + 1:])
+        for testname, testresult in results:
+            self.writeln(testname,
+                    decorator=[termstyle.red, termstyle.bold], pad='_')
+            self.writeln(os.linesep.join(testresult[1:]))
+            self.writeln()
+            self.writeln(testresult[0])
 
-    def report_changes(self, watch_state):
-        def print_changes(change, filelist):
-            for f in filelist:
-                self.writeln('# {} {}'.format(change, f))
-        print_changes('CREATED', watch_state.inserts)
-        print_changes('MODIFIED', watch_state.updates)
-        print_changes('DELETED', watch_state.deletes)
+    def report_changes(self, change, filelist):
+        for f in filelist:
+            self.writeln('# {} {}'.format(change, f))
 
     def interrupt_detected(self):
         self.writeln()
@@ -81,49 +68,88 @@ class Reporter(object):
         self.context.writeln(*args, **kwargs)
 
 class Monitor(object):
-    def __init__(self, watch_path, sc):
+    DEFAULT_POLLING_INTERVAL = 1
+
+    def __init__(self, watch_path, sc, **kwargs):
         self.watch_path = watch_path
-        self.sc = sc
         self.build_path = make_build_path(watch_path)
         self.cmake = cmake.CMakeContext(sc)
-        self.w = w = watcher.Watcher(sc)
+        self.watcher = watcher.Watcher(sc)
         self.reporter = Reporter(sc)
-        self.t = executor.Executor(sc)
+        self.executor = executor.Executor(sc)
 
-    def activate(self, delay):
-        watch_path = self.watch_path
-        build_path = self.build_path
+        if 'interval' in kwargs:
+            self.polling_interval = kwargs['interval']
+        else:
+            self.polling_interval = Monitor.DEFAULT_POLLING_INTERVAL
+
+        self.runstate = Runstate()
+        self.watchcycle()
+
+    def run(self):
+        while self.runstate.active():
+            self.activate()
+
+    def activate(self):
+        try:
+            self.watchcycle(report_watchstate=True)
+            time.sleep(self.polling_interval)
+        except KeyboardInterrupt:
+            self.handle_keyboard_interrupt()
+
+    def watchcycle(self, **kwargs):
+        watchstate = self.watcher.poll(self.watch_path)
+        if watchstate.has_changed() or self.runstate.allowed_once():
+            if 'report_watchstate' in kwargs and kwargs['report_watchstate']:
+                self.print_watchstate(watchstate)
+            self.process_change(self.watcher.testdict())
+            self.reporter.wait_change(self.watch_path)
+
+    def process_change(self, testdict):
+        try:
+            self.cmake.build(self.watch_path, self.build_path)
+        except cmake.CMakeError:
+            return
+
+        self.reporter.session_start()
+        results = self.executor.test(self.build_path, testdict)
+        self.reporter.report_results(results)
+
+    def print_watchstate(self, watchstate):
         r = self.reporter
-        w = self.w
-        w.poll(watch_path)
-        t = self.t
-        c = self.cmake
+        r.report_changes('CREATED', watchstate.inserts)
+        r.report_changes('MODIFIED', watchstate.updates)
+        r.report_changes('DELETED', watchstate.deletes)
 
-        runstate = FORCED_RUNNING
-        while runstate != STOPPING:
-            try:
-                time.sleep(delay)
+    def handle_keyboard_interrupt(self):
+        self.executor.clear_filter()
+        self.verify_stop()
 
-                watchstate = w.poll(watch_path)
-                if watchstate.has_changed() or runstate == FORCED_RUNNING:
-                    runstate = RUNNING
+    def verify_stop(self):
+        self.reporter.interrupt_detected()
+        try:
+            time.sleep(Monitor.DEFAULT_POLLING_INTERVAL)
+            self.runstate.allow_once()
+        except KeyboardInterrupt:
+            self.reporter.halt()
+            self.runstate.stop()
 
-                    r.report_changes(watchstate)
-                    c.build(watch_path, build_path)
-                    r.session_start()
-                    results = t.test(build_path, w.testdict())
-                    r.report_results(results, watch_path)
-                    r.wait_change(watch_path)
+class Runstate(object):
+    def __init__(self):
+        self._active = True
+        self._allow_once = False
 
-            except KeyboardInterrupt:
-                t.clear_filter()
-                if runstate == FORCED_RUNNING:
-                    runstate = STOPPING
-                else:
-                    runstate = FORCED_RUNNING
-                    r.interrupt_detected()
-            except cmake.CMakeError:
-                pass
+    def active(self):
+        return self._active
 
-        r.halt()
+    def stop(self):
+        self._active = False
+
+    def allow_once(self):
+        self._allow_once = True
+
+    def allowed_once(self):
+        allow_once = self._allow_once
+        self._allow_once = False
+        return allow_once
 
