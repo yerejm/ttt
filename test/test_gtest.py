@@ -36,6 +36,7 @@ class MockProcess:
         self.command = command
         for line in self.output:
             listener(line)
+        return (0, self.output)
 
 class TestGTest:
     def test_run_time(self):

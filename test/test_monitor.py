@@ -36,7 +36,6 @@ class TestMonitor:
         m = Monitor('/path/to/watch', c, interval=0)
 
         assert m.runstate.active()
-        m.activate()
 
     def test_interrupt(self):
         c = MockContext()

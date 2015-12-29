@@ -28,6 +28,8 @@ class MockContext(SystemContext):
             results = self.results.pop()
             for line in results:
                 listener(line)
+            return (0, results)
+        return (0, [])
 
     def walk(self, path):
         for x, y, z in self.files:
@@ -370,6 +372,5 @@ class TestExecutor:
         assert sc.command == [
                 [DUMMYPATH],
                 [DUMMYPATH, '--gtest_filter=core.ok'],
-                [DUMMYPATH],
                 ]
 

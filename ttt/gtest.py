@@ -37,12 +37,17 @@ class GTest(object):
     def run_time(self):
         return self._elapsed
 
-    def execute(self, context, test_filters):
+    def execute(self, context, test_filters, **kwargs):
+        verbose = 'verbose' in kwargs and kwargs['verbose']
         command = [ self.executable() ]
         if test_filters:
             command.append("--gtest_filter={}".format(':'.join(test_filters)))
         self._reset()
-        context.streamed_call(command, listener=self)
+        rc, output = context.streamed_call(command, listener=self)
+        if verbose:
+            import os
+            print(command)
+            print(''.join(output))
         return self.failures()
 
     def __call__(self, line):

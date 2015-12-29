@@ -118,6 +118,7 @@ def run(process, line_handler):
     for thread in threads.values():
         thread.start()
 
+    output = []
     while threads:
         try:
             item = io_q.get(True, 1)
@@ -130,6 +131,7 @@ def run(process, line_handler):
                 threads[outstream].join()
                 del threads[outstream]
             else:
+                output.append(message)
                 if line_handler is not None:
                     line_handler(message)
                 else:
@@ -137,5 +139,5 @@ def run(process, line_handler):
                     outstream.flush()
 
     process.wait()
-    return process.returncode
+    return (process.returncode, output)
 

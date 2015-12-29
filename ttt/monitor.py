@@ -1,6 +1,7 @@
 import os
 import time
 import termstyle
+import collections
 
 from ttt import cmake
 from ttt import watcher
@@ -74,7 +75,7 @@ class Monitor(object):
         self.watch_path = watch_path
         self.build_path = make_build_path(watch_path)
         self.cmake = cmake.CMakeContext(sc)
-        self.watcher = watcher.Watcher(sc)
+        self.watcher = watcher.Watcher(sc, watch_path)
         self.reporter = Reporter(sc)
         self.executor = executor.Executor(sc)
 
@@ -84,44 +85,63 @@ class Monitor(object):
             self.polling_interval = Monitor.DEFAULT_POLLING_INTERVAL
 
         self.runstate = Runstate()
-        self.watchcycle()
+        self.execution_stack = collections.deque()
+        self.last_failed = 0
+
+        self.watcher.poll()
+
+    def report_change(self, watchstate):
+        def fn():
+            r = self.reporter
+            r.report_changes('CREATED', watchstate.inserts)
+            r.report_changes('MODIFIED', watchstate.updates)
+            r.report_changes('DELETED', watchstate.deletes)
+        return fn
+
+    def build(self):
+        def fn():
+            try:
+                self.cmake.build(self.watch_path, self.build_path)
+            except cmake.CMakeError:
+                self.execution_stack.clear()
+        return fn
+
+    def test(self):
+        def fn():
+            self.reporter.session_start()
+            results = self.executor.test(self.build_path, self.watcher.testdict())
+            self.reporter.report_results(results)
+
+            if results['total_failed'] == 0 and self.last_failed > 0:
+                self.last_failed = 0
+                self.execution_stack.append(self.test())
+            self.last_failed = results['total_failed']
+        return fn
 
     def run(self):
         while self.runstate.active():
-            self.activate()
+            try:
+                watchstate = self.watcher.poll()
+                if watchstate.has_changed() or self.runstate.allowed_once():
+                    self.execution_stack.append(self.report_change(watchstate))
+                    self.execution_stack.append(self.build())
+                    self.execution_stack.append(self.test())
 
-    def activate(self):
-        try:
-            self.watchcycle(report_watchstate=True)
-            time.sleep(self.polling_interval)
-        except KeyboardInterrupt:
-            self.handle_keyboard_interrupt()
+                    try:
+                        while True:
+                            self.execution_stack.popleft()()
+                    except IndexError:
+                        pass
+                    finally:
+                        self.execution_stack.clear()
+                        self.reporter.wait_change(self.watch_path)
 
-    def watchcycle(self, **kwargs):
-        watchstate = self.watcher.poll(self.watch_path)
-        if watchstate.has_changed() or self.runstate.allowed_once():
-            if 'report_watchstate' in kwargs and kwargs['report_watchstate']:
-                self.print_watchstate(watchstate)
-            self.process_change(self.watcher.testdict())
-            self.reporter.wait_change(self.watch_path)
-
-    def process_change(self, testdict):
-        try:
-            self.cmake.build(self.watch_path, self.build_path)
-        except cmake.CMakeError:
-            return
-
-        self.reporter.session_start()
-        results = self.executor.test(self.build_path, testdict)
-        self.reporter.report_results(results)
-
-    def print_watchstate(self, watchstate):
-        r = self.reporter
-        r.report_changes('CREATED', watchstate.inserts)
-        r.report_changes('MODIFIED', watchstate.updates)
-        r.report_changes('DELETED', watchstate.deletes)
+                time.sleep(self.polling_interval)
+            except KeyboardInterrupt:
+                self.handle_keyboard_interrupt()
 
     def handle_keyboard_interrupt(self):
+        self.execution_stack.clear()
         self.executor.clear_filter()
         self.verify_stop()
 
@@ -137,7 +157,7 @@ class Monitor(object):
 class Runstate(object):
     def __init__(self):
         self._active = True
-        self._allow_once = False
+        self._allow_once = True
 
     def active(self):
         return self._active

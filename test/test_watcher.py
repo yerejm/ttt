@@ -32,10 +32,10 @@ class TestWatcher:
         work_directory.write('blah.txt', b'')
 
         sc = SystemContext()
-        w = Watcher(sc)
-        w.poll(work_directory.path)
+        w = Watcher(sc, work_directory.path)
+        w.poll()
 
-        filelist = w.filelist
+        filelist = w.filelist()
         assert set([ filelist[f].name() for f in filelist ]) == set(['a.h', 'a.c', 'a.cc', 'CMakeLists.txt'])
 
     def test_custom_watcher(self):
@@ -47,10 +47,10 @@ class TestWatcher:
         work_directory.write('blah.txt', b'')
 
         sc = SystemContext()
-        w = Watcher(sc, ['CMakeLists.txt'])
-        w.poll(work_directory.path)
+        w = Watcher(sc, work_directory.path, source_patterns=['CMakeLists.txt'])
+        w.poll()
 
-        filelist = w.filelist
+        filelist = w.filelist()
         assert [ filelist[f].name() for f in filelist ] == ['CMakeLists.txt']
 
     def test_poll(self):
@@ -62,16 +62,16 @@ class TestWatcher:
         work_directory.write('blah.txt', b'')
 
         sc = SystemContext()
-        w = Watcher(sc)
+        w = Watcher(sc, work_directory.path)
 
-        watchstate = w.poll(work_directory.path)
+        watchstate = w.poll()
         assert watchstate.has_changed()
 
-        watchstate = w.poll(work_directory.path)
+        watchstate = w.poll()
         assert not watchstate.has_changed()
 
         work_directory.write('b.c', b'')
-        watchstate = w.poll(work_directory.path)
+        watchstate = w.poll()
         assert watchstate.has_changed()
 
     def test_testdict(self):
@@ -80,8 +80,8 @@ class TestWatcher:
         testfile_path = work_directory.write(['test', 'test_dummy.c'], b'')
 
         sc = SystemContext()
-        w = Watcher(sc)
-        w.poll(work_directory.path)
+        w = Watcher(sc, work_directory.path)
+        w.poll()
 
         exefile = 'test_dummy' + Watcher.EXE_SUFFIX
         assert w.testdict() == { exefile: os.path.join('test', 'test_dummy.c') }
