@@ -1,9 +1,6 @@
 import re
 import os
 import platform
-# from six.moves import queue
-# from watchdog.events import FileSystemEventHandler
-# from watchdog.observers import Observer
 
 class WatchedFile(object):
     def __init__(self, root_directory='', relative_directory='', filename='', mtime=0):
@@ -87,77 +84,6 @@ class Watcher(object):
             test_file = source_file[:source_file.rfind('.')] + Watcher.EXE_SUFFIX
             testfiles[test_file] = watchedfile.relativepath()
         return testfiles
-
-# class WatchdogFileProvider(object):
-#     def __init__(self, context, root_directory, source_patterns):
-#         self.changelist = queue.Queue()
-#         self.event_handler = WatchdogEventHandler(self.changelist)
-#         self._filelist = current_filelist = get_watched_files(
-#             context,
-#             root_directory,
-#             [ re.compile(pattern) for pattern in source_patterns ]
-#         )
-#         self.root_directory = root_directory
-#         self.rootdir_end_index = len(root_directory) + 1
-#         self.observer = Observer()
-#         self.observer.schedule(self.event_handler, root_directory,
-#                 recursive=True)
-#         self.observer.start()
-#
-#     def __del__(self):
-#         self.observer.stop()
-#         self.observer.join()
-#
-#     def watchstate(self):
-#         changelist = []
-#         try:
-#             while True:
-#                 item = self.changelist.get_nowait()
-#                 changelist.append(item)
-#         except queue.Empty:
-#             pass
-#         inserts = []
-#         updates = []
-#         deletes = []
-#         for event_type, path in changelist:
-#             dirpath = os.path.dirname(path)
-#             filename = os.path.basename(path)
-#             watchedfile = WatchedFile(
-#                     self.root_directory,
-#                     dirpath[self.rootdir_end_index:],
-#                     filename,
-#                     os.path.getmtime(path)
-#                 )
-#             self._filelist[path] = watchedfile
-#             if event_type == Watcher.CREATED:
-#                 inserts.append(watchedfile)
-#             elif event_type == Watcher.DELETED:
-#                 deletes.append(watchedfile)
-#             elif event_type == Watcher.MODIFIED:
-#                 updates.append(watchedfile)
-#         return WatchState(inserts, deletes, updates)
-#
-#     def filelist(self):
-#         return self._filelist
-#
-# class WatchdogEventHandler(FileSystemEventHandler):
-#     def __init__(self, changelist):
-#         self.changelist = changelist
-#
-#     def on_created(self, event):
-#         if not event.is_directory:
-#             self.enqueue(Watcher.CREATED, event.src_path)
-#
-#     def on_deleted(self, event):
-#         if not event.is_directory:
-#             self.enqueue(Watcher.DELETED, event.src_path)
-#
-#     def on_modified(self, event):
-#         if not event.is_directory:
-#             self.enqueue(Watcher.MODIFIED, event.src_path)
-#
-#     def enqueue(self, event_type, path):
-#         self.changelist.put_nowait((event_type, path))
 
 class DefaultFileProvider(object):
     def __init__(self, context, root_directory, source_patterns):
