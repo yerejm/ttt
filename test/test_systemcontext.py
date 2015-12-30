@@ -80,14 +80,14 @@ class TestSystemContext:
 
         exefile = self.wd.write(PROGRAM_NAME, create_program(exit_code=0))
         command = ['python', exefile]
-        assert sc.streamed_call(command, universal_newlines=True) == (0, ['hello' + os.linesep])
+        assert sc.streamed_call(command, universal_newlines=True) == (0, ['hello'])
 
     def test_streamed_call_error(self):
         sc = SystemContext()
 
         exefile = self.wd.write(PROGRAM_NAME, create_program(exit_code=1))
         command = ['python', exefile]
-        assert sc.streamed_call(command, universal_newlines=True) == (1, ['hello' + os.linesep])
+        assert sc.streamed_call(command, universal_newlines=True) == (1, ['hello'])
 
     def test_streamed_call_with_handler(self):
         output = []
@@ -99,8 +99,8 @@ class TestSystemContext:
         command = ['python', exefile]
         sc = SystemContext()
         assert sc.streamed_call(command, universal_newlines=True,
-                listener=line_handler) == (0, ['hello' + os.linesep])
-        assert output == ['hello\n', 'boo']
+                listener=line_handler) == (0, ['hello'])
+        assert output == ['hello', 'boo']
 
     def test_streamed_call_with_stdin_fails(self):
         exefile = self.wd.write(PROGRAM_NAME, create_program(exit_code=0))

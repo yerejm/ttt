@@ -62,7 +62,6 @@ class GTest(object):
         def test_elapsed_at(line):
             return GTest.TESTCASE_TIME_RE.match(line)
 
-        line = line.strip()
         if self._state == GTest.IN_TEST:
             pos = line.find(self._source)
             if pos > 0:

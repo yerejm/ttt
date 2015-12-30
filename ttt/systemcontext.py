@@ -131,6 +131,7 @@ def run(process, line_handler):
                 threads[outstream].join()
                 del threads[outstream]
             else:
+                message = message.rstrip(os.linesep)
                 output.append(message)
                 if line_handler is not None:
                     line_handler(message)
