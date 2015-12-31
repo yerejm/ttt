@@ -2,6 +2,8 @@ import re
 import os
 import platform
 
+from ttt.systemcontext import Timer
+
 class WatchedFile(object):
     def __init__(self, root_directory='', relative_directory='', filename='', mtime=0):
         self._root = root_directory
@@ -16,10 +18,11 @@ class WatchedFile(object):
         return self._mtime
 
 class WatchState(object):
-    def __init__(self, inserts=[], deletes=[], updates=[]):
+    def __init__(self, inserts=[], deletes=[], updates=[], walk_time=0):
         self.inserts = inserts
         self.deletes = deletes
         self.updates = updates
+        self.walk_time = walk_time
 
     def has_changed(self):
         return self.inserts or self.deletes or self.updates
@@ -93,8 +96,9 @@ class DefaultFileProvider(object):
         self._filelist = {}
 
     def watchstate(self):
-        current_filelist = get_watched_files(self.context, self.watch_path, self.source_patterns)
-        watchstate = create_watchstate(self._filelist, current_filelist)
+        with Timer() as t:
+            current_filelist = get_watched_files(self.context, self.watch_path, self.source_patterns)
+        watchstate = create_watchstate(self._filelist, current_filelist, t.secs)
         self._filelist = current_filelist
         return watchstate
 
@@ -121,7 +125,7 @@ def get_watched_files(context, root_directory, patterns):
             )
     return files
 
-def create_watchstate(dictA, dictB):
+def create_watchstate(dictA, dictB, walk_time=0):
     dictAKeys = set(dictA.keys())
     dictBKeys = set(dictB.keys())
     inserts = dictBKeys - dictAKeys
@@ -130,5 +134,5 @@ def create_watchstate(dictA, dictB):
     for filename in dictA.keys():
         if filename in dictB and dictB[filename].last_modified() != dictA[filename].last_modified():
             updates.add(filename)
-    return WatchState(inserts, deletes, updates)
+    return WatchState(inserts, deletes, updates, walk_time)
 

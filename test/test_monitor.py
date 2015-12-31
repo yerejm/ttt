@@ -51,7 +51,7 @@ class TestReporter:
         m = MockContext()
         r = Reporter(m)
 
-        r.session_start()
+        r.session_start('test')
         m.getvalue() == termstyle.bold(
                 ''.ljust(30, '=') +
                 ' test session starts ' +

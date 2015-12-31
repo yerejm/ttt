@@ -1,3 +1,5 @@
+import time
+import platform
 import os
 import sys
 import stat
@@ -141,4 +143,16 @@ def run(process, line_handler):
 
     process.wait()
     return (process.returncode, output)
+
+class Timer(object):
+    def __init__(self):
+        self.timer = time.clock if platform.system() == 'Windows' else time.time
+
+    def __enter__(self):
+        self.start = self.timer()
+        return self
+
+    def __exit__(self, *args):
+        self.end = self.timer()
+        self.secs = self.end - self.start
 

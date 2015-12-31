@@ -20,8 +20,8 @@ class Reporter(object):
     def __init__(self, context):
         self.context = context
 
-    def session_start(self):
-        self.writeln('test session starts',
+    def session_start(self, session_descriptor):
+        self.writeln('{} session starts'.format(session_descriptor),
                 decorator=[termstyle.bold], pad='=')
 
     def wait_change(self, watch_path):
@@ -96,10 +96,12 @@ class Monitor(object):
             r.report_changes('CREATED', watchstate.inserts)
             r.report_changes('MODIFIED', watchstate.updates)
             r.report_changes('DELETED', watchstate.deletes)
+            r.writeln('### Walk time: {:10.3f}s'.format(watchstate.walk_time))
         return fn
 
     def build(self):
         def fn():
+            self.reporter.session_start('build')
             try:
                 self.cmake.build(self.watch_path, self.build_path)
             except cmake.CMakeError:
@@ -108,7 +110,7 @@ class Monitor(object):
 
     def test(self):
         def fn():
-            self.reporter.session_start()
+            self.reporter.session_start('test')
             results = self.executor.test(self.build_path, self.watcher.testdict())
             self.reporter.report_results(results)
 
@@ -135,7 +137,11 @@ class Monitor(object):
                     finally:
                         self.execution_stack.clear()
                         self.reporter.wait_change(self.watch_path)
+            except KeyboardInterrupt:
+                self.execution_stack.clear()
+                self.reporter.writeln('KeyboardInterrupt', pad='!')
 
+            try:
                 time.sleep(self.polling_interval)
             except KeyboardInterrupt:
                 self.handle_keyboard_interrupt()
