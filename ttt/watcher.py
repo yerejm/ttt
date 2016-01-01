@@ -126,7 +126,7 @@ def get_watched_files(context, root_directory, patterns):
             )
     return files
 
-def create_watchstate(dictA, dictB, walk_time=0):
+def create_watchstate(dictA={}, dictB={}, walk_time=0):
     dictAKeys = set(dictA.keys())
     dictBKeys = set(dictB.keys())
     inserts = dictBKeys - dictAKeys

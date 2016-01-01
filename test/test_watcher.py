@@ -152,3 +152,13 @@ class TestWatchState:
         assert ws.has_changed()
         assert ws.has_changed() == set(['test'])
 
+    def test_str(self):
+        ws = create_watchstate()
+        assert str(ws) == "WatchState(0 inserted, 0 deleted, 0 modified)"
+
+    def test_repr(self):
+        empty_list = repr(set([]))
+        ws = create_watchstate()
+        assert repr(ws) == "WatchState({empty}, {empty}, {empty})".format(empty=empty_list)
+
+
