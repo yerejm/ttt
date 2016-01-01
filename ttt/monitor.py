@@ -18,7 +18,7 @@ class InvalidWatchArea(IOError):
 
 def create_monitor(context, watch_path, **kwargs):
     monitor_kwargs = {}
-    if kwargs['build_path']:
+    if 'build_path' in kwargs and kwargs['build_path']:
         monitor_kwargs['build_path'] = os.path.abspath(kwargs['build_path'])
 
     full_watch_path = os.path.abspath(watch_path)

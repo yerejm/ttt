@@ -10,9 +10,13 @@ Tests for `monitor` module.
 import os
 import termstyle
 
+import pytest
+
 from ttt.systemcontext import SystemContext
 from ttt.monitor import Monitor
 from ttt.monitor import Reporter
+from ttt.monitor import InvalidWatchArea
+from ttt.monitor import create_monitor
 
 class MockContext(SystemContext):
     def __init__(self):
@@ -32,10 +36,25 @@ class MockContext(SystemContext):
         self.output += string
 
 class TestMonitor:
-    def test_init(self):
+    def test_create_with_invalid_watch_area(self):
         c = MockContext()
-        m = Monitor(c, '/path/to/watch', interval=0)
+        error = None
+        try:
+            create_monitor(c, '/bad/path')
+        except InvalidWatchArea as e:
+            error = e
+        assert str(error) == 'Invalid path: /bad/path (/bad/path)'
 
+    def test_create_with_build_path(self):
+        c = MockContext()
+        m = create_monitor(c, os.getcwd(), build_path='build')
+        assert m.build_path == os.path.join(os.getcwd(), 'build')
+
+    def test_create(self):
+        c = MockContext()
+        m = create_monitor(c, os.getcwd(), build_path='build')
+        assert m.build_path == os.path.join(os.getcwd(), 'build')
+        assert m.watch_path == os.getcwd()
         assert m.runstate.active()
 
     def test_interrupt(self):
