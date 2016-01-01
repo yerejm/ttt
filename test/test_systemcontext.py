@@ -19,6 +19,7 @@ from testfixtures import TempDirectory
 from contextlib import contextmanager
 
 from ttt.systemcontext import SystemContext
+from ttt.systemcontext import create_context
 
 PROGRAM_NAME = 'test.py'
 def create_program(exit_code=0):
@@ -133,7 +134,7 @@ class TestSystemContext:
         assert f.getvalue() == 'hello' + os.linesep
 
     def test_writeln_verbosity(self):
-        sc = SystemContext(verbosity=1)
+        sc = create_context(verbosity=1)
 
         f = io.StringIO()
         with stdout_redirector(f):
@@ -150,7 +151,7 @@ class TestSystemContext:
             sc.writeln('hello')
         assert f.getvalue() == 'hello' + os.linesep
 
-        sc = SystemContext()
+        sc = create_context()
         f = io.StringIO()
         with stdout_redirector(f):
             sc.writeln('2', verbose=2)

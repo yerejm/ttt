@@ -21,7 +21,7 @@ EXCLUSIONS = set([ '.git', '.hg' ])
 
 def create_context(**kwargs):
     context_kwargs = {}
-    if kwargs['verbosity']:
+    if 'verbosity' in kwargs and kwargs['verbosity']:
         context_kwargs['verbosity'] = kwargs['verbosity']
     return SystemContext(**context_kwargs)
 
@@ -160,6 +160,8 @@ def run(process, line_handler):
                     outstream.write(message)
                     outstream.flush()
 
+    for t in threads.values():
+        t.join()
     process.wait()
     return (process.returncode, output)
 
