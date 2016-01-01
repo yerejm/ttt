@@ -16,6 +16,7 @@ from ttt.monitor import Reporter
 
 class MockContext(SystemContext):
     def __init__(self):
+        super(MockContext, self).__init__()
         self.output = ''
 
     def getvalue(self):
@@ -33,13 +34,13 @@ class MockContext(SystemContext):
 class TestMonitor:
     def test_init(self):
         c = MockContext()
-        m = Monitor('/path/to/watch', c, interval=0)
+        m = Monitor(c, '/path/to/watch', interval=0)
 
         assert m.runstate.active()
 
     def test_interrupt(self):
         c = MockContext()
-        m = Monitor('/path/to/watch', c, interval=0)
+        m = Monitor(c, '/path/to/watch', interval=0)
 
         m.handle_keyboard_interrupt()
         assert m.runstate.active()

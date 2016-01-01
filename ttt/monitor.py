@@ -9,6 +9,24 @@ from ttt import executor
 
 DEFAULT_BUILD_PATH_SUFFIX = '-build'
 
+class InvalidWatchArea(IOError):
+    def __init__(self, path, abspath):
+        self.paths = [ path, abspath ]
+
+    def __str__(self):
+        return "Invalid path: {} ({})".format(*self.paths)
+
+def create_monitor(context, watch_path, **kwargs):
+    monitor_kwargs = {}
+    if kwargs['build_path']:
+        monitor_kwargs['build_path'] = os.path.abspath(kwargs['build_path'])
+
+    full_watch_path = os.path.abspath(watch_path)
+    if not os.path.exists(full_watch_path):
+        raise InvalidWatchArea(watch_path, full_watch_path)
+
+    return Monitor(context, full_watch_path, **monitor_kwargs)
+
 def make_build_path(watch_path, suffix=DEFAULT_BUILD_PATH_SUFFIX):
     return os.path.join(
         os.getcwd(),
@@ -71,9 +89,9 @@ class Reporter(object):
 class Monitor(object):
     DEFAULT_POLLING_INTERVAL = 1
 
-    def __init__(self, watch_path, sc, **kwargs):
+    def __init__(self, sc, watch_path, build_path=None, **kwargs):
         self.watch_path = watch_path
-        self.build_path = make_build_path(watch_path)
+        self.build_path = make_build_path(watch_path) if build_path is None else build_path
         self.cmake = cmake.CMakeContext(sc)
         self.watcher = watcher.Watcher(sc, watch_path)
         self.reporter = Reporter(sc)

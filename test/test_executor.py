@@ -17,6 +17,7 @@ from ttt.systemcontext import SystemContext
 
 class MockContext(SystemContext):
     def __init__(self, files=[], results=[]):
+        super(MockContext, self).__init__()
         self.files = files
         self.results = results[::-1]
         self.command = []

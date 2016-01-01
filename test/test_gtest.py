@@ -12,17 +12,16 @@ import os
 
 import pytest
 
+from ttt.systemcontext import SystemContext
 from ttt.gtest import GTest
 
-class MockTerminal:
+class MockTerminal(SystemContext):
     def __init__(self):
+        super(MockTerminal, self).__init__()
         self.output = ''
 
     def write(self, string):
         self.output += string
-
-    def writeln(self, string=''):
-        self.write(string + os.linesep)
 
     def getvalue(self):
         return self.output

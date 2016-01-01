@@ -18,7 +18,16 @@ except ImportError:
 
 TERMINAL_MAX_WIDTH = 80
 EXCLUSIONS = set([ '.git', '.hg' ])
+
+def create_context(**kwargs):
+    context_kwargs = {}
+    if kwargs['verbosity']:
+        context_kwargs['verbosity'] = kwargs['verbosity']
+    return SystemContext(**context_kwargs)
+
 class SystemContext(object):
+    def __init__(self, **kwargs):
+        self._verbosity = kwargs['verbosity'] if 'verbosity' in kwargs else 0
 
     def walk(self, root_directory):
         for dirpath, dirlist, filelist in walk(root_directory, topdown=True):
@@ -45,14 +54,24 @@ class SystemContext(object):
         sys.stdout.write(text_type(string))
         sys.stdout.flush()
 
-    def writeln(self, string='', **kwargs):
-        if 'pad' in kwargs:
-            width = kwargs['width'] if 'width' in kwargs else term_width()
-            string = pad(kwargs['pad'], string, width)
-        if 'decorator' in kwargs:
-            for d in kwargs['decorator']:
-                string = d(string)
-        self.write(string + os.linesep)
+    def writeln(self, *args, **kwargs):
+        verbosity = kwargs['verbose'] if 'verbose' in kwargs else None
+        if verbosity is not None and verbosity != self._verbosity:
+            return
+
+        line_end = kwargs['end'] if 'end' in kwargs else os.linesep
+        if args:
+            for string in args:
+                string = str(string)
+                if 'pad' in kwargs:
+                    width = kwargs['width'] if 'width' in kwargs else term_width()
+                    string = pad(kwargs['pad'], string, width)
+                if 'decorator' in kwargs:
+                    for d in kwargs['decorator']:
+                        string = d(string)
+                self.write(string + line_end)
+        else:
+            self.write(line_end)
 
 def term_width():
     try:

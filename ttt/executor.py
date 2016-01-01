@@ -47,11 +47,10 @@ def create_filter(test_results):
 def run_tests(context, testlist, test_filter):
     results = set()
     for test in testlist:
-        # print("Executing " + test.executable())
+        context.writeln("Executing {}".format(test.executable()), verbose=2)
         if not test_filter or test.executable() in test_filter:
             failures = test.execute(context,
-                    test_filter[test.executable()] if test_filter else [],
-                    verbose=False)
+                    test_filter[test.executable()] if test_filter else [])
             results.add(test)
             if failures and test_filter:
                 break
@@ -66,6 +65,6 @@ def create_tests(context, build_path, testfiles):
     for dir, file, mode in filter(is_executable_test, context.walk(build_path)):
         filepath = os.path.join(dir, file)
         tests.append(GTest(testfiles[file], filepath, context))
-        # print("Test located at ", filepath)
+        context.writeln("Test located at {}".format(filepath), verbose=2)
     return tests
 

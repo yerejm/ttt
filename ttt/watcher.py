@@ -1,8 +1,9 @@
+import time
 import re
 import os
 import platform
 
-from ttt.systemcontext import Timer
+from ttt import systemcontext
 
 class WatchedFile(object):
     def __init__(self, root_directory='', relative_directory='', filename='', mtime=0):
@@ -96,7 +97,7 @@ class DefaultFileProvider(object):
         self._filelist = {}
 
     def watchstate(self):
-        with Timer() as t:
+        with systemcontext.Timer() as t:
             current_filelist = get_watched_files(self.context, self.watch_path, self.source_patterns)
         watchstate = create_watchstate(self._filelist, current_filelist, t.secs)
         self._filelist = current_filelist

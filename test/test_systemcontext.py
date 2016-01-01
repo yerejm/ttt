@@ -132,6 +132,39 @@ class TestSystemContext:
             sc.writeln('hello')
         assert f.getvalue() == 'hello' + os.linesep
 
+    def test_writeln_verbosity(self):
+        sc = SystemContext(verbosity=1)
+
+        f = io.StringIO()
+        with stdout_redirector(f):
+            sc.writeln('hello', verbose=2)
+        assert f.getvalue() == ''
+
+        f = io.StringIO()
+        with stdout_redirector(f):
+            sc.writeln('hello', verbose=1)
+        assert f.getvalue() == 'hello' + os.linesep
+
+        f = io.StringIO()
+        with stdout_redirector(f):
+            sc.writeln('hello')
+        assert f.getvalue() == 'hello' + os.linesep
+
+        sc = SystemContext()
+        f = io.StringIO()
+        with stdout_redirector(f):
+            sc.writeln('2', verbose=2)
+            sc.writeln('1', verbose=1)
+            sc.writeln('hello')
+        assert f.getvalue() == 'hello' + os.linesep
+
+    def test_writeln_line_end(self):
+        sc = SystemContext()
+        f = io.StringIO()
+        with stdout_redirector(f):
+            sc.writeln('hello', end='')
+        assert f.getvalue() == 'hello'
+
     def test_writeln_padding(self):
         sc = SystemContext()
         f = io.StringIO()
