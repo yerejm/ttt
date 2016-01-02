@@ -9,6 +9,7 @@ Tests for `gtest` module.
 """
 
 import os
+import sys
 
 import pytest
 
@@ -34,8 +35,8 @@ class MockProcess:
     def streamed_call(self, command, listener):
         self.command = command
         for line in self.output:
-            listener(line)
-        return (0, self.output)
+            listener(sys.stdout, line)
+        return (0, self.output, [])
 
 class TestGTest:
     def test_run_time(self):
@@ -59,6 +60,10 @@ class TestGTest:
         gtest.execute(MockProcess(results), [])
 
         assert gtest.run_time() == 3
+        # import sys
+        # sys.stdout.write('=======================================stdout\n')
+        # sys.stderr.write('+++++++++++++++++++++++++++++++++++++++stderr\n')
+        # assert 1 == 0
 
     def test_one_testcase_one_success(self):
         results = [
@@ -80,7 +85,7 @@ class TestGTest:
         gtest.execute(MockProcess(results), [])
 
         assert f.getvalue() == '/test/test_core.cc :: core .' + os.linesep
-        assert gtest.results() == { 'core.ok': [], }
+        assert gtest.results() == { 'core.ok': (False, [], []), }
         assert gtest.failures() == []
         assert gtest.fails() == 0
         assert gtest.passes() == 1
@@ -106,7 +111,10 @@ class TestGTest:
         gtest.execute(MockProcess(results), [])
 
         assert f.getvalue() == '/test/test_core.cc :: dummy ..' + os.linesep
-        assert gtest.results() == { 'dummy.test1': [], 'dummy.test2': [], }
+        assert gtest.results() == {
+                'dummy.test1': (False, [], []),
+                'dummy.test2': (False, [], []),
+            }
         assert gtest.failures() == []
         assert gtest.fails() == 0
         assert gtest.passes() == 2
@@ -147,12 +155,12 @@ class TestGTest:
             '/test/test_core.cc :: blah ..'
             ]) + os.linesep
         assert gtest.results() == {
-                'core.ok': [],
-                'core.okshadow': [],
-                'core.notok': [],
-                'core.blah': [],
-                'blah.test1': [],
-                'blah.test2': [],
+                'core.ok': (False, [], []),
+                'core.okshadow': (False, [], []),
+                'core.notok': (False, [], []),
+                'core.blah': (False, [], []),
+                'blah.test1': (False, [], []),
+                'blah.test2': (False, [], []),
             }
         assert gtest.failures() == []
         assert gtest.fails() == 0
@@ -194,18 +202,18 @@ class TestGTest:
 
         assert f.getvalue() == '/test/test_core.cc :: core FF' + os.linesep
         assert gtest.results() == {
-                'core.ok': [
+                'core.ok': (True, [
                     '/test/test_core.cc:12: Failure',
                     'Value of: 2',
                     'Expected: ok()',
                     'Which is: 42',
-                    ],
-                'core.okshadow': [
+                    ], []),
+                'core.okshadow': (True, [
                     '/test/test_core.cc:16: Failure',
                     'Value of: 1',
                     'Expected: ok()',
                     'Which is: 42',
-                    ],
+                    ], []),
             }
         assert gtest.failures() == ['core.ok', 'core.okshadow']
         assert gtest.fails() == 2
@@ -258,22 +266,22 @@ class TestGTest:
             '/test/test_core.cc :: blah .F'
             ]) + os.linesep
         assert gtest.results() == {
-                'core.ok': [],
-                'core.okshadow': [
+                'core.ok': (False, [], []),
+                'core.okshadow': (True, [
                     '/test/test_core.cc:16: Failure',
                     'Value of: 2',
                     'Expected: ok()',
                     'Which is: 42',
-                    ],
-                'core.notok': [],
-                'core.blah': [],
-                'blah.test1': [],
-                'blah.test2': [
+                    ], []),
+                'core.notok': (False, [], []),
+                'core.blah': (False, [], []),
+                'blah.test1': (False, [], []),
+                'blah.test2': (True, [
                     '/test/test_core.cc:32: Failure',
                     'Value of: false',
                     '  Actual: false',
                     'Expected: true',
-                    ],
+                    ], []),
             }
         assert gtest.failures() == [ 'core.okshadow', 'blah.test2' ]
         assert gtest.fails() == 2
@@ -314,39 +322,4 @@ class TestGTest:
         gtest.end_test('')
 
         assert f.getvalue() == '.'
-
-    def test_path_stripping(self):
-        results = [
-'Running main() from gtest_main.cc',
-'Note: Google Test filter = core.ok:core.ok:core.okshadow',
-'[==========] Running 1 test from 1 test case.',
-'[----------] Global test environment set-up.',
-'[----------] 1 tests from core',
-'[ RUN      ] core.ok',
-'/path/test/test_core.cc:12: Failure',
-'Value of: 2',
-'Expected: ok()',
-'Which is: 42',
-'[  FAILED  ] core.ok (0 ms)',
-'[----------] 1 tests from core (0 ms total)',
-'',
-'[----------] Global test environment tear-down',
-'[==========] 1 test from 1 test case ran. (0 ms total)',
-'[  PASSED  ] 0 tests.',
-'[  FAILED  ] 1 test, listed below:',
-'[  FAILED  ] core.ok',
-'',
-' 1 FAILED TESTS',
-                ]
-        f = MockTerminal()
-        gtest = GTest('test/test_core.cc', term=f)
-        gtest.execute(MockProcess(results), [])
-        assert gtest.results() == {
-                'core.ok': [
-                    'test/test_core.cc:12: Failure',
-                    'Value of: 2',
-                    'Expected: ok()',
-                    'Which is: 42',
-                    ],
-            }
 

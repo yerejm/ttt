@@ -27,6 +27,16 @@ def create_program(exit_code=0):
     program.append('sys.exit({})'.format(exit_code))
     return os.linesep.join(program).encode('utf-8')
 
+def create_stdout_stderr_program(exit_code=0):
+    program = [
+            'import sys',
+            'import os',
+            'sys.stdout.write("hello stdout" + os.linesep)',
+            'sys.stderr.write("hello stderr" + os.linesep)',
+            ]
+    program.append('sys.exit({})'.format(exit_code))
+    return os.linesep.join(program).encode('utf-8')
+
 class TestSystemContext:
     def setup(self):
         self.wd = wd = TempDirectory()
@@ -81,18 +91,29 @@ class TestSystemContext:
 
         exefile = self.wd.write(PROGRAM_NAME, create_program(exit_code=0))
         command = ['python', exefile]
-        assert sc.streamed_call(command, universal_newlines=True) == (0, ['hello'])
+        assert sc.streamed_call(command, universal_newlines=True) == (0, ['hello'], [])
+
+    def test_streamed_call_with_stdout_stderr(self):
+        sc = SystemContext()
+
+        exefile = self.wd.write(PROGRAM_NAME, create_stdout_stderr_program(exit_code=0))
+        command = ['python', exefile]
+        assert sc.streamed_call(command, universal_newlines=True) == (
+                0,
+                ['hello stdout'],
+                ['hello stderr']
+                )
 
     def test_streamed_call_error(self):
         sc = SystemContext()
 
         exefile = self.wd.write(PROGRAM_NAME, create_program(exit_code=1))
         command = ['python', exefile]
-        assert sc.streamed_call(command, universal_newlines=True) == (1, ['hello'])
+        assert sc.streamed_call(command, universal_newlines=True) == (1, ['hello'], [])
 
     def test_streamed_call_with_handler(self):
         output = []
-        def line_handler(line):
+        def line_handler(channel, line):
             output.append(line)
             output.append('boo')
 
@@ -100,7 +121,7 @@ class TestSystemContext:
         command = ['python', exefile]
         sc = SystemContext()
         assert sc.streamed_call(command, universal_newlines=True,
-                listener=line_handler) == (0, ['hello'])
+                listener=line_handler) == (0, ['hello'], [])
         assert output == ['hello', 'boo']
 
     def test_streamed_call_with_stdin_fails(self):

@@ -8,6 +8,7 @@ test_executor
 Tests for `executor` module.
 """
 import os
+import sys
 import stat
 
 from testfixtures import TempDirectory
@@ -28,9 +29,9 @@ class MockContext(SystemContext):
         if self.results:
             results = self.results.pop()
             for line in results:
-                listener(line)
-            return (0, results)
-        return (0, [])
+                listener(sys.stdout, line)
+            return (0, results, [])
+        return (0, [], [])
 
     def walk(self, path):
         for x, y, z in self.files:
@@ -107,17 +108,16 @@ class TestExecutor:
                 'total_runtime': 0.001,
                 'total_passed': 0,
                 'total_failed': 1,
-                'failures': [
+                'failures': [[
+                        'core.ok',
                         [
-                            'core.ok',
-                            [
-                                'test_core.cc:12: Failure',
-                                'Value of: 2',
-                                'Expected: ok()',
-                                'Which is: 42',
-                            ]
-                        ]
-                    ]
+                            'test_core.cc:12: Failure',
+                            'Value of: 2',
+                            'Expected: ok()',
+                            'Which is: 42',
+                        ],
+                        []
+                    ]]
                 }
         assert sc.getvalue() == 'test_core.c :: core F' + os.linesep
         assert sc.command == [
@@ -157,17 +157,16 @@ class TestExecutor:
                 'total_runtime': 0.001,
                 'total_passed': 1,
                 'total_failed': 1,
-                'failures': [
+                'failures': [[
+                        'core.ok',
                         [
-                            'core.ok',
-                            [
-                                'test_core.cc:12: Failure',
-                                'Value of: 2',
-                                'Expected: ok()',
-                                'Which is: 42',
-                            ]
-                        ]
-                    ]
+                            'test_core.cc:12: Failure',
+                            'Value of: 2',
+                            'Expected: ok()',
+                            'Which is: 42',
+                        ],
+                        []
+                    ]]
                 }
         assert sc.getvalue() == 'test_core.c :: core .F' + os.linesep
         assert sc.command == [

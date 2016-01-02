@@ -1,7 +1,7 @@
 import os
 import termstyle
 
-def create_reporter(context, watch_path='', build_path=''):
+def create_reporter(context, watch_path=None, build_path=None):
     return Reporter(context, watch_path, build_path)
 
 class Reporter(object):
@@ -52,12 +52,28 @@ class Reporter(object):
 
     def report_failures(self, results):
         self.writeln('FAILURES', pad='=')
-        for testname, testresult in results:
+        for testname, out, err in results:
             self.writeln(testname,
                     decorator=[termstyle.red, termstyle.bold], pad='_')
-            self.writeln(os.linesep.join(testresult[1:]))
+            # gtest failure out is 4 lines, with first line being file and line
+            # number. any stdout or stderr occurs before these lines.
+            results = out[-4:]
+            self.writeln(os.linesep.join(results[1:]))
             self.writeln()
-            self.writeln(testresult[0])
+            if self._watch_path is None:
+                locator = results[0]
+            else:
+                locator = strip_path(results[0], self._watch_path)
+            self.writeln(locator)
+
+            extra_out = out[:-4]
+            if extra_out:
+                self.writeln('Captured stdout call', pad='-')
+                self.writeln(os.linesep.join(extra_out))
+
+            if err:
+                self.writeln('Captured stderr call', pad='-')
+                self.writeln(os.linesep.join(err))
 
     def interrupt_detected(self):
         self.writeln()
@@ -70,4 +86,11 @@ class Reporter(object):
     def writeln(self, *args, **kwargs):
         self.context.writeln(*args, **kwargs)
 
-
+def strip_path(string, path):
+    realpath = path
+    if realpath not in string:
+        realpath = os.path.realpath(path)
+    if realpath in string:
+        return string[len(realpath) + 1:]
+    else:
+        return string

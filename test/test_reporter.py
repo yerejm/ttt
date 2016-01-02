@@ -80,7 +80,7 @@ class TestReporter:
                         'results line 2',
                         'results line 3',
                         'results line 4',
-                        ] 
+                        ], []
                     ],
                 ]
             }
@@ -116,14 +116,14 @@ class TestReporter:
                         'results line 2',
                         'results line 3',
                         'results line 4',
-                        ] 
+                        ], []
                     ],
                     [ 'fail2', [
                         'results line 1',
                         'results line 2',
                         'results line 3',
                         'results line 4',
-                        ] 
+                        ], []
                     ],
                 ]
             }
@@ -203,3 +203,83 @@ class TestReporter:
                 + os.linesep
                 )
 
+    def test_report_with_stdout_and_stderr(self):
+        m = MockContext()
+        r = create_reporter(m)
+
+        results = {
+                'total_runtime': 2.09,
+                'total_passed': 0,
+                'total_failed': 1,
+                'failures': [
+                    [
+                        'fail1',
+                        [
+                            'extra line 1',
+                            'extra line 2',
+                            'results line 1',
+                            'results line 2',
+                            'results line 3',
+                            'results line 4',
+                        ],
+                        [
+                            'stderr line 1',
+                            'stderr line 2',
+                        ]
+                    ],
+                ]
+            }
+        r.report_results(results)
+        expected = [
+            '=================================== FAILURES ===================================',
+            termstyle.bold(termstyle.red(
+            '____________________________________ fail1 _____________________________________'
+            )),
+            'results line 2',
+            'results line 3',
+            'results line 4',
+            '',
+            'results line 1',
+            '----------------------------- Captured stdout call -----------------------------',
+            'extra line 1',
+            'extra line 2',
+            '----------------------------- Captured stderr call -----------------------------',
+            'stderr line 1',
+            'stderr line 2',
+            termstyle.bold(termstyle.red(
+            '====================== 1 failed, 0 passed in 2.09 seconds ======================'
+            )),
+            ]
+        actual = m.getvalue().splitlines()
+        assert actual == expected
+
+
+    def test_path_stripping(self):
+        m = MockContext()
+        r = create_reporter(m, '/path/to/watch', '/path/to/build')
+
+        failures = [[
+                        'core.ok',
+                        [
+                            '/path/to/watch/test/test_core.cc:12: Failure',
+                            'Value of: 2',
+                            'Expected: ok()',
+                            'Which is: 42',
+                        ],
+                        [
+                        ]
+                    ]]
+        r.report_failures(failures)
+        expected = [
+            '=================================== FAILURES ===================================',
+            termstyle.bold(termstyle.red(
+            '___________________________________ core.ok ____________________________________'
+            )),
+            'Value of: 2',
+            'Expected: ok()',
+            'Which is: 42',
+            '',
+            'test/test_core.cc:12: Failure',
+            ]
+        actual = m.getvalue().splitlines()
+        assert actual == expected

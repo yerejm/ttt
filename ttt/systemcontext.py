@@ -110,7 +110,12 @@ def call_output(*popenargs, **kwargs):
         line_handler = kwargs['listener']
         del kwargs['listener']
 
-    process = create_process(*popenargs, stdout=subprocess.PIPE, **kwargs)
+    process = create_process(
+            *popenargs,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            **kwargs
+        )
     return run(process, line_handler)
 
 def run(process, line_handler):
@@ -126,20 +131,21 @@ def run(process, line_handler):
 
     io_q = queue.Queue(5)
     threads = {
-        sys.stdout: threading.Thread(
+        'stdout': threading.Thread(
             target=read_stream,
-            args=(sys.stdout, process.stdout, io_q)
+            args=('stdout', process.stdout, io_q)
         ),
-        sys.stderr: threading.Thread(
+        'stderr': threading.Thread(
             target=read_stream,
-            args=(sys.stderr, process.stderr, io_q)
+            args=('stderr', process.stderr, io_q)
         ),
     }
 
     for thread in threads.values():
         thread.start()
 
-    output = []
+    stdout = []
+    stderr = []
     while threads:
         try:
             item = io_q.get(True, 1)
@@ -153,17 +159,18 @@ def run(process, line_handler):
                 del threads[outstream]
             else:
                 message = message.rstrip(os.linesep)
-                output.append(message)
+                channel = sys.stdout if outstream == 'stdout' else sys.stderr
+                (stdout if outstream == 'stdout' else stderr).append(message)
                 if line_handler is not None:
-                    line_handler(message)
+                    line_handler(channel, message)
                 else:
-                    outstream.write(message)
-                    outstream.flush()
+                    channel.write(message)
+                    channel.flush()
 
     for t in threads.values():
         t.join()
     process.wait()
-    return (process.returncode, output)
+    return (process.returncode, stdout, stderr)
 
 class Timer(object):
     def __init__(self):

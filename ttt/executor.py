@@ -35,7 +35,8 @@ def collate(test_results):
         fail_count += test.fails()
         pass_count += test.passes()
         for failure in test.failures():
-            failures.append([ failure, test.test_results(failure) ])
+            failed, out, err = test.test_results(failure)
+            failures.append([ failure, out, err ])
     runtime /= 1000
 
     return {

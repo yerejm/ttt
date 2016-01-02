@@ -2,6 +2,7 @@ import collections
 import re
 import termstyle
 import os
+import sys
 
 class NullTerminal(object):
     def __getattr__(self, method_name):
@@ -25,6 +26,7 @@ class GTest(object):
 
     def _reset(self):
         self._output = []
+        self._error = []
         self._tests = collections.OrderedDict()
         self._state = GTest.WAITING_TESTCASE
         self._testcase = None
@@ -50,12 +52,13 @@ class GTest(object):
         if test_filters:
             command.append("--gtest_filter={}".format(':'.join(test_filters)))
         self._reset()
-        rc, output = context.streamed_call(command, listener=self)
+        rc, stdout, stderr = context.streamed_call(command, listener=self)
         self._term.writeln(command, verbose=2)
-        self._term.writeln(os.linesep.join(output), verbose=2)
+        self._term.writeln(os.linesep.join(stdout), verbose=2)
+        self._term.writeln(os.linesep.join(stderr), verbose=2)
         return self.failures()
 
-    def __call__(self, line):
+    def __call__(self, channel, line):
         def testcase_starts_at(line):
             return GTest.TESTCASE_START_RE.match(line)
         def testcase_ends_at(line):
@@ -68,11 +71,10 @@ class GTest(object):
             return GTest.TESTCASE_TIME_RE.match(line)
 
         self.line(line)
-        if self._state == GTest.IN_TEST:
-            pos = line.find(self._source)
-            if pos > 0:
-                line = line[pos:]
+        if channel == sys.stdout:
             self._output.append(line)
+        else:
+            self._error.append(line)
 
         if self._state == GTest.WAITING_TESTCASE and testcase_starts_at(line):
             self.begin_testcase(line)
@@ -118,16 +120,22 @@ class GTest(object):
         test = line[line.rfind(' ') + 1:]
         self._test = test
         self._output = []
+        self._error = []
 
     def end_test(self, line):
         if self._testcase is None:
             raise Exception('Invalid current testcase')
         if self._test is None:
             raise Exception('Invalid current test')
-        self._tests[self._test] = self._output[:-1]
+        failed = '[  FAILED  ]' in line
+        self._tests[self._test] = (
+                failed,
+                self._output[:-1], # cut the [ OK/FAILED ] line
+                self._error[:],
+            )
         self._current_test = None
 
-        if '[  FAILED  ]' in line:
+        if failed:
             self._fail_count += 1
             self._term.writeln('F', end='', verbose=0)
         else:
@@ -143,7 +151,8 @@ class GTest(object):
     def failures(self):
         failures = []
         for test, results in self._tests.items():
-            if results:
+            failed, out, err = results
+            if failed:
                 failures.append(test)
         return failures
 
