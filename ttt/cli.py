@@ -13,10 +13,7 @@ from ttt import monitor
 @argh.arg('-g', '--generator', help='cmake generator: refer to cmake documentation')
 def ttt(watch_path, **kwargs):
     context = systemcontext.create_context(**kwargs)
-    try:
-        monitor.create_monitor(context, watch_path, **kwargs).run()
-    except monitor.InvalidWatchArea as e:
-        print(e)
+    monitor.create_monitor(context, watch_path, **kwargs).run()
 
 def run():
     with ColoramaWrangler():

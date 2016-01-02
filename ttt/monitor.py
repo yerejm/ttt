@@ -49,7 +49,7 @@ class Monitor(object):
     def build(self):
         def fn():
             self.reporter.session_start('build')
-            self.reporter.report_build_path('build')
+            self.reporter.report_build_path()
             try:
                 self.builder.build()
             except builder.CMakeError:
