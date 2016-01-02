@@ -4,6 +4,7 @@ import collections
 import itertools
 
 from ttt.builder import create_builder
+from ttt.builder import BuildError
 from ttt.watcher import create_watcher
 from ttt.executor import create_executor
 from ttt.reporter import create_reporter
@@ -17,7 +18,7 @@ def create_monitor(context, watch_path=os.getcwd(), **kwargs):
     builder = create_builder(context, watcher.watch_path, build_path, kwargs.get('generator'))
     executor = create_executor(context, build_path)
     reporter = create_reporter(context, watcher.watch_path, build_path)
-    return Monitor(context, watcher, builder, executor, reporter)
+    return Monitor(watcher, builder, executor, reporter)
 
 def make_build_path(watch_path, suffix=DEFAULT_BUILD_PATH_SUFFIX):
     return os.path.join(
@@ -28,7 +29,7 @@ def make_build_path(watch_path, suffix=DEFAULT_BUILD_PATH_SUFFIX):
 class Monitor(object):
     DEFAULT_POLLING_INTERVAL = 1
 
-    def __init__(self, context, watcher, builder, executor, reporter, **kwargs):
+    def __init__(self, watcher, builder, executor, reporter, **kwargs):
         self.watcher = watcher
         self.builder = builder
         self.executor = executor
@@ -52,7 +53,7 @@ class Monitor(object):
             self.reporter.report_build_path()
             try:
                 self.builder.build()
-            except builder.CMakeError:
+            except BuildError:
                 self.operations.reset()
         return fn
 
@@ -68,30 +69,40 @@ class Monitor(object):
             self.last_failed = results['total_failed']
         return fn
 
-    def run(self):
+    def run(self, **kwargs):
+        step_mode = first_value(kwargs.get('step'), False)
         while self.runstate.active():
-            try:
-                watchstate = self.watcher.poll()
-                if watchstate.has_changed() or self.runstate.allowed_once():
-                    self.operations.append(
-                        self.report_change(watchstate),
-                        self.build(),
-                        self.test()
-                    )
-                    self.operations.run()
-                    self.reporter.wait_change()
-            except KeyboardInterrupt as e:
-                self.reporter.report_interrupt(e)
-            try:
-                time.sleep(self.polling_interval)
-            except KeyboardInterrupt:
-                self.executor.clear_filter()
-                self.verify_stop()
+            self.check_for_changes()
+            self.wait()
+
+            if step_mode:
+                break
+
+    def check_for_changes(self):
+        try:
+            watchstate = self.watcher.poll()
+            if watchstate.has_changed() or self.runstate.allowed_once():
+                self.operations.append(
+                    self.report_change(watchstate),
+                    self.build(),
+                    self.test()
+                )
+                self.operations.run()
+                self.reporter.wait_change()
+        except KeyboardInterrupt as e:
+            self.reporter.report_interrupt(e)
+
+    def wait(self):
+        try:
+            time.sleep(self.polling_interval)
+        except KeyboardInterrupt:
+            self.reporter.interrupt_detected()
+            self.executor.clear_filter()
+            self.verify_stop()
 
     def verify_stop(self):
-        self.reporter.interrupt_detected()
         try:
-            time.sleep(Monitor.DEFAULT_POLLING_INTERVAL)
+            time.sleep(self.polling_interval)
             self.runstate.allow_once()
         except KeyboardInterrupt:
             self.reporter.halt()
@@ -123,9 +134,6 @@ class Operations(object):
     def append(self, *args):
         for op in args:
             self.execution_stack.append(op)
-
-    def operations(self):
-        return [ fn for fn in self.execution_stack ]
 
     def run(self):
         try:
