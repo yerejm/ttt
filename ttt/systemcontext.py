@@ -118,7 +118,7 @@ def call_output(*popenargs, **kwargs):
     process = create_process(
             *popenargs,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             **kwargs
         )
     return run(process, line_handler)
@@ -145,6 +145,11 @@ def run(process, line_handler):
             args=('stderr', process.stderr, io_q)
         ),
     }
+    # Unfortunately, stdout and stderr are not synchronised with each other.
+    # This makes capturing both for real-time processing useless. So it is
+    # currently all captured under stdout. Even more unfortunately, stderr
+    # comes through first before stdout. This means writes that are made first
+    # to stdout will not be first through the pipe if there is stderr output.
 
     for thread in threads.values():
         thread.start()

@@ -55,25 +55,21 @@ class Reporter(object):
         for testname, out, err in results:
             self.writeln(testname,
                     decorator=[termstyle.red, termstyle.bold], pad='_')
-            # gtest failure out is 4 lines, with first line being file and line
-            # number. any stdout or stderr occurs before these lines.
-            results = out[-4:]
-            self.writeln(os.linesep.join(results[1:]))
-            self.writeln()
+            test_output_pos = find_source_file_line(out, self._watch_path)
+            results = out[test_output_pos:]
+            self.writeln(os.linesep.join(results))
+
+            extra_out = out[:test_output_pos]
+            if extra_out:
+                self.writeln('Additional output', pad='-')
+                self.writeln(os.linesep.join(extra_out))
+
             if self._watch_path is None:
                 locator = results[0]
             else:
                 locator = strip_path(results[0], self._watch_path)
-            self.writeln(locator)
-
-            extra_out = out[:-4]
-            if extra_out:
-                self.writeln('Captured stdout call', pad='-')
-                self.writeln(os.linesep.join(extra_out))
-
-            if err:
-                self.writeln('Captured stderr call', pad='-')
-                self.writeln(os.linesep.join(err))
+            self.writeln(strip_trailer(locator),
+                    decorator=[termstyle.red, termstyle.bold], pad='_')
 
     def interrupt_detected(self):
         self.writeln()
@@ -94,3 +90,14 @@ def strip_path(string, path):
         return string[len(realpath) + 1:]
     else:
         return string
+
+def find_source_file_line(lines, path):
+    if path is not None:
+        for i, l in enumerate(lines):
+            if path in l:
+                return i
+    return 0
+
+def strip_trailer(string):
+    return string[:string.find(' ') - 1]
+

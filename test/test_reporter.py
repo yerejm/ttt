@@ -68,7 +68,7 @@ class TestReporter:
 
     def test_report_all_failed(self):
         m = MockContext()
-        r = create_reporter(m)
+        r = create_reporter(m, '/path')
 
         results = {
                 'total_runtime': 2.09,
@@ -76,7 +76,7 @@ class TestReporter:
                 'total_failed': 1,
                 'failures': [
                     [ 'fail1', [
-                        'results line 1',
+                        '/path/to/file:12: blah',
                         'results line 2',
                         'results line 3',
                         'results line 4',
@@ -90,11 +90,13 @@ class TestReporter:
             termstyle.bold(termstyle.red(
             '____________________________________ fail1 _____________________________________'
             )),
+            '/path/to/file:12: blah',
             'results line 2',
             'results line 3',
             'results line 4',
-            '',
-            'results line 1',
+            termstyle.bold(termstyle.red(
+            '__________________________________ to/file:12 __________________________________'
+            )),
             termstyle.bold(termstyle.red(
             '====================== 1 failed, 0 passed in 2.09 seconds ======================'
             )),
@@ -104,7 +106,7 @@ class TestReporter:
 
     def test_report_multiple_failed(self):
         m = MockContext()
-        r = create_reporter(m)
+        r = create_reporter(m, '/path')
 
         results = {
                 'total_runtime': 2.09,
@@ -112,14 +114,14 @@ class TestReporter:
                 'total_failed': 2,
                 'failures': [
                     [ 'fail1', [
-                        'results line 1',
+                        '/path/to/file:12: blah',
                         'results line 2',
                         'results line 3',
                         'results line 4',
                         ], []
                     ],
                     [ 'fail2', [
-                        'results line 1',
+                        '/path/to/file:102: blah',
                         'results line 2',
                         'results line 3',
                         'results line 4',
@@ -133,19 +135,23 @@ class TestReporter:
             termstyle.bold(termstyle.red(
             '____________________________________ fail1 _____________________________________'
             )),
+            '/path/to/file:12: blah',
             'results line 2',
             'results line 3',
             'results line 4',
-            '',
-            'results line 1',
+            termstyle.bold(termstyle.red(
+            '__________________________________ to/file:12 __________________________________'
+            )),
             termstyle.bold(termstyle.red(
             '____________________________________ fail2 _____________________________________'
             )),
+            '/path/to/file:102: blah',
             'results line 2',
             'results line 3',
             'results line 4',
-            '',
-            'results line 1',
+            termstyle.bold(termstyle.red(
+            '_________________________________ to/file:102 __________________________________'
+            )),
             termstyle.bold(termstyle.red(
             '====================== 2 failed, 0 passed in 2.09 seconds ======================'
             )),
@@ -205,7 +211,7 @@ class TestReporter:
 
     def test_report_with_stdout_and_stderr(self):
         m = MockContext()
-        r = create_reporter(m)
+        r = create_reporter(m, '/path')
 
         results = {
                 'total_runtime': 2.09,
@@ -217,14 +223,12 @@ class TestReporter:
                         [
                             'extra line 1',
                             'extra line 2',
+                            '/path/to/file:12: blah',
                             'results line 1',
                             'results line 2',
                             'results line 3',
-                            'results line 4',
                         ],
                         [
-                            'stderr line 1',
-                            'stderr line 2',
                         ]
                     ],
                 ]
@@ -235,17 +239,16 @@ class TestReporter:
             termstyle.bold(termstyle.red(
             '____________________________________ fail1 _____________________________________'
             )),
+            '/path/to/file:12: blah',
+            'results line 1',
             'results line 2',
             'results line 3',
-            'results line 4',
-            '',
-            'results line 1',
-            '----------------------------- Captured stdout call -----------------------------',
+            '------------------------------ Additional output -------------------------------',
             'extra line 1',
             'extra line 2',
-            '----------------------------- Captured stderr call -----------------------------',
-            'stderr line 1',
-            'stderr line 2',
+            termstyle.bold(termstyle.red(
+            '__________________________________ to/file:12 __________________________________'
+            )),
             termstyle.bold(termstyle.red(
             '====================== 1 failed, 0 passed in 2.09 seconds ======================'
             )),
@@ -275,11 +278,14 @@ class TestReporter:
             termstyle.bold(termstyle.red(
             '___________________________________ core.ok ____________________________________'
             )),
+            '/path/to/watch/test/test_core.cc:12: Failure',
             'Value of: 2',
             'Expected: ok()',
             'Which is: 42',
-            '',
-            'test/test_core.cc:12: Failure',
+            termstyle.bold(termstyle.red(
+            '_____________________________ test/test_core.cc:12 _____________________________',
+            )),
             ]
         actual = m.getvalue().splitlines()
         assert actual == expected
+

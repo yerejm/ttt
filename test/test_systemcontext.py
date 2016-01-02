@@ -99,8 +99,10 @@ class TestSystemContext:
         exefile = self.wd.write(PROGRAM_NAME, create_stdout_stderr_program(exit_code=0))
         assert sc.streamed_call(python_command(exefile), universal_newlines=True) == (
                 0,
-                ['hello stdout'],
-                ['hello stderr']
+                ['hello stderr','hello stdout'],
+                # Why is this the order given that the program prints in the
+                # opposite order?
+                []
                 )
 
     def test_streamed_call_error(self):
