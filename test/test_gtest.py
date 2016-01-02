@@ -60,10 +60,6 @@ class TestGTest:
         gtest.execute(MockProcess(results), [])
 
         assert gtest.run_time() == 3
-        # import sys
-        # sys.stdout.write('=======================================stdout\n')
-        # sys.stderr.write('+++++++++++++++++++++++++++++++++++++++stderr\n')
-        # assert 1 == 0
 
     def test_one_testcase_one_success(self):
         results = [
