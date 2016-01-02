@@ -14,8 +14,8 @@ import platform
 from testfixtures import TempDirectory
 
 from ttt.builder import create_builder
-from ttt.builder import CMakeError
-from ttt.builder import CMakeInvalidAbsolutePathError
+from ttt.builder import BuildError
+from ttt.builder import InvalidAbsolutePathError
 from ttt.systemcontext import SystemContext
 
 class CommandCaptureContext:
@@ -77,21 +77,21 @@ class TestCMakeSlow:
         builder = create_builder(SystemContext(), source_path, build_path)
         try:
             builder.build()
-        except CMakeError as e:
+        except BuildError as e:
             assert e.command == expected
 
     def test_bad_build_from_relative_path(self):
         error = None
         try:
             create_builder(SystemContext(), 'dummy', self.cmake_build_path)
-        except CMakeInvalidAbsolutePathError as e:
+        except InvalidAbsolutePathError as e:
             error = e
         assert str(error) == 'Watch path dummy must be absolute'
 
         error = None
         try:
             create_builder(SystemContext(), self.cmake_source_path, 'dummy')
-        except CMakeInvalidAbsolutePathError as e:
+        except InvalidAbsolutePathError as e:
             error = e
         assert str(error) == 'Build path dummy must be absolute'
 

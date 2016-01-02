@@ -18,8 +18,8 @@ class CMakeBuilder(Builder):
 
     def __init__(self, context, watch_path, build_path, build_system):
         self.context = context
-        self._watch_path = watch_path
-        self._build_path = build_path
+        self.watch_path = watch_path
+        self.build_path = build_path
         self.build_system = build_system
 
     def build(self):
@@ -27,7 +27,7 @@ class CMakeBuilder(Builder):
         Calls the build command in the build area. If no build area exists, it
         will be created.
         """
-        if not os.path.exists(os.path.join(self._build_path, 'CMakeFiles')):
+        if not os.path.exists(os.path.join(self.build_path, 'CMakeFiles')):
             self._cmake_generate()
         self._build()
 
@@ -35,12 +35,12 @@ class CMakeBuilder(Builder):
         self._execute([
             'cmake',
             '--build',
-            self._build_path
+            self.build_path
         ])
 
     def _cmake_generate(self):
-        watch_path = self._watch_path
-        build_path = self._build_path
+        watch_path = self.watch_path
+        build_path = self.build_path
         command = ['cmake']
         if self.build_system is not None:
             command.append('-G')
@@ -57,21 +57,21 @@ class CMakeBuilder(Builder):
                 cwd=cwd
             )
         except subprocess.CalledProcessError as e:
-            raise CMakeError(e)
+            raise BuildError(e)
 
 def assert_abspath(ident, path):
     if not os.path.isabs(path):
-        raise CMakeInvalidAbsolutePathError(ident, path)
+        raise InvalidAbsolutePathError(ident, path)
 
-class CMakeInvalidAbsolutePathError(IOError):
+class InvalidAbsolutePathError(EnvironmentError):
     def __init__(self, *args):
         self._args = args
 
     def __str__(self):
         return "{} path {} must be absolute".format(*self._args)
 
-class CMakeError(Exception):
-    """ Exception raised when a cmake command fails."""
+class BuildError(Exception):
+    """ Exception raised when the build command fails."""
 
     def __init__(self, exception):
         self.exception = exception
