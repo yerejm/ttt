@@ -4,10 +4,14 @@ import stat
 
 from ttt.gtest import GTest
 
+def create_executor(context, build_path):
+    return Executor(context, build_path)
+
 class Executor(object):
-    def __init__(self, context):
+    def __init__(self, context, build_path):
+        self._context = context
+        self._build_path = build_path
         self._test_filter = {}
-        self.context = context
 
     def test_filter(self):
         return self._test_filter
@@ -15,9 +19,9 @@ class Executor(object):
     def clear_filter(self):
         self._test_filter.clear()
 
-    def test(self, build_path, testfiles):
-        testlist = create_tests(self.context, build_path, testfiles)
-        test_results = run_tests(self.context, testlist, self._test_filter)
+    def test(self, testfiles):
+        testlist = create_tests(self._context, self._build_path, testfiles)
+        test_results = run_tests(self._context, testlist, self._test_filter)
         self._test_filter = create_filter(test_results)
         return collate(test_results)
 

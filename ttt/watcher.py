@@ -5,45 +5,11 @@ import platform
 
 from ttt import systemcontext
 
-class WatchedFile(object):
-    def __init__(self, root_directory='', relative_directory='', filename='', mtime=0):
-        self._root = root_directory
-        self._relative = relative_directory
-        self._filename = filename
-        self._mtime = mtime
-    def name(self):
-        return self._filename
-    def relativepath(self):
-        return os.path.join(self._relative, self.name())
-    def last_modified(self):
-        return self._mtime
-
-class WatchState(object):
-    def __init__(self, inserts=[], deletes=[], updates=[], walk_time=0):
-        self.inserts = inserts
-        self.deletes = deletes
-        self.updates = updates
-        self.walk_time = walk_time
-
-    def has_changed(self):
-        return self.inserts or self.deletes or self.updates
-
-    def __eq__(self, other):
-        return self.__dict__ == other.__dict__
-
-    def __str__(self):
-        return "WatchState({} inserted, {} deleted, {} modified)".format(
-                len(self.inserts),
-                len(self.deletes),
-                len(self.updates)
-                )
-
-    def __repr__(self):
-        return "WatchState({}, {}, {})".format(
-                repr(self.inserts),
-                repr(self.deletes),
-                repr(self.updates)
-                )
+def create_watcher(context, watch_path, **kwargs):
+    full_watch_path = os.path.abspath(watch_path)
+    if not os.path.exists(full_watch_path):
+        raise InvalidWatchArea(watch_path, full_watch_path)
+    return Watcher(context, full_watch_path, **kwargs)
 
 class Watcher(object):
     EXE_SUFFIX = ".exe" if platform.system() == 'Windows' else ""
@@ -65,6 +31,7 @@ class Watcher(object):
             test_prefix=DEFAULT_TEST_PREFIX):
         self.provider = DefaultFileProvider(context, watch_path, source_patterns)
         self.test_prefix = test_prefix
+        self.watch_path = watch_path
 
     def poll(self):
         return self.provider.watchstate()
@@ -126,6 +93,19 @@ def get_watched_files(context, root_directory, patterns):
             )
     return files
 
+class WatchedFile(object):
+    def __init__(self, root_directory='', relative_directory='', filename='', mtime=0):
+        self._root = root_directory
+        self._relative = relative_directory
+        self._filename = filename
+        self._mtime = mtime
+    def name(self):
+        return self._filename
+    def relativepath(self):
+        return os.path.join(self._relative, self.name())
+    def last_modified(self):
+        return self._mtime
+
 def create_watchstate(dictA={}, dictB={}, walk_time=0):
     dictAKeys = set(dictA.keys())
     dictBKeys = set(dictB.keys())
@@ -137,3 +117,36 @@ def create_watchstate(dictA={}, dictB={}, walk_time=0):
             updates.add(filename)
     return WatchState(inserts, deletes, updates, walk_time)
 
+class WatchState(object):
+    def __init__(self, inserts=[], deletes=[], updates=[], walk_time=0):
+        self.inserts = inserts
+        self.deletes = deletes
+        self.updates = updates
+        self.walk_time = walk_time
+
+    def has_changed(self):
+        return self.inserts or self.deletes or self.updates
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __str__(self):
+        return "WatchState({} inserted, {} deleted, {} modified)".format(
+                len(self.inserts),
+                len(self.deletes),
+                len(self.updates)
+                )
+
+    def __repr__(self):
+        return "WatchState({}, {}, {})".format(
+                repr(self.inserts),
+                repr(self.deletes),
+                repr(self.updates)
+                )
+
+class InvalidWatchArea(IOError):
+    def __init__(self, path, abspath):
+        self.paths = [ path, abspath ]
+
+    def __str__(self):
+        return "Invalid path: {} ({})".format(*self.paths)

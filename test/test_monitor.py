@@ -11,11 +11,14 @@ import os
 import termstyle
 
 import pytest
+from testfixtures import TempDirectory
 
 from ttt.systemcontext import SystemContext
+from ttt.watcher import Watcher
+from ttt.watcher import create_watchstate
 from ttt.monitor import Monitor
-from ttt.monitor import Reporter
-from ttt.monitor import InvalidWatchArea
+from ttt.monitor import Operations
+from ttt.watcher import InvalidWatchArea
 from ttt.monitor import create_monitor
 
 class MockContext(SystemContext):
@@ -32,186 +35,115 @@ class MockContext(SystemContext):
     def walk(self, root):
         return []
 
-    def write(self, string):
-        self.output += string
-
 class TestMonitor:
+    def teardown(self):
+        TempDirectory.cleanup_all()
+
     def test_create_with_invalid_watch_area(self):
         c = MockContext()
         error = None
+        bad_path = os.path.abspath(os.path.sep + os.path.join('bad', 'path'))
         try:
-            create_monitor(c, '/bad/path')
+            create_monitor(c, bad_path)
         except InvalidWatchArea as e:
             error = e
-        assert str(error) == 'Invalid path: /bad/path (/bad/path)'
+        assert str(error) == 'Invalid path: {bad} ({bad})'.format(bad=bad_path)
 
-    def test_create_with_build_path(self):
-        c = MockContext()
-        m = create_monitor(c, os.getcwd(), build_path='build')
-        assert m.build_path == os.path.join(os.getcwd(), 'build')
+    # def test_create_with_build_path(self):
+    #     c = MockContext()
+    #     m = create_monitor(c, os.getcwd(), build_path='build')
+    #     assert m.build_path == os.path.join(os.getcwd(), 'build')
+    #
+    # def test_create(self):
+    #     c = MockContext()
+    #     m = create_monitor(c, os.getcwd(), build_path='build')
+    #     assert m.build_path == os.path.join(os.getcwd(), 'build')
+    #     assert m.runstate.active()
 
-    def test_create(self):
-        c = MockContext()
-        m = create_monitor(c, os.getcwd(), build_path='build')
-        assert m.build_path == os.path.join(os.getcwd(), 'build')
-        assert m.watch_path == os.getcwd()
-        assert m.runstate.active()
+    # def test_run(self):
+    #     work_directory = TempDirectory()
+    #     work_directory.write('a.h', b'')
+    #     work_directory.write('a.c', b'')
+    #     work_directory.write('a.cc', b'')
+    #     work_directory.write('CMakeLists.txt', b'')
+    #     work_directory.write('blah.txt', b'')
+    #
+    #     sc = SystemContext()
+    #     w = Watcher(sc, work_directory.path)
+    #     o = MockOperations()
+    #     m = create_monitor(sc, operations=o, watcher=w)
+    #     work_directory.write('b.c', b'')
+    #
+    #     try:
+    #         m.run()
+    #     except StopTestException:
+    #         pass
+    #     assert o.operations() == [
+    #             m.report_change(create_watchstate()),
+    #             m.build(),
+    #             m.test(),
+    #             ]
 
-    def test_interrupt(self):
-        c = MockContext()
-        m = Monitor(c, '/path/to/watch', interval=0)
+class MockOperations(Operations):
+    def __init__(self):
+        super(MockOperations, self).__init__()
 
-        m.handle_keyboard_interrupt()
-        assert m.runstate.active()
-        assert m.runstate.allowed_once()
-        assert not m.runstate.allowed_once()
+    # def __getattr__(self, method_name):
+    #     def fn(*args, **kwargs):
+    #         self.calls.append(method_name)
+    #     return fn
 
-class TestReporter:
-    def test_session_start(self):
-        m = MockContext()
-        r = Reporter(m)
+    def run(self):
+        raise StopTestException()
 
-        r.session_start('test')
-        m.getvalue() == termstyle.bold(
-                ''.ljust(30, '=') +
-                ' test session starts ' +
-                ''.ljust(31, '=')
-                ) + os.linesep
+class StopTestException(Exception):
+    pass
 
-    def test_wait_change(self):
-        m = MockContext()
-        r = Reporter(m)
+class TestUtils:
+    def test_first_value(self):
+        from ttt.monitor import first_value
 
-        r.wait_change('watch_path')
-        m.getvalue() == termstyle.bold(
-                    ''.ljust(29, '#') +
-                    ' waiting for changes ' +
-                    ''.ljust(30, '#')
-                ) + os.linesep + termstyle.bold(
-                    ' ### Watching:   watch_path'
-                )+ os.linesep
+        assert first_value() == None
+        assert first_value(1) == 1
+        assert first_value(1, 2) == 1
+        assert first_value(None, 1) == 1
+        assert first_value(None, None, 1) == 1
 
-    def test_report_all_passed(self):
-        m = MockContext()
-        r = Reporter(m)
+class TestOperations:
+    def test_append(self):
+        def fna():
+            pass
+        def fnb():
+            pass
 
-        results = {
-                'total_runtime': 2.09,
-                'total_passed': 1,
-                'total_failed': 0,
-                'failures': []
-                }
-        r.report_results(results)
-        m.getvalue() == termstyle.bold(termstyle.green(
-                    ''.ljust(27, '=') +
-                    ' 1 passed in 2.09 seconds ' +
-                    ''.ljust(27, '=')
-                )) + os.linesep
+        o = Operations()
+        o.append(fna)
+        o.append(fnb)
+        assert o.operations() == [fna, fnb]
 
-    def test_report_all_failed(self):
-        m = MockContext()
-        r = Reporter(m)
+    def test_reset(self):
+        def fna():
+            pass
+        def fnb():
+            pass
 
-        results = {
-                'total_runtime': 2.09,
-                'total_passed': 0,
-                'total_failed': 1,
-                'failures': [
-                    [ 'fail1', [
-                        'results line 1',
-                        'results line 2',
-                        'results line 3',
-                        'results line 4',
-                        ] 
-                    ],
-                ]
-            }
-        r.report_results(results)
-        expected = [
-            '=================================== FAILURES ===================================',
-            termstyle.bold(termstyle.red(
-            '____________________________________ fail1 _____________________________________'
-            )),
-            'results line 2',
-            'results line 3',
-            'results line 4',
-            '',
-            'results line 1',
-            termstyle.bold(termstyle.red(
-            '====================== 1 failed, 0 passed in 2.09 seconds ======================'
-            )),
-            ]
-        actual = m.getvalue().splitlines()
-        assert actual == expected
+        o = Operations()
+        o.append(fna)
+        o.append(fnb)
+        o.reset()
+        assert o.operations() == []
 
-    def test_report_multiple_failed(self):
-        m = MockContext()
-        r = Reporter(m)
+    def test_run(self):
+        def make_fn(run, x):
+            def fn():
+                run.append(x)
+            return fn
 
-        results = {
-                'total_runtime': 2.09,
-                'total_passed': 0,
-                'total_failed': 2,
-                'failures': [
-                    [ 'fail1', [
-                        'results line 1',
-                        'results line 2',
-                        'results line 3',
-                        'results line 4',
-                        ] 
-                    ],
-                    [ 'fail2', [
-                        'results line 1',
-                        'results line 2',
-                        'results line 3',
-                        'results line 4',
-                        ] 
-                    ],
-                ]
-            }
-        r.report_results(results)
-        expected = [
-            '=================================== FAILURES ===================================',
-            termstyle.bold(termstyle.red(
-            '____________________________________ fail1 _____________________________________'
-            )),
-            'results line 2',
-            'results line 3',
-            'results line 4',
-            '',
-            'results line 1',
-            termstyle.bold(termstyle.red(
-            '____________________________________ fail2 _____________________________________'
-            )),
-            'results line 2',
-            'results line 3',
-            'results line 4',
-            '',
-            'results line 1',
-            termstyle.bold(termstyle.red(
-            '====================== 2 failed, 0 passed in 2.09 seconds ======================'
-            )),
-            ]
-        actual = m.getvalue().splitlines()
-        assert actual == expected
+        run = []
+        o = Operations()
+        o.append(make_fn(run, 1))
+        o.append(make_fn(run, 2))
+        o.run()
+        assert run == [1, 2]
+        assert o.operations() == []
 
-    def test_report_changes(self):
-        m = MockContext()
-        r = Reporter(m)
-
-        r.report_changes('TEST', ['test'])
-        assert m.getvalue() == '# TEST test' + os.linesep
-
-    def test_interrupt_detected(self):
-        m = MockContext()
-        r = Reporter(m)
-
-        r.interrupt_detected()
-        assert m.getvalue() == os.linesep + 'Interrupt again to exit.' + os.linesep
-
-    def test_halt(self):
-        m = MockContext()
-        r = Reporter(m)
-
-        r.halt()
-        assert m.getvalue() == os.linesep + 'Watching stopped.' + os.linesep

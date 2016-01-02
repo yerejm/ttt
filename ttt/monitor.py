@@ -1,31 +1,23 @@
 import os
 import time
-import termstyle
 import collections
+import itertools
 
-from ttt import cmake
-from ttt import watcher
-from ttt import executor
+from ttt.builder import create_builder
+from ttt.watcher import create_watcher
+from ttt.executor import create_executor
+from ttt.reporter import create_reporter
 
 DEFAULT_BUILD_PATH_SUFFIX = '-build'
 
-class InvalidWatchArea(IOError):
-    def __init__(self, path, abspath):
-        self.paths = [ path, abspath ]
-
-    def __str__(self):
-        return "Invalid path: {} ({})".format(*self.paths)
-
-def create_monitor(context, watch_path, **kwargs):
-    monitor_kwargs = {}
-    if 'build_path' in kwargs and kwargs['build_path']:
-        monitor_kwargs['build_path'] = os.path.abspath(kwargs['build_path'])
-
-    full_watch_path = os.path.abspath(watch_path)
-    if not os.path.exists(full_watch_path):
-        raise InvalidWatchArea(watch_path, full_watch_path)
-
-    return Monitor(context, full_watch_path, **monitor_kwargs)
+def create_monitor(context, watch_path=os.getcwd(), **kwargs):
+    watcher = create_watcher(context, watch_path)
+    custom_build_path = kwargs.get('build_path')
+    build_path = os.path.abspath(custom_build_path) if custom_build_path else make_build_path(watcher.watch_path)
+    builder = create_builder(context, watcher.watch_path, build_path, kwargs.get('generator'))
+    executor = create_executor(context, build_path)
+    reporter = create_reporter(context, watcher.watch_path, build_path)
+    return Monitor(context, watcher, builder, executor, reporter)
 
 def make_build_path(watch_path, suffix=DEFAULT_BUILD_PATH_SUFFIX):
     return os.path.join(
@@ -33,108 +25,46 @@ def make_build_path(watch_path, suffix=DEFAULT_BUILD_PATH_SUFFIX):
         "{}{}".format(os.path.basename(watch_path), suffix)
     )
 
-class Reporter(object):
-
-    def __init__(self, context):
-        self.context = context
-
-    def session_start(self, session_descriptor):
-        self.writeln('{} session starts'.format(session_descriptor),
-                decorator=[termstyle.bold], pad='=')
-
-    def wait_change(self, watch_path):
-        self.writeln('waiting for changes',
-                decorator=[termstyle.bold], pad='#')
-        self.writeln('### Watching:   {}'.format(watch_path),
-                decorator=[termstyle.bold])
-
-    def report_results(self, results):
-        shortstats = '{} passed in {} seconds'.format(
-                results['total_passed'],
-                results['total_runtime']
-                )
-        total_failed = results['total_failed']
-        if total_failed > 0:
-            self.report_failures(results['failures'])
-            self.writeln('{} failed, {}'.format(total_failed, shortstats),
-                    decorator=[termstyle.red,termstyle.bold], pad='=')
-        else:
-            self.writeln(shortstats,
-                    decorator=[termstyle.green,termstyle.bold], pad='=')
-
-    def report_failures(self, results):
-        self.writeln('FAILURES', pad='=')
-        for testname, testresult in results:
-            self.writeln(testname,
-                    decorator=[termstyle.red, termstyle.bold], pad='_')
-            self.writeln(os.linesep.join(testresult[1:]))
-            self.writeln()
-            self.writeln(testresult[0])
-
-    def report_changes(self, change, filelist):
-        for f in filelist:
-            self.writeln('# {} {}'.format(change, f))
-
-    def interrupt_detected(self):
-        self.writeln()
-        self.writeln("Interrupt again to exit.")
-
-    def halt(self):
-        self.writeln()
-        self.writeln("Watching stopped.")
-
-    def writeln(self, *args, **kwargs):
-        self.context.writeln(*args, **kwargs)
-
 class Monitor(object):
     DEFAULT_POLLING_INTERVAL = 1
 
-    def __init__(self, sc, watch_path, build_path=None, **kwargs):
-        self.watch_path = watch_path
-        self.build_path = make_build_path(watch_path) if build_path is None else build_path
-        self.cmake = cmake.CMakeContext(sc)
-        self.watcher = watcher.Watcher(sc, watch_path)
-        self.reporter = Reporter(sc)
-        self.executor = executor.Executor(sc)
+    def __init__(self, context, watcher, builder, executor, reporter, **kwargs):
+        self.watcher = watcher
+        self.builder = builder
+        self.executor = executor
+        self.reporter = reporter
 
-        if 'interval' in kwargs:
-            self.polling_interval = kwargs['interval']
-        else:
-            self.polling_interval = Monitor.DEFAULT_POLLING_INTERVAL
-
+        self.operations = Operations()
         self.runstate = Runstate()
-        self.execution_stack = collections.deque()
         self.last_failed = 0
+        self.polling_interval = first_value(kwargs.get('interval'), Monitor.DEFAULT_POLLING_INTERVAL)
 
         self.watcher.poll()
 
     def report_change(self, watchstate):
         def fn():
-            r = self.reporter
-            r.report_changes('CREATED', watchstate.inserts)
-            r.report_changes('MODIFIED', watchstate.updates)
-            r.report_changes('DELETED', watchstate.deletes)
-            r.writeln('### Walk time: {:10.3f}s'.format(watchstate.walk_time))
+            self.reporter.report_watchstate(watchstate)
         return fn
 
     def build(self):
         def fn():
             self.reporter.session_start('build')
+            self.reporter.report_build_path('build')
             try:
-                self.cmake.build(self.watch_path, self.build_path)
-            except cmake.CMakeError:
-                self.execution_stack.clear()
+                self.builder.build()
+            except builder.CMakeError:
+                self.operations.reset()
         return fn
 
     def test(self):
         def fn():
             self.reporter.session_start('test')
-            results = self.executor.test(self.build_path, self.watcher.testdict())
+            results = self.executor.test(self.watcher.testdict())
             self.reporter.report_results(results)
 
             if results['total_failed'] == 0 and self.last_failed > 0:
                 self.last_failed = 0
-                self.execution_stack.append(self.test())
+                self.operations.append(self.test())
             self.last_failed = results['total_failed']
         return fn
 
@@ -143,31 +73,20 @@ class Monitor(object):
             try:
                 watchstate = self.watcher.poll()
                 if watchstate.has_changed() or self.runstate.allowed_once():
-                    self.execution_stack.append(self.report_change(watchstate))
-                    self.execution_stack.append(self.build())
-                    self.execution_stack.append(self.test())
-
-                    try:
-                        while True:
-                            self.execution_stack.popleft()()
-                    except IndexError:
-                        pass
-                    finally:
-                        self.execution_stack.clear()
-                        self.reporter.wait_change(self.watch_path)
-            except KeyboardInterrupt:
-                self.execution_stack.clear()
-                self.reporter.writeln('KeyboardInterrupt', pad='!')
-
+                    self.operations.append(
+                        self.report_change(watchstate),
+                        self.build(),
+                        self.test()
+                    )
+                    self.operations.run()
+                    self.reporter.wait_change()
+            except KeyboardInterrupt as e:
+                self.reporter.report_interrupt(e)
             try:
                 time.sleep(self.polling_interval)
             except KeyboardInterrupt:
-                self.handle_keyboard_interrupt()
-
-    def handle_keyboard_interrupt(self):
-        self.execution_stack.clear()
-        self.executor.clear_filter()
-        self.verify_stop()
+                self.executor.clear_filter()
+                self.verify_stop()
 
     def verify_stop(self):
         self.reporter.interrupt_detected()
@@ -196,4 +115,31 @@ class Runstate(object):
         allow_once = self._allow_once
         self._allow_once = False
         return allow_once
+
+class Operations(object):
+    def __init__(self):
+        self.execution_stack = collections.deque()
+
+    def append(self, *args):
+        for op in args:
+            self.execution_stack.append(op)
+
+    def operations(self):
+        return [ fn for fn in self.execution_stack ]
+
+    def run(self):
+        try:
+            while True:
+                self.execution_stack.popleft()()
+        except IndexError:
+            pass
+        except KeyboardInterrupt:
+            self.reset()
+            raise
+
+    def reset(self):
+        self.execution_stack.clear()
+
+def first_value(*args):
+    return next(itertools.dropwhile(lambda x: x is None, args), None)
 

@@ -11,9 +11,10 @@ Tests for `watcher` module.
 import os
 import re
 from testfixtures import TempDirectory
+from ttt.watcher import Watcher
 from ttt.watcher import WatchedFile
 from ttt.watcher import create_watchstate
-from ttt.watcher import Watcher
+from ttt.watcher import create_watcher
 from ttt.systemcontext import SystemContext
 
 class TestWatcher:
@@ -32,7 +33,7 @@ class TestWatcher:
         work_directory.write('blah.txt', b'')
 
         sc = SystemContext()
-        w = Watcher(sc, work_directory.path)
+        w = create_watcher(sc, work_directory.path)
         w.poll()
 
         filelist = w.filelist()
@@ -47,7 +48,7 @@ class TestWatcher:
         work_directory.write('blah.txt', b'')
 
         sc = SystemContext()
-        w = Watcher(sc, work_directory.path, source_patterns=['CMakeLists.txt'])
+        w = create_watcher(sc, work_directory.path, source_patterns=['CMakeLists.txt'])
         w.poll()
 
         filelist = w.filelist()
@@ -62,7 +63,7 @@ class TestWatcher:
         work_directory.write('blah.txt', b'')
 
         sc = SystemContext()
-        w = Watcher(sc, work_directory.path)
+        w = create_watcher(sc, work_directory.path)
 
         watchstate = w.poll()
         assert watchstate.has_changed()
@@ -80,7 +81,7 @@ class TestWatcher:
         testfile_path = work_directory.write(['test', 'test_dummy.c'], b'')
 
         sc = SystemContext()
-        w = Watcher(sc, work_directory.path)
+        w = create_watcher(sc, work_directory.path)
         w.poll()
 
         exefile = 'test_dummy' + Watcher.EXE_SUFFIX
