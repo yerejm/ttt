@@ -8,6 +8,11 @@ import threading
 from six.moves import queue
 from six import text_type
 
+if platform.system() == 'Windows':
+    from time import clock as time
+else:
+    from time import time
+
 try:
     from os import scandir, walk
 except ImportError:
@@ -173,14 +178,11 @@ def run(process, line_handler):
     return (process.returncode, stdout, stderr)
 
 class Timer(object):
-    def __init__(self):
-        self.timer = time.clock if platform.system() == 'Windows' else time.time
-
     def __enter__(self):
-        self.start = self.timer()
+        self.start = time()
         return self
 
     def __exit__(self, *args):
-        self.end = self.timer()
+        self.end = time()
         self.secs = self.end - self.start
 
