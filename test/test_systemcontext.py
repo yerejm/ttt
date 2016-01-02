@@ -97,13 +97,14 @@ class TestSystemContext:
         sc = SystemContext()
 
         exefile = self.wd.write(PROGRAM_NAME, create_stdout_stderr_program(exit_code=0))
-        assert sc.streamed_call(python_command(exefile), universal_newlines=True) == (
-                0,
-                ['hello stderr','hello stdout'],
-                # Why is this the order given that the program prints in the
-                # opposite order?
-                []
-                )
+        rc, out, err = sc.streamed_call(python_command(exefile), universal_newlines=True)
+        assert rc == 0
+        assert 'hello stderr' in out
+        assert 'hello stdout' in out
+        # Why can't this be an assertion against an array? On linux and mac,
+        # the order of the output is in the opposite order that the program
+        # prints. Curiously, the expected order is correct in windows.
+        assert err == []
 
     def test_streamed_call_error(self):
         sc = SystemContext()
