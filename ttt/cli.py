@@ -1,5 +1,4 @@
 import argh
-import colorama
 
 from ttt import systemcontext
 from ttt import monitor
@@ -16,15 +15,7 @@ def ttt(watch_path, **kwargs):
     monitor.create_monitor(context, watch_path, **kwargs).run()
 
 def run():
-    with ColoramaWrangler():
-        parser = argh.ArghParser(prog='ttt', description='Watch, build, and test a cmake enabled source area.')
-        parser.set_default_command(ttt)
-        parser.dispatch()
-
-class ColoramaWrangler(object):
-    def __enter__(self):
-        colorama.init()
-
-    def __exit__(self, *args):
-        colorama.deinit()
+    parser = argh.ArghParser(prog='ttt', description='Watch, build, and test a cmake enabled source area.')
+    parser.set_default_command(ttt)
+    parser.dispatch()
 
