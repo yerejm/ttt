@@ -1,0 +1,2 @@
+-r requirements.txt
+scandir>=1.1
