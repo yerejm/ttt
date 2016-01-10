@@ -9,22 +9,32 @@ from ttt.watcher import create_watcher
 from ttt.executor import create_executor
 from ttt.reporter import create_reporter
 
+
 DEFAULT_BUILD_PATH_SUFFIX = '-build'
+
 
 def create_monitor(context, watch_path=os.getcwd(), **kwargs):
     watcher = create_watcher(context, watch_path)
     custom_build_path = kwargs.get('build_path')
-    build_path = os.path.abspath(custom_build_path) if custom_build_path else make_build_path(watcher.watch_path)
-    builder = create_builder(context, watcher.watch_path, build_path, kwargs.get('generator'))
+    build_path = (os.path.abspath(custom_build_path) if custom_build_path
+                  else make_build_path(watcher.watch_path))
+    builder = create_builder(
+        context,
+        watcher.watch_path,
+        build_path,
+        kwargs.get('generator')
+    )
     executor = create_executor(context, build_path)
     reporter = create_reporter(context, watcher.watch_path, build_path)
     return Monitor(watcher, builder, executor, reporter)
+
 
 def make_build_path(watch_path, suffix=DEFAULT_BUILD_PATH_SUFFIX):
     return os.path.join(
         os.getcwd(),
         "{}{}".format(os.path.basename(watch_path), suffix)
     )
+
 
 class Monitor(object):
     DEFAULT_POLLING_INTERVAL = 1
@@ -38,7 +48,8 @@ class Monitor(object):
         self.operations = Operations()
         self.runstate = Runstate()
         self.last_failed = 0
-        self.polling_interval = first_value(kwargs.get('interval'), Monitor.DEFAULT_POLLING_INTERVAL)
+        self.polling_interval = first_value(kwargs.get('interval'),
+                                            Monitor.DEFAULT_POLLING_INTERVAL)
 
         self.watcher.poll()
 
@@ -108,6 +119,7 @@ class Monitor(object):
             self.reporter.halt()
             self.runstate.stop()
 
+
 class Runstate(object):
     def __init__(self):
         self._active = True
@@ -126,6 +138,7 @@ class Runstate(object):
         allow_once = self._allow_once
         self._allow_once = False
         return allow_once
+
 
 class Operations(object):
     def __init__(self):
@@ -148,6 +161,6 @@ class Operations(object):
     def reset(self):
         self.execution_stack.clear()
 
+
 def first_value(*args):
     return next(itertools.dropwhile(lambda x: x is None, args), None)
-

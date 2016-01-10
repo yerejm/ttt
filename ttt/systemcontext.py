@@ -1,4 +1,3 @@
-import time
 import platform
 import os
 import sys
@@ -9,20 +8,21 @@ from six.moves import queue
 from six import text_type
 
 if platform.system() == 'Windows':
-    from time import clock as time
+    from time import clock as timer
 else:
-    from time import time
+    from time import time as timer
 
 try:
     from os import scandir, walk
 except ImportError:
     try:
-        from scandir import scandir, walk
+        from scandir import scandir, walk  # noqa
     except ImportError:
         from os import walk
 
 TERMINAL_MAX_WIDTH = 78
-EXCLUSIONS = set([ '.git', '.hg' ])
+EXCLUSIONS = set(['.git', '.hg'])
+
 
 def create_context(**kwargs):
     context_kwargs = {}
@@ -30,13 +30,14 @@ def create_context(**kwargs):
         context_kwargs['verbosity'] = kwargs['verbosity']
     return SystemContext(**context_kwargs)
 
+
 class SystemContext(object):
     def __init__(self, **kwargs):
         self._verbosity = kwargs['verbosity'] if 'verbosity' in kwargs else 0
 
     def walk(self, root_directory):
         for dirpath, dirlist, filelist in walk(root_directory, topdown=True):
-            dirlist[:] = [ d for d in dirlist if d not in EXCLUSIONS ]
+            dirlist[:] = [d for d in dirlist if d not in EXCLUSIONS]
             for filename in filelist:
                 path = os.path.join(dirpath, filename)
                 statmode = os.stat(path).st_mode
@@ -69,7 +70,9 @@ class SystemContext(object):
             for string in args:
                 string = str(string)
                 if 'pad' in kwargs:
-                    width = kwargs['width'] if 'width' in kwargs else term_width()
+                    width = (
+                        kwargs['width'] if 'width' in kwargs else term_width()
+                    )
                     string = pad(kwargs['pad'], string, width)
                 if 'decorator' in kwargs:
                     for d in kwargs['decorator']:
@@ -77,6 +80,7 @@ class SystemContext(object):
                 self.write(string + line_end)
         else:
             self.write(line_end)
+
 
 def term_width():
     try:
@@ -86,6 +90,7 @@ def term_width():
     except ImportError:
         return TERMINAL_MAX_WIDTH
 
+
 def pad(padchar, string, width):
     pad_width = min(width, TERMINAL_MAX_WIDTH)
     strlen = len(string) + 2
@@ -94,10 +99,11 @@ def pad(padchar, string, width):
     right_padlen = total_padlen - left_padlen
 
     return "{} {} {}".format(
-            ''.ljust(left_padlen, padchar),
-            string,
-            ''.ljust(right_padlen, padchar)
-        )
+        ''.ljust(left_padlen, padchar),
+        string,
+        ''.ljust(right_padlen, padchar)
+    )
+
 
 def call_output(*popenargs, **kwargs):
     def create_process(*popenargs, **kwargs):
@@ -116,23 +122,26 @@ def call_output(*popenargs, **kwargs):
         del kwargs['listener']
 
     process = create_process(
-            *popenargs,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            **kwargs
-        )
+        *popenargs,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        **kwargs
+    )
     return run(process, line_handler)
 
-def run(process, line_handler):
-    def read_stream(output_stream, input_stream, io_q):
-        if not input_stream:
-            io_q.put((output_stream, 'EXIT'))
-            return
-        for line in input_stream:
-            io_q.put((output_stream, line))
-        if not input_stream.closed:
-            input_stream.close()
+
+def read_stream(output_stream, input_stream, io_q):
+    if not input_stream:
         io_q.put((output_stream, 'EXIT'))
+        return
+    for line in input_stream:
+        io_q.put((output_stream, line))
+    if not input_stream.closed:
+        input_stream.close()
+    io_q.put((output_stream, 'EXIT'))
+
+
+def run(process, line_handler):
 
     io_q = queue.Queue(5)
     threads = {
@@ -182,12 +191,12 @@ def run(process, line_handler):
     process.wait()
     return (process.returncode, stdout, stderr)
 
+
 class Timer(object):
     def __enter__(self):
-        self.start = time()
+        self.start = timer()
         return self
 
     def __exit__(self, *args):
-        self.end = time()
+        self.end = timer()
         self.secs = self.end - self.start
-

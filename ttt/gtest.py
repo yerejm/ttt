@@ -4,19 +4,47 @@ import termstyle
 import os
 import sys
 
+
 class NullTerminal(object):
     def __getattr__(self, method_name):
         def fn(*args, **kwargs):
             pass
         return fn
 
+
+TESTCASE_START_RE = re.compile('^\[----------\] \d+ tests? from (.*?)$')
+TESTCASE_END_RE = re.compile(
+    '^\[----------\] \d+ tests? from (.*?) \(\d+ ms total\)$'
+)
+TEST_START_RE = re.compile('^\[ RUN      \] (.*?)$')
+TEST_END_RE = re.compile('^\[  (FAILED |     OK) \] (.*?)$')
+TESTCASE_TIME_RE = re.compile(
+    '^\[==========\] \d tests? from \d test cases? ran. \((\d+) ms total\)$'
+)
+
+
+def testcase_starts_at(line):
+    return TESTCASE_START_RE.match(line)
+
+
+def testcase_ends_at(line):
+    return TESTCASE_END_RE.match(line)
+
+
+def test_starts_at(line):
+    return TEST_START_RE.match(line)
+
+
+def test_ends_at(line):
+    return TEST_END_RE.match(line)
+
+
+def test_elapsed_at(line):
+    return TESTCASE_TIME_RE.match(line)
+
+
 class GTest(object):
     WAITING_TESTCASE, WAITING_TEST, IN_TEST = range(3)
-    TESTCASE_START_RE = re.compile('^\[----------\] \d+ tests? from (.*?)$')
-    TESTCASE_END_RE   = re.compile('^\[----------\] \d+ tests? from (.*?) \(\d+ ms total\)$')
-    TEST_START_RE     = re.compile('^\[ RUN      \] (.*?)$')
-    TEST_END_RE       = re.compile('^\[  (FAILED |     OK) \] (.*?)$')
-    TESTCASE_TIME_RE  = re.compile('^\[==========\] \d tests? from \d test cases? ran. \((\d+) ms total\)$')
 
     def __init__(self, source=None, executable=None, term=NullTerminal()):
         self._source = source
@@ -48,7 +76,7 @@ class GTest(object):
         return self._elapsed
 
     def execute(self, context, test_filters):
-        command = [ self.executable() ]
+        command = [self.executable()]
         if test_filters:
             command.append("--gtest_filter={}".format(':'.join(test_filters)))
         self._reset()
@@ -59,16 +87,6 @@ class GTest(object):
         return self.failures()
 
     def __call__(self, channel, line):
-        def testcase_starts_at(line):
-            return GTest.TESTCASE_START_RE.match(line)
-        def testcase_ends_at(line):
-            return GTest.TESTCASE_END_RE.match(line)
-        def test_starts_at(line):
-            return GTest.TEST_START_RE.match(line)
-        def test_ends_at(line):
-            return GTest.TEST_END_RE.match(line)
-        def test_elapsed_at(line):
-            return GTest.TESTCASE_TIME_RE.match(line)
 
         self.line(line)
         if channel == sys.stdout:
@@ -99,9 +117,9 @@ class GTest(object):
         trailer = line[13:]
 
         decorator = [
-                termstyle.bold,
-                termstyle.red if '[  FAILED  ]' in line else termstyle.green
-            ] if '[' in leader else []
+            termstyle.bold,
+            termstyle.red if '[  FAILED  ]' in line else termstyle.green
+        ] if '[' in leader else []
         self._term.writeln(leader, decorator=decorator, end='', verbose=1)
         self._term.writeln(trailer, verbose=1)
 
@@ -109,7 +127,9 @@ class GTest(object):
         testcase = line[line.rfind(' ') + 1:]
         self._testcase = testcase
 
-        self._term.writeln('{} :: {} '.format(str(self._source), testcase), end='', verbose=0)
+        self._term.writeln('{} :: {} '.format(str(self._source), testcase),
+                           end='',
+                           verbose=0)
 
     def end_testcase(self, line):
         self._testcase = None
@@ -129,10 +149,10 @@ class GTest(object):
             raise Exception('Invalid current test')
         failed = '[  FAILED  ]' in line
         self._tests[self._test] = (
-                failed,
-                self._output[:-1], # cut the [ OK/FAILED ] line
-                self._error[:],
-            )
+            failed,
+            self._output[:-1],  # cut the [ OK/FAILED ] line
+            self._error[:],
+        )
         self._current_test = None
 
         if failed:
@@ -155,4 +175,3 @@ class GTest(object):
             if failed:
                 failures.append(test)
         return failures
-

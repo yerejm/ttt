@@ -1,11 +1,12 @@
-import sys
 import os
 import stat
 
 from ttt.gtest import GTest
 
+
 def create_executor(context, build_path):
     return Executor(context, build_path)
+
 
 class Executor(object):
     def __init__(self, context, build_path):
@@ -25,6 +26,7 @@ class Executor(object):
         self._test_filter = create_filter(test_results)
         return collate(test_results)
 
+
 def collate(test_results):
     runtime = 0.0
     fail_count = 0
@@ -36,30 +38,38 @@ def collate(test_results):
         pass_count += test.passes()
         for failure in test.failures():
             failed, out, err = test.test_results(failure)
-            failures.append([ failure, out, err ])
+            failures.append([failure, out, err])
     runtime /= 1000
 
     return {
-            'total_runtime': runtime,
-            'total_passed': pass_count,
-            'total_failed': fail_count,
-            'failures': failures,
-            }
+        'total_runtime': runtime,
+        'total_passed': pass_count,
+        'total_failed': fail_count,
+        'failures': failures,
+    }
+
 
 def create_filter(test_results):
-    return { test.executable(): test.failures() for test in test_results if test.failures() }
+    return {
+        test.executable(): test.failures()
+        for test in test_results if test.failures()
+    }
+
 
 def run_tests(context, testlist, test_filter):
     results = set()
     for test in testlist:
         context.writeln("Executing {}".format(test.executable()), verbose=2)
         if not test_filter or test.executable() in test_filter:
-            failures = test.execute(context,
-                    test_filter[test.executable()] if test_filter else [])
+            failures = test.execute(
+                context,
+                test_filter[test.executable()] if test_filter else []
+            )
             results.add(test)
             if failures and test_filter:
                 break
     return results
+
 
 def create_tests(context, build_path, testfiles):
     def is_executable_test(x):
@@ -67,9 +77,8 @@ def create_tests(context, build_path, testfiles):
         return f in testfiles and m & stat.S_IXUSR
 
     tests = []
-    for dir, file, mode in filter(is_executable_test, context.walk(build_path)):
-        filepath = os.path.join(dir, file)
-        tests.append(GTest(testfiles[file], filepath, context))
+    for d, f, _ in filter(is_executable_test, context.walk(build_path)):
+        filepath = os.path.join(d, f)
+        tests.append(GTest(testfiles[f], filepath, context))
         context.writeln("Test located at {}".format(filepath), verbose=2)
     return tests
-

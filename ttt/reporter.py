@@ -1,8 +1,10 @@
 import os
 import termstyle
 
+
 def create_reporter(context, watch_path=None, build_path=None):
     return Reporter(context, watch_path, build_path)
+
 
 class Reporter(object):
 
@@ -12,10 +14,13 @@ class Reporter(object):
         self._build_path = build_path
 
     def session_start(self, session_descriptor):
-        self.writeln('{} session starts'.format(session_descriptor), decorator=[termstyle.bold], pad='=')
+        self.writeln('{} session starts'.format(session_descriptor),
+                     decorator=[termstyle.bold],
+                     pad='=')
 
     def report_build_path(self):
-        self.writeln('### Building:   {}'.format(self._build_path), decorator=[termstyle.bold])
+        self.writeln('### Building:   {}'.format(self._build_path),
+                     decorator=[termstyle.bold])
 
     def report_watchstate(self, watchstate):
         def report_changes(change, filelist, decorator=[]):
@@ -32,29 +37,33 @@ class Reporter(object):
 
     def wait_change(self):
         self.writeln('waiting for changes',
-                decorator=[termstyle.bold], pad='#')
+                     decorator=[termstyle.bold],
+                     pad='#')
         self.writeln('### Watching:   {}'.format(self._watch_path),
-                decorator=[termstyle.bold])
+                     decorator=[termstyle.bold])
 
     def report_results(self, results):
         shortstats = '{} passed in {} seconds'.format(
-                results['total_passed'],
-                results['total_runtime']
-                )
+            results['total_passed'],
+            results['total_runtime']
+        )
         total_failed = results['total_failed']
         if total_failed > 0:
             self.report_failures(results['failures'])
             self.writeln('{} failed, {}'.format(total_failed, shortstats),
-                    decorator=[termstyle.red,termstyle.bold], pad='=')
+                         decorator=[termstyle.red, termstyle.bold],
+                         pad='=')
         else:
             self.writeln(shortstats,
-                    decorator=[termstyle.green,termstyle.bold], pad='=')
+                         decorator=[termstyle.green, termstyle.bold],
+                         pad='=')
 
     def report_failures(self, results):
         self.writeln('FAILURES', pad='=')
         for testname, out, err in results:
             self.writeln(testname,
-                    decorator=[termstyle.red, termstyle.bold], pad='_')
+                         decorator=[termstyle.red, termstyle.bold],
+                         pad='_')
             test_output_pos = find_source_file_line(out, self._watch_path)
             results = out[test_output_pos:]
             self.writeln(os.linesep.join(results))
@@ -69,7 +78,8 @@ class Reporter(object):
             else:
                 locator = strip_path(results[0], self._watch_path)
             self.writeln(strip_trailer(locator),
-                    decorator=[termstyle.red, termstyle.bold], pad='_')
+                         decorator=[termstyle.red, termstyle.bold],
+                         pad='_')
 
     def interrupt_detected(self):
         self.writeln()
@@ -82,6 +92,7 @@ class Reporter(object):
     def writeln(self, *args, **kwargs):
         self.context.writeln(*args, **kwargs)
 
+
 def strip_path(string, path):
     realpath = path
     if realpath not in string:
@@ -91,6 +102,7 @@ def strip_path(string, path):
     else:
         return string
 
+
 def find_source_file_line(lines, path):
     if path is not None:
         for i, l in enumerate(lines):
@@ -98,6 +110,6 @@ def find_source_file_line(lines, path):
                 return i
     return 0
 
+
 def strip_trailer(string):
     return string[:string.find(' ') - 1]
-

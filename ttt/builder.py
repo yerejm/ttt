@@ -1,13 +1,16 @@
 import os
 import subprocess
 
+
 def create_builder(context, watch_path, build_path, generator=None):
     assert_abspath('Watch', watch_path)
     assert_abspath('Build', build_path)
     return CMakeBuilder(context, watch_path, build_path, generator)
 
+
 class Builder(object):
     pass
+
 
 class CMakeBuilder(Builder):
     """
@@ -59,9 +62,11 @@ class CMakeBuilder(Builder):
         except subprocess.CalledProcessError as e:
             raise BuildError(e)
 
+
 def assert_abspath(ident, path):
     if not os.path.isabs(path):
         raise InvalidAbsolutePathError(ident, path)
+
 
 class InvalidAbsolutePathError(EnvironmentError):
     def __init__(self, *args):
@@ -70,10 +75,10 @@ class InvalidAbsolutePathError(EnvironmentError):
     def __str__(self):
         return "{} path {} must be absolute".format(*self._args)
 
+
 class BuildError(Exception):
     """ Exception raised when the build command fails."""
 
     def __init__(self, exception):
         self.exception = exception
         self.command = exception.cmd
-
