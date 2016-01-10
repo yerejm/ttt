@@ -31,9 +31,9 @@ class TestReporter:
 
         r.session_start('test')
         assert m.getvalue() == termstyle.bold(
-                ''.ljust(29, '=') +
+                ''.ljust(28, '=') +
                 ' test session starts ' +
-                ''.ljust(30, '=')
+                ''.ljust(29, '=')
                 ) + os.linesep
 
     def test_wait_change(self):
@@ -42,9 +42,9 @@ class TestReporter:
 
         r.wait_change()
         assert m.getvalue() == termstyle.bold(
-                    ''.ljust(29, '#') +
+                    ''.ljust(28, '#') +
                     ' waiting for changes ' +
-                    ''.ljust(30, '#')
+                    ''.ljust(29, '#')
                 ) + os.linesep + termstyle.bold(
                     '### Watching:   watch_path'
                 ) + os.linesep
@@ -61,9 +61,9 @@ class TestReporter:
                 }
         r.report_results(results)
         assert m.getvalue() == termstyle.bold(termstyle.green(
-                    ''.ljust(27, '=') +
+                    ''.ljust(26, '=') +
                     ' 1 passed in 2.09 seconds ' +
-                    ''.ljust(27, '=')
+                    ''.ljust(26, '=')
                 )) + os.linesep
 
     def test_report_all_failed(self):
@@ -86,19 +86,19 @@ class TestReporter:
             }
         r.report_results(results)
         expected = [
-            '=================================== FAILURES ===================================',
+            '================================== FAILURES ==================================',
             termstyle.bold(termstyle.red(
-            '____________________________________ fail1 _____________________________________'
+            '___________________________________ fail1 ____________________________________'
             )),
             '/path/to/file:12: blah',
             'results line 2',
             'results line 3',
             'results line 4',
             termstyle.bold(termstyle.red(
-            '__________________________________ to/file:12 __________________________________'
+            '_________________________________ to/file:12 _________________________________'
             )),
             termstyle.bold(termstyle.red(
-            '====================== 1 failed, 0 passed in 2.09 seconds ======================'
+            '===================== 1 failed, 0 passed in 2.09 seconds ====================='
             )),
             ]
         actual = m.getvalue().splitlines()
@@ -131,29 +131,29 @@ class TestReporter:
             }
         r.report_results(results)
         expected = [
-            '=================================== FAILURES ===================================',
+            '================================== FAILURES ==================================',
             termstyle.bold(termstyle.red(
-            '____________________________________ fail1 _____________________________________'
+            '___________________________________ fail1 ____________________________________'
             )),
             '/path/to/file:12: blah',
             'results line 2',
             'results line 3',
             'results line 4',
             termstyle.bold(termstyle.red(
-            '__________________________________ to/file:12 __________________________________'
+            '_________________________________ to/file:12 _________________________________'
             )),
             termstyle.bold(termstyle.red(
-            '____________________________________ fail2 _____________________________________'
+            '___________________________________ fail2 ____________________________________'
             )),
             '/path/to/file:102: blah',
             'results line 2',
             'results line 3',
             'results line 4',
             termstyle.bold(termstyle.red(
-            '_________________________________ to/file:102 __________________________________'
+            '________________________________ to/file:102 _________________________________'
             )),
             termstyle.bold(termstyle.red(
-            '====================== 2 failed, 0 passed in 2.09 seconds ======================'
+            '===================== 2 failed, 0 passed in 2.09 seconds ====================='
             )),
             ]
         actual = m.getvalue().splitlines()
@@ -203,9 +203,9 @@ class TestReporter:
             r.report_interrupt(e)
 
         assert m.getvalue() == (
-                ''.ljust(30, '!') +
+                ''.ljust(29, '!') +
                     ' KeyboardInterrupt ' +
-                    ''.ljust(31, '!')
+                    ''.ljust(30, '!')
                 + os.linesep
                 )
 
@@ -235,22 +235,22 @@ class TestReporter:
             }
         r.report_results(results)
         expected = [
-            '=================================== FAILURES ===================================',
+            '================================== FAILURES ==================================',
             termstyle.bold(termstyle.red(
-            '____________________________________ fail1 _____________________________________'
+            '___________________________________ fail1 ____________________________________'
             )),
             '/path/to/file:12: blah',
             'results line 1',
             'results line 2',
             'results line 3',
-            '------------------------------ Additional output -------------------------------',
+            '----------------------------- Additional output ------------------------------',
             'extra line 1',
             'extra line 2',
             termstyle.bold(termstyle.red(
-            '__________________________________ to/file:12 __________________________________'
+            '_________________________________ to/file:12 _________________________________'
             )),
             termstyle.bold(termstyle.red(
-            '====================== 1 failed, 0 passed in 2.09 seconds ======================'
+            '===================== 1 failed, 0 passed in 2.09 seconds ====================='
             )),
             ]
         actual = m.getvalue().splitlines()
@@ -274,16 +274,16 @@ class TestReporter:
                     ]]
         r.report_failures(failures)
         expected = [
-            '=================================== FAILURES ===================================',
+            '================================== FAILURES ==================================',
             termstyle.bold(termstyle.red(
-            '___________________________________ core.ok ____________________________________'
+            '__________________________________ core.ok ___________________________________'
             )),
             '/path/to/watch/test/test_core.cc:12: Failure',
             'Value of: 2',
             'Expected: ok()',
             'Which is: 42',
             termstyle.bold(termstyle.red(
-            '_____________________________ test/test_core.cc:12 _____________________________',
+            '____________________________ test/test_core.cc:12 ____________________________',
             )),
             ]
         actual = m.getvalue().splitlines()

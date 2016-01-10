@@ -21,7 +21,7 @@ except ImportError:
     except ImportError:
         from os import walk
 
-TERMINAL_MAX_WIDTH = 80
+TERMINAL_MAX_WIDTH = 78
 EXCLUSIONS = set([ '.git', '.hg' ])
 
 def create_context(**kwargs):

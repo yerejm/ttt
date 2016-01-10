@@ -197,7 +197,7 @@ class TestSystemContext:
         f = io.StringIO()
         with stdout_redirector(f):
             sc.writeln('hello', pad='.')
-        assert f.getvalue() == ''.ljust(36, '.') + ' hello ' + ''.ljust(37, '.') + os.linesep
+        assert f.getvalue() == ''.ljust(35, '.') + ' hello ' + ''.ljust(36, '.') + os.linesep
 
     def test_writeln_decorator(self):
         sc = SystemContext()
