@@ -1,10 +1,17 @@
 import os
 import subprocess
+import errno
 
 
 def create_builder(context, watch_path, build_path, generator=None):
-    assert_abspath('Watch', watch_path)
-    assert_abspath('Build', build_path)
+    if not os.path.isabs(watch_path):
+        raise IOError(
+            errno.EINVAL, "Watch path {} must be absolute".format(watch_path)
+        )
+    if not os.path.isabs(build_path):
+        raise IOError(
+            errno.EINVAL, "Build path {} must be absolute".format(build_path)
+        )
     return CMakeBuilder(context, watch_path, build_path, generator)
 
 
@@ -53,32 +60,8 @@ class CMakeBuilder(Builder):
         self._execute(command)
 
     def _execute(self, command, cwd=None):
-        try:
-            self.context.checked_call(
-                command,
-                stderr=subprocess.STDOUT,
-                cwd=cwd
-            )
-        except subprocess.CalledProcessError as e:
-            raise BuildError(e)
-
-
-def assert_abspath(ident, path):
-    if not os.path.isabs(path):
-        raise InvalidAbsolutePathError(ident, path)
-
-
-class InvalidAbsolutePathError(EnvironmentError):
-    def __init__(self, *args):
-        self._args = args
-
-    def __str__(self):
-        return "{} path {} must be absolute".format(*self._args)
-
-
-class BuildError(Exception):
-    """ Exception raised when the build command fails."""
-
-    def __init__(self, exception):
-        self.exception = exception
-        self.command = exception.cmd
+        self.context.checked_call(
+            command,
+            stderr=subprocess.STDOUT,
+            cwd=cwd
+        )

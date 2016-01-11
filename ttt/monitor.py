@@ -4,7 +4,6 @@ import collections
 import itertools
 
 from ttt.builder import create_builder
-from ttt.builder import BuildError
 from ttt.watcher import create_watcher
 from ttt.executor import create_executor
 from ttt.reporter import create_reporter
@@ -64,7 +63,7 @@ class Monitor(object):
             self.reporter.report_build_path()
             try:
                 self.builder.build()
-            except BuildError:
+            except IOError:
                 self.operations.reset()
         return fn
 

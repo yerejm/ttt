@@ -10,12 +10,11 @@ Tests for `builder` module.
 
 import os
 import platform
+import subprocess
 
 from testfixtures import TempDirectory
 
 from ttt.builder import create_builder
-from ttt.builder import BuildError
-from ttt.builder import InvalidAbsolutePathError
 from ttt.systemcontext import SystemContext
 
 class CommandCaptureContext:
@@ -77,21 +76,21 @@ class TestCMakeSlow:
         builder = create_builder(SystemContext(), source_path, build_path)
         try:
             builder.build()
-        except BuildError as e:
-            assert e.command == expected
+        except subprocess.CalledProcessError as e:
+            assert e.cmd == expected
 
     def test_bad_build_from_relative_path(self):
         error = None
         try:
             create_builder(SystemContext(), 'dummy', self.cmake_build_path)
-        except InvalidAbsolutePathError as e:
+        except IOError as e:
             error = e
-        assert str(error) == 'Watch path dummy must be absolute'
+        assert 'Watch path dummy must be absolute' in str(error)
 
         error = None
         try:
             create_builder(SystemContext(), self.cmake_source_path, 'dummy')
-        except InvalidAbsolutePathError as e:
+        except IOError as e:
             error = e
-        assert str(error) == 'Build path dummy must be absolute'
+        assert 'Build path dummy must be absolute' in str(error)
 

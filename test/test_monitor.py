@@ -22,7 +22,6 @@ from ttt.watcher import Watcher
 from ttt.watcher import WatchState
 from ttt.monitor import Monitor
 from ttt.monitor import Operations
-from ttt.watcher import InvalidWatchArea
 from ttt.monitor import create_monitor
 
 @contextmanager
@@ -58,9 +57,9 @@ class TestMonitor:
         bad_path = os.path.abspath(os.path.sep + os.path.join('bad', 'path'))
         try:
             create_monitor(c, bad_path)
-        except InvalidWatchArea as e:
+        except IOError as e:
             error = e
-        assert str(error) == 'Invalid path: {bad} ({bad})'.format(bad=bad_path)
+        assert 'Invalid path: {bad} ({bad})'.format(bad=bad_path) in str(error)
 
     def test_create_monitor_default_paths(self):
         m = create_monitor(MagicMock())
@@ -174,10 +173,8 @@ class TestMonitor:
 
     def test_builderror(self):
         def build_error():
-            from ttt.builder import BuildError
             from collections import namedtuple
-            FakeException = namedtuple('FakeException', 'cmd')
-            raise BuildError(FakeException(cmd='boom'))
+            raise IOError
 
         o = watcher = builder = executor = reporter = MagicMock()
         watcher.poll = MagicMock(return_value=WatchState(['change']))

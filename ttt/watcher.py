@@ -1,6 +1,7 @@
 import re
 import os
 import platform
+import errno
 
 from ttt import systemcontext
 
@@ -8,7 +9,10 @@ from ttt import systemcontext
 def create_watcher(context, watch_path, **kwargs):
     full_watch_path = os.path.abspath(watch_path)
     if not os.path.exists(full_watch_path):
-        raise InvalidWatchArea(watch_path, full_watch_path)
+        raise IOError(
+            errno.ENOENT,
+            "Invalid path: {} ({})".format(watch_path, full_watch_path)
+        )
     return Watcher(context, full_watch_path, **kwargs)
 
 
@@ -167,11 +171,3 @@ class WatchState(object):
             repr(self.deletes),
             repr(self.updates)
         )
-
-
-class InvalidWatchArea(IOError):
-    def __init__(self, path, abspath):
-        self.paths = [path, abspath]
-
-    def __str__(self):
-        return "Invalid path: {} ({})".format(*self.paths)
