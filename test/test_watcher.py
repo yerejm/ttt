@@ -11,10 +11,11 @@ Tests for `watcher` module.
 import os
 import re
 from testfixtures import TempDirectory
+from ttt import watcher
 from ttt.watcher import Watcher
 from ttt.watcher import WatchedFile
 from ttt.watcher import create_watchstate
-from ttt.watcher import create_watcher
+from ttt.watcher import watch
 from ttt.systemcontext import SystemContext
 
 class TestWatcher:
@@ -33,11 +34,11 @@ class TestWatcher:
         work_directory.write('blah.txt', b'')
 
         sc = SystemContext()
-        w = create_watcher(sc, work_directory.path)
+        w = watch(sc, work_directory.path)
         w.poll()
 
-        filelist = w.filelist()
-        assert set([ filelist[f].name() for f in filelist ]) == set(['a.h', 'a.c', 'a.cc', 'CMakeLists.txt'])
+        filelist = w.filelist
+        assert set([ filelist[f].name for f in filelist ]) == set(['a.h', 'a.c', 'a.cc', 'CMakeLists.txt'])
 
     def test_custom_watcher(self):
         work_directory = TempDirectory()
@@ -48,11 +49,11 @@ class TestWatcher:
         work_directory.write('blah.txt', b'')
 
         sc = SystemContext()
-        w = create_watcher(sc, work_directory.path, source_patterns=['CMakeLists.txt'])
+        w = watch(sc, work_directory.path, source_patterns=['CMakeLists.txt'])
         w.poll()
 
-        filelist = w.filelist()
-        assert [ filelist[f].name() for f in filelist ] == ['CMakeLists.txt']
+        filelist = w.filelist
+        assert [ filelist[f].name for f in filelist ] == ['CMakeLists.txt']
 
     def test_poll(self):
         work_directory = TempDirectory()
@@ -63,40 +64,40 @@ class TestWatcher:
         work_directory.write('blah.txt', b'')
 
         sc = SystemContext()
-        w = create_watcher(sc, work_directory.path)
+        w = watch(sc, work_directory.path)
 
         watchstate = w.poll()
-        assert watchstate.has_changed()
+        assert watcher.has_changes(watchstate)
 
         watchstate = w.poll()
-        assert not watchstate.has_changed()
+        assert not watcher.has_changes(watchstate)
 
         work_directory.write('b.c', b'')
         watchstate = w.poll()
-        assert watchstate.has_changed()
+        assert watcher.has_changes(watchstate)
 
-    def test_testdict(self):
+    def test_derive_tests(self):
         work_directory = TempDirectory()
         work_directory.makedir('test')
         testfile_path = work_directory.write(['test', 'test_dummy.c'], b'')
 
         sc = SystemContext()
-        w = create_watcher(sc, work_directory.path)
+        w = watch(sc, work_directory.path)
         w.poll()
 
-        exefile = 'test_dummy' + Watcher.EXE_SUFFIX
-        assert w.testdict() == { exefile: os.path.join('test', 'test_dummy.c') }
+        exefile = 'test_dummy' + watcher.EXE_SUFFIX
+        assert(watcher.derive_tests(w.filelist.values()) ==
+                { exefile: os.path.join('test', 'test_dummy.c') })
 
 class TestWatchState:
     def test_create(self):
         ws = create_watchstate(dict(), dict())
 
-        assert not ws.has_changed()
-        assert ws.has_changed() == set()
+        assert not watcher.has_changes(ws)
 
     def test_equality(self):
-        before = { 'test': WatchedFile() }
-        after = { 'test': WatchedFile() }
+        before = { 'test': WatchedFile(relpath='', name='', mtime='') }
+        after = { 'test': WatchedFile(relpath='', name='', mtime='') }
 
         ws1 = create_watchstate(before, after)
         ws2 = create_watchstate(dict(), dict())
@@ -116,50 +117,41 @@ class TestWatchState:
 
     def test_unchanged_watchstate(self):
         before = dict()
-        before['test'] = WatchedFile()
+        before['test'] = WatchedFile(relpath='', name='', mtime='')
         after = dict()
-        after['test'] = WatchedFile()
+        after['test'] = WatchedFile(relpath='', name='', mtime='')
 
         ws = create_watchstate(before, after)
 
-        assert not ws.has_changed()
-        assert ws.has_changed() == set()
+        assert not watcher.has_changes(ws)
 
     def test_addition_watchstate(self):
         before = dict()
         after = dict()
-        after['test'] = WatchedFile()
+        after['test'] = WatchedFile(relpath='', name='', mtime='')
 
         ws = create_watchstate(before, after)
-        assert ws.has_changed()
-        assert ws.has_changed() == set(['test'])
+        assert ws.inserts == set(['test'])
+        assert not ws.updates
+        assert not ws.deletes
 
     def test_modification_watchstate(self):
         before = dict()
-        before['test'] = WatchedFile('', '', '', 1)
+        before['test'] = WatchedFile(relpath='', name='', mtime=1)
         after = dict()
-        after['test'] = WatchedFile('', '', '', 2)
+        after['test'] = WatchedFile(relpath='', name='', mtime=2)
 
         ws = create_watchstate(before, after)
-        assert ws.has_changed()
-        assert ws.has_changed() == set(['test'])
+        assert ws.updates == set(['test'])
+        assert not ws.inserts
+        assert not ws.deletes
 
     def test_deletion_watchstate(self):
         before = dict()
-        before['test'] = WatchedFile()
+        before['test'] = WatchedFile(relpath='', name='', mtime='')
         after = dict()
 
         ws = create_watchstate(before, after)
-        assert ws.has_changed()
-        assert ws.has_changed() == set(['test'])
-
-    def test_str(self):
-        ws = create_watchstate()
-        assert str(ws) == "WatchState(0 inserted, 0 deleted, 0 modified)"
-
-    def test_repr(self):
-        empty_list = repr(set([]))
-        ws = create_watchstate()
-        assert repr(ws) == "WatchState({empty}, {empty}, {empty})".format(empty=empty_list)
-
-
+        assert ws.deletes == set(['test'])
+        assert not ws.updates
+        assert not ws.inserts

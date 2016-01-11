@@ -35,7 +35,7 @@ class MockContext(SystemContext):
 
     def walk(self, path):
         for x, y, z in self.files:
-            yield x, y, z
+            yield x, y, z, 0
 
     def getvalue(self):
         return self.output

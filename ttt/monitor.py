@@ -4,7 +4,7 @@ import collections
 import itertools
 
 from ttt.builder import create_builder
-from ttt.watcher import create_watcher
+from ttt.watcher import watch, derive_tests, has_changes
 from ttt.executor import create_executor
 from ttt.reporter import create_reporter
 
@@ -13,7 +13,7 @@ DEFAULT_BUILD_PATH_SUFFIX = '-build'
 
 
 def create_monitor(context, watch_path=os.getcwd(), **kwargs):
-    watcher = create_watcher(context, watch_path)
+    watcher = watch(context, watch_path)
     custom_build_path = kwargs.get('build_path')
     build_path = (os.path.abspath(custom_build_path) if custom_build_path
                   else make_build_path(watcher.watch_path))
@@ -70,7 +70,9 @@ class Monitor(object):
     def test(self):
         def fn():
             self.reporter.session_start('test')
-            results = self.executor.test(self.watcher.testdict())
+            results = self.executor.test(
+                derive_tests(self.watcher.filelist.values())
+            )
             self.reporter.report_results(results)
 
             if results['total_failed'] == 0 and self.last_failed > 0:
@@ -91,7 +93,7 @@ class Monitor(object):
     def check_for_changes(self):
         try:
             watchstate = self.watcher.poll()
-            if watchstate.has_changed() or self.runstate.allowed_once():
+            if has_changes(watchstate) or self.runstate.allowed_once():
                 self.operations.append(
                     self.report_change(watchstate),
                     self.build(),

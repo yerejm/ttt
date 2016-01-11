@@ -89,7 +89,7 @@ class TestMonitor:
 
     def test_poll_build_test(self):
         o = watcher = builder = executor = reporter = MagicMock()
-        watcher.poll = MagicMock(return_value=WatchState(['change']))
+        watcher.poll = MagicMock(return_value=WatchState(set(['change']), set(), set(), 0))
         executor.test = MagicMock(return_value={'total_failed':0})
         m = Monitor(watcher, builder, executor, reporter, interval=0)
 
@@ -102,7 +102,7 @@ class TestMonitor:
 
     def test_test_again_on_fix(self):
         o = watcher = builder = executor = reporter = MagicMock()
-        watcher.poll = MagicMock(return_value=WatchState(['change']))
+        watcher.poll = MagicMock(return_value=WatchState(set(['change']), set(), set(), 0))
         executor.test = MagicMock(return_value={'total_failed':1})
         m = Monitor(watcher, builder, executor, reporter, interval=0)
         m.run(step=True)
@@ -123,7 +123,10 @@ class TestMonitor:
 
         o.reset_mock()
 
-        watcher.poll = MagicMock(return_value=WatchState(['change']), side_effect=KeyboardInterrupt)
+        watcher.poll = MagicMock(
+            return_value=WatchState(set(['change']), set(), set(), 0),
+            side_effect=KeyboardInterrupt
+        )
 
         m.run(step=True)
 
@@ -133,7 +136,7 @@ class TestMonitor:
 
     def test_keyboardinterrupt_during_wait(self):
         o = watcher = builder = executor = reporter = MagicMock()
-        watcher.poll = MagicMock(return_value=WatchState())
+        watcher.poll = MagicMock(return_value=WatchState(set(), set(), set(), 0))
         m = Monitor(watcher, builder, executor, reporter, interval=0)
 
         o.reset_mock()
@@ -146,7 +149,7 @@ class TestMonitor:
 
     def test_continue_after_wait_interrupt(self):
         o = watcher = builder = executor = reporter = MagicMock()
-        watcher.poll = MagicMock(return_value=WatchState())
+        watcher.poll = MagicMock(return_value=WatchState(set(), set(), set(), 0))
         m = Monitor(watcher, builder, executor, reporter, interval=0)
 
         o.reset_mock()
@@ -160,7 +163,7 @@ class TestMonitor:
 
     def test_keyboardinterrupt_during_operations(self):
         o = watcher = builder = executor = reporter = MagicMock()
-        watcher.poll = MagicMock(return_value=WatchState(['change']))
+        watcher.poll = MagicMock(return_value=WatchState(set(['change']), set(), set(), 0))
         builder.build = MagicMock(side_effect=Interrupter(1))
         m = Monitor(watcher, builder, executor, reporter, interval=0)
 
@@ -177,7 +180,7 @@ class TestMonitor:
             raise IOError
 
         o = watcher = builder = executor = reporter = MagicMock()
-        watcher.poll = MagicMock(return_value=WatchState(['change']))
+        watcher.poll = MagicMock(return_value=WatchState(set(['change']), set(), set(), 0))
         builder.build = MagicMock(side_effect=build_error)
         m = Monitor(watcher, builder, executor, reporter, interval=0)
 

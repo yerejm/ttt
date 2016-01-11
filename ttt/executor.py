@@ -73,11 +73,11 @@ def run_tests(context, testlist, test_filter):
 
 def create_tests(context, build_path, testfiles):
     def is_executable_test(x):
-        d, f, m = x
+        d, f, m, t = x
         return f in testfiles and m & stat.S_IXUSR
 
     tests = []
-    for d, f, _ in filter(is_executable_test, context.walk(build_path)):
+    for d, f, _, t in filter(is_executable_test, context.walk(build_path)):
         filepath = os.path.join(d, f)
         tests.append(GTest(testfiles[f], filepath, context))
         context.writeln("Test located at {}".format(filepath), verbose=2)

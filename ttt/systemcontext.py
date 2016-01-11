@@ -40,9 +40,14 @@ class SystemContext(object):
             dirlist[:] = [d for d in dirlist if d not in EXCLUSIONS]
             for filename in filelist:
                 path = os.path.join(dirpath, filename)
-                statmode = os.stat(path).st_mode
-                if stat.S_ISREG(statmode):
-                    yield dirpath, filename, statmode
+                filestat = os.stat(path)
+                if stat.S_ISREG(filestat.st_mode):
+                    yield (
+                        dirpath,
+                        filename,
+                        filestat.st_mode,
+                        filestat.st_mtime
+                    )
 
     def execute(self, *args, **kwargs):
         kwargs['universal_newlines'] = True
