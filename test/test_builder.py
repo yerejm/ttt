@@ -28,7 +28,7 @@ class TestCMake:
     def test_default_build(self):
         ccc = CommandCaptureContext()
         builder = create_builder(ccc, '/path/to/source', '/path/to/build')
-        builder.build()
+        builder()
 
         assert ccc.calls == [
                 (['cmake', '-H/path/to/source', '-B/path/to/build'],),
@@ -38,7 +38,7 @@ class TestCMake:
     def test_build_with_generator(self):
         ccc = CommandCaptureContext()
         builder = create_builder(ccc, '/path/to/source', '/path/to/build', 'Ninja')
-        builder.build()
+        builder()
 
         assert ccc.calls == [
                 (['cmake', '-G', 'Ninja', '-H/path/to/source', '-B/path/to/build'],),
@@ -59,7 +59,7 @@ class TestCMakeSlow:
     def test_good_build(self):
         build_file = 'test.sln' if platform.system() == 'Windows' else 'Makefile'
         builder = create_builder(SystemContext(), self.cmake_source_path, self.cmake_build_path)
-        builder.build()
+        builder()
 
         assert os.path.exists(os.path.join(self.cmake_build_path, 'CMakeFiles'))
         assert os.path.exists(os.path.join(self.cmake_build_path, build_file))
@@ -75,7 +75,7 @@ class TestCMakeSlow:
 
         builder = create_builder(SystemContext(), source_path, build_path)
         try:
-            builder.build()
+            builder()
         except subprocess.CalledProcessError as e:
             assert e.cmd == expected
 

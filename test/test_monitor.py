@@ -64,8 +64,8 @@ class TestMonitor:
     def test_create_monitor_default_paths(self):
         m = create_monitor(MagicMock())
         cwd = os.getcwd()
-        assert m.watcher.watch_path == cwd
-        assert m.builder.build_path == '{}-build'.format(os.path.join(cwd, os.path.basename(cwd)))
+        assert m.reporter.watch_path == cwd
+        assert m.reporter.build_path == '{}-build'.format(os.path.join(cwd, os.path.basename(cwd)))
 
     def test_create_monitor_with_watch_path(self):
         wd = TempDirectory()
@@ -74,8 +74,8 @@ class TestMonitor:
 
         with chdir(wd.path):
             m = create_monitor(MagicMock(), source_path)
-        assert m.watcher.watch_path == source_path
-        assert m.builder.build_path == '{}-build'.format(os.path.realpath(source_path))
+        assert m.reporter.watch_path == source_path
+        assert m.reporter.build_path == '{}-build'.format(os.path.realpath(source_path))
 
     def test_create_monitor_with_watch_and_build_path(self):
         wd = TempDirectory()
@@ -84,8 +84,8 @@ class TestMonitor:
 
         with chdir(wd.path):
             m = create_monitor(MagicMock(), source_path, build_path=os.path.basename(build_path))
-        assert m.watcher.watch_path == source_path
-        assert m.builder.build_path == '{}'.format(os.path.realpath(build_path))
+        assert m.reporter.watch_path == source_path
+        assert m.reporter.build_path == '{}'.format(os.path.realpath(build_path))
 
     def test_poll_build_test(self):
         o = watcher = builder = executor = reporter = MagicMock()
@@ -96,9 +96,11 @@ class TestMonitor:
         o.reset_mock()
 
         m.run(step=True)
-        call_filter = set([ 'poll', 'build', 'test', 'wait_change' ])
-        calls = [ c for c,a,kw in o.method_calls if c in call_filter ]
-        assert calls == [ 'poll', 'build', 'test', 'wait_change' ]
+
+        # build step is captured as ''
+        call_filter = set([ 'poll', '', 'test', 'wait_change' ])
+        calls = [ c for c,a,kw in o.mock_calls if c in call_filter ]
+        assert calls == [ 'poll', '', 'test', 'wait_change' ]
 
     def test_test_again_on_fix(self):
         o = watcher = builder = executor = reporter = MagicMock()
@@ -113,9 +115,7 @@ class TestMonitor:
 
         m.run(step=True)
 
-        call_filter = set([ 'poll', 'build', 'test', 'wait_change' ])
-        calls = [ c for c,a,kw in o.method_calls if c in call_filter ]
-        assert calls == [ 'poll', 'build', 'test', 'test', 'wait_change' ]
+        assert len([ c for c,a,kw in o.method_calls if c == 'test' ]) == 2
 
     def test_keyboardinterrupt_during_poll(self):
         o = watcher = builder = executor = reporter = MagicMock()
@@ -162,34 +162,32 @@ class TestMonitor:
         assert calls == [ 'interrupt_detected' ]
 
     def test_keyboardinterrupt_during_operations(self):
-        o = watcher = builder = executor = reporter = MagicMock()
-        watcher.poll = MagicMock(return_value=WatchState(set(['change']), set(), set(), 0))
-        builder.build = MagicMock(side_effect=Interrupter(1))
+        def builder():
+            raise KeyboardInterrupt
+
+        o = watcher = executor = reporter = MagicMock()
+        watcher.poll = MagicMock(
+            return_value=WatchState(set(['change']), set(), set(), 0)
+        )
         m = Monitor(watcher, builder, executor, reporter, interval=0)
 
         o.reset_mock()
         m.run(step=True)
 
-        call_filter = set([ 'poll', 'build', 'test', 'wait_change', 'report_interrupt' ])
-        calls = [ c for c,a,kw in o.method_calls if c in call_filter ]
-        assert calls == [ 'poll', 'build', 'report_interrupt' ]
+        assert 'report_interrupt' in set([ c for c,a,kw in o.method_calls])
 
     def test_builderror(self):
-        def build_error():
-            from collections import namedtuple
+        def builder():
             raise IOError
 
-        o = watcher = builder = executor = reporter = MagicMock()
+        o = watcher = executor = reporter = MagicMock()
         watcher.poll = MagicMock(return_value=WatchState(set(['change']), set(), set(), 0))
-        builder.build = MagicMock(side_effect=build_error)
         m = Monitor(watcher, builder, executor, reporter, interval=0)
 
         o.reset_mock()
         m.run(step=True)
 
-        call_filter = set([ 'poll', 'build', 'test', 'wait_change', 'report_interrupt' ])
-        calls = [ c for c,a,kw in o.method_calls if c in call_filter ]
-        assert calls == [ 'poll', 'build', 'wait_change' ]
+        assert 'test' not in set([ c for c,a,kw in o.method_calls ])
 
 class Interrupter:
     def __init__(self, count):

@@ -10,8 +10,8 @@ class Reporter(object):
 
     def __init__(self, context, watch_path, build_path):
         self.context = context
-        self._watch_path = watch_path
-        self._build_path = build_path
+        self.watch_path = watch_path
+        self.build_path = build_path
 
     def session_start(self, session_descriptor):
         self.writeln('{} session starts'.format(session_descriptor),
@@ -19,7 +19,7 @@ class Reporter(object):
                      pad='=')
 
     def report_build_path(self):
-        self.writeln('### Building:   {}'.format(self._build_path),
+        self.writeln('### Building:   {}'.format(self.build_path),
                      decorator=[termstyle.bold])
 
     def report_watchstate(self, watchstate):
@@ -39,7 +39,7 @@ class Reporter(object):
         self.writeln('waiting for changes',
                      decorator=[termstyle.bold],
                      pad='#')
-        self.writeln('### Watching:   {}'.format(self._watch_path),
+        self.writeln('### Watching:   {}'.format(self.watch_path),
                      decorator=[termstyle.bold])
 
     def report_results(self, results):
@@ -64,7 +64,7 @@ class Reporter(object):
             self.writeln(testname,
                          decorator=[termstyle.red, termstyle.bold],
                          pad='_')
-            test_output_pos = find_source_file_line(out, self._watch_path)
+            test_output_pos = find_source_file_line(out, self.watch_path)
             results = out[test_output_pos:]
             self.writeln(os.linesep.join(results))
 
@@ -73,10 +73,10 @@ class Reporter(object):
                 self.writeln('Additional output', pad='-')
                 self.writeln(os.linesep.join(extra_out))
 
-            if self._watch_path is None:
+            if self.watch_path is None:
                 locator = results[0]
             else:
-                locator = strip_path(results[0], self._watch_path)
+                locator = strip_path(results[0], self.watch_path)
             self.writeln(strip_trailer(locator),
                          decorator=[termstyle.red, termstyle.bold],
                          pad='_')

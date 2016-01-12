@@ -62,7 +62,7 @@ class Monitor(object):
             self.reporter.session_start('build')
             self.reporter.report_build_path()
             try:
-                self.builder.build()
+                self.builder()
             except IOError:
                 self.operations.reset()
         return fn

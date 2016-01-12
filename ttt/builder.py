@@ -1,6 +1,7 @@
 import os
 import subprocess
 import errno
+from functools import partial
 
 
 def create_builder(context, watch_path, build_path, generator=None):
@@ -12,56 +13,33 @@ def create_builder(context, watch_path, build_path, generator=None):
         raise IOError(
             errno.EINVAL, "Build path {} must be absolute".format(build_path)
         )
-    return CMakeBuilder(context, watch_path, build_path, generator)
+    return partial(
+        execute,
+        context,
+        [
+            partial(cmake_generate, watch_path, build_path, generator),
+            partial(cmake_build, build_path)
+        ]
+    )
 
 
-class Builder(object):
-    pass
+def execute(context, commands):
+    for command_generator in commands:
+        command = command_generator()
+        if command:
+            context.checked_call(command, stderr=subprocess.STDOUT)
 
 
-class CMakeBuilder(Builder):
-    """
-    Provides a context in which cmake operations occur.
-    This will create a cmake build area for a source area if none exists and
-    provide a means to call the build command in that area.
-    """
+def cmake_build(build_path):
+    return ['cmake', '--build', build_path]
 
-    def __init__(self, context, watch_path, build_path, build_system):
-        self.context = context
-        self.watch_path = watch_path
-        self.build_path = build_path
-        self.build_system = build_system
 
-    def build(self):
-        """
-        Calls the build command in the build area. If no build area exists, it
-        will be created.
-        """
-        if not os.path.exists(os.path.join(self.build_path, 'CMakeFiles')):
-            self._cmake_generate()
-        self._build()
-
-    def _build(self):
-        self._execute([
-            'cmake',
-            '--build',
-            self.build_path
-        ])
-
-    def _cmake_generate(self):
-        watch_path = self.watch_path
-        build_path = self.build_path
+def cmake_generate(watch_path, build_path, generator):
+    if not os.path.exists(os.path.join(build_path, 'CMakeFiles')):
         command = ['cmake']
-        if self.build_system is not None:
+        if generator:
             command.append('-G')
-            command.append(self.build_system)
+            command.append(generator)
         command.append('-H{}'.format(watch_path))
         command.append('-B{}'.format(build_path))
-        self._execute(command)
-
-    def _execute(self, command, cwd=None):
-        self.context.checked_call(
-            command,
-            stderr=subprocess.STDOUT,
-            cwd=cwd
-        )
+        return command
