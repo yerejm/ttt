@@ -5,13 +5,6 @@ import os
 import sys
 
 
-class NullTerminal(object):
-    def __getattr__(self, method_name):
-        def fn(*args, **kwargs):
-            pass
-        return fn
-
-
 TESTCASE_START_RE = re.compile('^\[----------\] \d+ tests? from (.*?)$')
 TESTCASE_END_RE = re.compile(
     '^\[----------\] \d+ tests? from (.*?) \(\d+ ms total\)$'
@@ -21,6 +14,13 @@ TEST_END_RE = re.compile('^\[  (FAILED |     OK) \] (.*?)$')
 TESTCASE_TIME_RE = re.compile(
     '^\[==========\] \d tests? from \d test cases? ran. \((\d+) ms total\)$'
 )
+
+
+class NullTerminal(object):
+    def __getattr__(self, method_name):
+        def fn(*args, **kwargs):
+            pass
+        return fn
 
 
 def testcase_starts_at(line):
@@ -85,6 +85,9 @@ class GTest(object):
         self._term.writeln(os.linesep.join(stdout), verbose=2)
         self._term.writeln(os.linesep.join(stderr), verbose=2)
         return self.failures()
+
+    def failures(self):
+        return [test for test, results in self._tests.items() if results[0]]
 
     def __call__(self, channel, line):
 
@@ -167,11 +170,3 @@ class GTest(object):
 
     def test_results(self, testname):
         return self._tests[testname]
-
-    def failures(self):
-        failures = []
-        for test, results in self._tests.items():
-            failed, out, err = results
-            if failed:
-                failures.append(test)
-        return failures
