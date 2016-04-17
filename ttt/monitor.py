@@ -7,6 +7,7 @@ from ttt.builder import create_builder
 from ttt.watcher import watch, derive_tests, has_changes
 from ttt.executor import create_executor
 from ttt.reporter import create_reporter
+from ttt.reporter import IRCReporter
 
 
 DEFAULT_BUILD_PATH_SUFFIX = '-build'
@@ -24,8 +25,17 @@ def create_monitor(context, watch_path=os.getcwd(), **kwargs):
         kwargs.get('generator')
     )
     executor = create_executor(context, build_path)
-    reporter = create_reporter(context, watcher.watch_path, build_path)
-    return Monitor(watcher, builder, executor, reporter)
+    terminal_reporter = create_reporter(context, watcher.watch_path, build_path)
+    reporters = [terminal_reporter]
+    if 'irc_server' in kwargs:
+        reporters.append(IRCReporter(
+            kwargs.get('irc_server'),
+            kwargs.get('irc_port'),
+            kwargs.get('irc_channel'),
+            kwargs.get('irc_nick')
+        ))
+
+    return Monitor(watcher, builder, executor, reporters)
 
 
 def make_build_path(watch_path, suffix=DEFAULT_BUILD_PATH_SUFFIX):
@@ -38,11 +48,11 @@ def make_build_path(watch_path, suffix=DEFAULT_BUILD_PATH_SUFFIX):
 class Monitor(object):
     DEFAULT_POLLING_INTERVAL = 1
 
-    def __init__(self, watcher, builder, executor, reporter, **kwargs):
+    def __init__(self, watcher, builder, executor, reporters, **kwargs):
         self.watcher = watcher
         self.builder = builder
         self.executor = executor
-        self.reporter = reporter
+        self.reporters = reporters
 
         self.operations = Operations()
         self.runstate = Runstate()
@@ -52,15 +62,28 @@ class Monitor(object):
 
         self.watcher.poll()
 
+    def notify(self, message, *args):
+        """
+        Notifies all registered reporters for the given message. It is expected
+        that the message given complies with what is expected by the Reporter
+        interface.
+        """
+        for r in self.reporters:
+            try:
+                command = getattr(r, message)
+                command(*args)
+            except AttributeError:
+                pass
+
     def report_change(self, watchstate):
         def fn():
-            self.reporter.report_watchstate(watchstate)
+            self.notify('report_watchstate', watchstate)
         return fn
 
     def build(self):
         def fn():
-            self.reporter.session_start('build')
-            self.reporter.report_build_path()
+            self.notify('session_start', 'build')
+            self.notify('report_build_path')
             try:
                 self.builder()
             except IOError:
@@ -69,11 +92,11 @@ class Monitor(object):
 
     def test(self):
         def fn():
-            self.reporter.session_start('test')
+            self.notify('session_start', 'test')
             results = self.executor.test(
                 derive_tests(self.watcher.filelist.values())
             )
-            self.reporter.report_results(results)
+            self.notify('report_results', results)
 
             if results['total_failed'] == 0 and self.last_failed > 0:
                 self.last_failed = 0
@@ -100,15 +123,16 @@ class Monitor(object):
                     self.test()
                 )
                 self.operations.run()
-                self.reporter.wait_change()
+                self.notify('wait_change')
         except KeyboardInterrupt as e:
-            self.reporter.report_interrupt(e)
+            self.notify('report_interrupt', e)
 
     def wait(self):
         try:
+            self.notify('wait')
             time.sleep(self.polling_interval)
         except KeyboardInterrupt:
-            self.reporter.interrupt_detected()
+            self.notify('interrupt_detected')
             self.executor.clear_filter()
             self.verify_stop()
 
@@ -117,7 +141,7 @@ class Monitor(object):
             time.sleep(self.polling_interval)
             self.runstate.allow_once()
         except KeyboardInterrupt:
-            self.reporter.halt()
+            self.notify('halt')
             self.runstate.stop()
 
 

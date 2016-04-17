@@ -1,12 +1,75 @@
 import os
 import termstyle
+from ircclient import IRCClient
+import socket
 
 
 def create_reporter(context, watch_path=None, build_path=None):
-    return Reporter(context, watch_path, build_path)
+    return TerminalReporter(context, watch_path, build_path)
 
 
 class Reporter(object):
+    """
+    Abstract base class describing the interface used by Monitor when notifying
+    of events occurring during the watch/build/test cycle.
+    """
+    def session_start(self, session_descriptor):
+        pass
+
+    def report_build_path(self):
+        pass
+
+    def report_watchstate(self, watchstate):
+        pass
+
+    def report_interrupt(self, interrupt):
+        pass
+
+    def wait_change(self):
+        pass
+
+    def report_results(self, results):
+        pass
+
+    def report_failures(self, results):
+        pass
+
+    def interrupt_detected(self):
+        pass
+
+    def halt(self):
+        pass
+
+
+class IRCReporter(Reporter):
+
+    def __init__(self, server, port, channel, nick):
+        if server is None:
+            raise Exception("Invalid server")
+        self.nick = nick
+        self.irc = IRCClient(channel, nick, server, port)
+        self.irc.connect()
+
+    def wait(self):
+        self.irc.poll()
+
+    def halt(self):
+        self.irc.disconnect()
+
+    def report_results(self, results):
+        shortstats = '{} passed in {} seconds'.format(
+            results['total_passed'],
+            results['total_runtime']
+        )
+        total_failed = results['total_failed']
+        if total_failed > 0:
+            self.report_failures(results['failures'])
+            self.irc.say('TTT: {} failed, {}'.format(total_failed, shortstats))
+        else:
+            self.irc.say('TTT: {}'.format(shortstats))
+
+
+class TerminalReporter(Reporter):
 
     def __init__(self, context, watch_path, build_path):
         self.context = context
