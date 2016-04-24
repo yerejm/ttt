@@ -26,7 +26,7 @@ def create_monitor(context, watch_path=os.getcwd(), **kwargs):
     executor = create_executor(context, build_path)
     terminal_reporter = create_terminal_reporter(context, watcher.watch_path, build_path)
     reporters = [terminal_reporter]
-    if 'irc_server' in kwargs:
+    if 'irc_server' in kwargs and kwargs['irc_server'] is not None:
         reporters.append(create_irc_reporter(
             kwargs.get('irc_server'),
             kwargs.get('irc_port'),
