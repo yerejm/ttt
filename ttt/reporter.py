@@ -4,8 +4,13 @@ from ttt.ircclient import IRCClient
 import socket
 
 
-def create_reporter(context, watch_path=None, build_path=None):
+def create_terminal_reporter(context, watch_path=None, build_path=None):
     return TerminalReporter(context, watch_path, build_path)
+
+def create_irc_reporter(server, port, channel, nick):
+    if server is None:
+        raise Exception("Invalid server")
+    return IRCReporter(IRCClient(channel, nick, server, port))
 
 
 class Reporter(object):
@@ -43,11 +48,8 @@ class Reporter(object):
 
 class IRCReporter(Reporter):
 
-    def __init__(self, server, port, channel, nick):
-        if server is None:
-            raise Exception("Invalid server")
-        self.nick = nick
-        self.irc = IRCClient(channel, nick, server, port)
+    def __init__(self, irc):
+        self.irc = irc
         self.irc.connect()
 
     def wait(self):
@@ -63,7 +65,6 @@ class IRCReporter(Reporter):
         )
         total_failed = results['total_failed']
         if total_failed > 0:
-            self.report_failures(results['failures'])
             self.irc.say('TTT: {} failed, {}'.format(total_failed, shortstats))
         else:
             self.irc.say('TTT: {}'.format(shortstats))

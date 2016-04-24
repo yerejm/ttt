@@ -6,8 +6,7 @@ import itertools
 from ttt.builder import create_builder
 from ttt.watcher import watch, derive_tests, has_changes
 from ttt.executor import create_executor
-from ttt.reporter import create_reporter
-from ttt.reporter import IRCReporter
+from ttt.reporter import create_terminal_reporter, create_irc_reporter
 
 
 DEFAULT_BUILD_PATH_SUFFIX = '-build'
@@ -25,10 +24,10 @@ def create_monitor(context, watch_path=os.getcwd(), **kwargs):
         kwargs.get('generator')
     )
     executor = create_executor(context, build_path)
-    terminal_reporter = create_reporter(context, watcher.watch_path, build_path)
+    terminal_reporter = create_terminal_reporter(context, watcher.watch_path, build_path)
     reporters = [terminal_reporter]
     if 'irc_server' in kwargs:
-        reporters.append(IRCReporter(
+        reporters.append(create_irc_reporter(
             kwargs.get('irc_server'),
             kwargs.get('irc_port'),
             kwargs.get('irc_channel'),
