@@ -23,6 +23,7 @@ from ttt.watcher import WatchState
 from ttt.monitor import Monitor
 from ttt.monitor import Operations
 from ttt.monitor import create_monitor
+from ttt.reporter import Reporter
 
 @contextmanager
 def chdir(path):
@@ -64,8 +65,10 @@ class TestMonitor:
     def test_create_monitor_default_paths(self):
         m = create_monitor(MagicMock())
         cwd = os.getcwd()
-        assert m.reporter.watch_path == cwd
-        assert m.reporter.build_path == '{}-build'.format(os.path.join(cwd, os.path.basename(cwd)))
+        assert len(m.reporters) == 1
+        reporter = m.reporters[0]
+        assert reporter.watch_path == cwd
+        assert reporter.build_path == '{}-build'.format(os.path.join(cwd, os.path.basename(cwd)))
 
     def test_create_monitor_with_watch_path(self):
         wd = TempDirectory()
@@ -74,8 +77,10 @@ class TestMonitor:
 
         with chdir(wd.path):
             m = create_monitor(MagicMock(), source_path)
-        assert m.reporter.watch_path == source_path
-        assert m.reporter.build_path == '{}-build'.format(os.path.realpath(source_path))
+        assert len(m.reporters) == 1
+        reporter = m.reporters[0]
+        assert reporter.watch_path == source_path
+        assert reporter.build_path == '{}-build'.format(os.path.realpath(source_path))
 
     def test_create_monitor_with_watch_and_build_path(self):
         wd = TempDirectory()
@@ -84,23 +89,34 @@ class TestMonitor:
 
         with chdir(wd.path):
             m = create_monitor(MagicMock(), source_path, build_path=os.path.basename(build_path))
-        assert m.reporter.watch_path == source_path
-        assert m.reporter.build_path == '{}'.format(os.path.realpath(build_path))
+        assert len(m.reporters) == 1
+        reporter = m.reporters[0]
+        assert reporter.watch_path == source_path
+        assert reporter.build_path == '{}'.format(os.path.realpath(build_path))
 
     def test_poll_build_test(self):
-        o = watcher = builder = executor = reporter = MagicMock()
+        reporter = MagicMock(spec=Reporter)
+        watcher = MagicMock()
+        builder = MagicMock()
+        executor = MagicMock()
         watcher.poll = MagicMock(return_value=WatchState(set(['change']), set(), set(), 0))
         executor.test = MagicMock(return_value={'total_failed':0})
-        m = Monitor(watcher, builder, executor, reporter, interval=0)
-
-        o.reset_mock()
+        m = Monitor(watcher, builder, executor, [reporter], interval=0)
 
         m.run(step=True)
 
+        assert 'poll' in [ c for c,a,kw in watcher.mock_calls ]
         # build step is captured as ''
-        call_filter = set([ 'poll', '', 'test', 'wait_change' ])
-        calls = [ c for c,a,kw in o.mock_calls if c in call_filter ]
-        assert calls == [ 'poll', '', 'test', 'wait_change' ]
+        assert [ c for c,a,kw in builder.mock_calls ] == ['']
+        assert [ c for c,a,kw in executor.mock_calls ] == ['test']
+        assert [ c for c,a,kw in reporter.mock_calls ] == [
+            'report_watchstate',
+            'session_start', # build
+            'report_build_path',
+            'session_start', # test
+            'report_results',
+            'wait_change'
+        ]
 
     def test_test_again_on_fix(self):
         o = watcher = builder = executor = reporter = MagicMock()
@@ -118,8 +134,10 @@ class TestMonitor:
         assert len([ c for c,a,kw in o.method_calls if c == 'test' ]) == 2
 
     def test_keyboardinterrupt_during_poll(self):
-        o = watcher = builder = executor = reporter = MagicMock()
-        m = Monitor(watcher, builder, executor, reporter, interval=0)
+        reporter = MagicMock(spec=Reporter)
+        watcher = MagicMock()
+        o = builder = executor = MagicMock()
+        m = Monitor(watcher, builder, executor, [reporter], interval=0)
 
         o.reset_mock()
 
@@ -130,27 +148,28 @@ class TestMonitor:
 
         m.run(step=True)
 
-        call_filter = set([ 'poll', 'build', 'test', 'wait_change', 'report_interrupt' ])
-        calls = [ c for c,a,kw in o.method_calls if c in call_filter ]
-        assert calls == [ 'poll', 'report_interrupt' ]
+        assert 'poll' in [ c for c,a,kw in watcher.method_calls ]
+        assert [ c for c,a,kw in reporter.method_calls ] == [ 'report_interrupt' ]
 
     def test_keyboardinterrupt_during_wait(self):
-        o = watcher = builder = executor = reporter = MagicMock()
+        reporter = MagicMock(spec=Reporter)
+        o = watcher = builder = executor = MagicMock()
         watcher.poll = MagicMock(return_value=WatchState(set(), set(), set(), 0))
-        m = Monitor(watcher, builder, executor, reporter, interval=0)
+        m = Monitor(watcher, builder, executor, [reporter], interval=0)
 
         o.reset_mock()
         with patch('time.sleep', autospec=True, side_effect=KeyboardInterrupt):
             m.run(step=True)
 
         call_filter = set([ 'interrupt_detected', 'halt' ])
-        calls = [ c for c,a,kw in o.method_calls if c in call_filter ]
+        calls = [ c for c,a,kw in reporter.method_calls if c in call_filter ]
         assert calls == [ 'interrupt_detected', 'halt' ]
 
     def test_continue_after_wait_interrupt(self):
-        o = watcher = builder = executor = reporter = MagicMock()
+        reporter = MagicMock(spec=Reporter)
+        o = watcher = builder = executor = MagicMock()
         watcher.poll = MagicMock(return_value=WatchState(set(), set(), set(), 0))
-        m = Monitor(watcher, builder, executor, reporter, interval=0)
+        m = Monitor(watcher, builder, executor, [reporter], interval=0)
 
         o.reset_mock()
         m.run(step=True)
@@ -158,23 +177,24 @@ class TestMonitor:
             m.run(step=True)
 
         call_filter = set([ 'interrupt_detected', 'halt' ])
-        calls = [ c for c,a,kw in o.method_calls if c in call_filter ]
+        calls = [ c for c,a,kw in reporter.method_calls if c in call_filter ]
         assert calls == [ 'interrupt_detected' ]
 
     def test_keyboardinterrupt_during_operations(self):
         def builder():
             raise KeyboardInterrupt
 
-        o = watcher = executor = reporter = MagicMock()
+        reporter = MagicMock(spec=Reporter)
+        o = watcher = executor = MagicMock()
         watcher.poll = MagicMock(
             return_value=WatchState(set(['change']), set(), set(), 0)
         )
-        m = Monitor(watcher, builder, executor, reporter, interval=0)
+        m = Monitor(watcher, builder, executor, [reporter], interval=0)
 
         o.reset_mock()
         m.run(step=True)
 
-        assert 'report_interrupt' in set([ c for c,a,kw in o.method_calls])
+        assert 'report_interrupt' in set([ c for c,a,kw in reporter.method_calls])
 
     def test_builderror(self):
         def builder():

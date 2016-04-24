@@ -1,6 +1,6 @@
 import os
 import termstyle
-from ircclient import IRCClient
+from ttt.ircclient import IRCClient
 import socket
 
 

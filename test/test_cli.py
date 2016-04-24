@@ -26,22 +26,49 @@ class TestCLI:
                 with pytest.raises(SystemExit):
                     cli.run()
 
-    @patch('sys.argv', new=['ttt', 'watch_path', '-b', 'buildpath', '-g', 'Ninja', '-v'])
+    @patch('sys.argv', new=['ttt', 'watch_path', '-b', 'buildpath', '-g', 'Ninja'])
     def test_args(self):
         context = MagicMock()
         with patch('ttt.systemcontext.create_context', return_value=context):
             with patch('ttt.monitor.create_monitor', autospec=True) as monitor:
                 cli.run()
-                assert monitor.call_args_list == [
-                    call(context, 'watch_path', build_path='buildpath', generator='Ninja', verbosity=1)
-                ]
+                assert len(monitor.call_args_list)
+                args, kwargs = monitor.call_args_list[0]
+                assert 'watch_path' in args
+                assert 'build_path' in kwargs
+                assert kwargs['build_path'] == 'buildpath'
+                assert 'generator' in kwargs
+                assert kwargs['generator'] == 'Ninja'
 
     @patch('sys.argv', new=['ttt', 'watch_path', '-vv'])
-    def test_verbosity(self):
+    def test_verbosity_multiple(self):
         context = MagicMock()
         with patch('ttt.systemcontext.create_context', return_value=context):
             with patch('ttt.monitor.create_monitor', autospec=True) as monitor:
                 cli.run()
-                assert monitor.call_args_list == [
-                    call(context, 'watch_path', build_path=None, generator=None, verbosity=2)
-                ]
+                assert len(monitor.call_args_list)
+                args, kwargs = monitor.call_args_list[0]
+                assert 'verbosity' in kwargs
+                assert kwargs['verbosity'] == 2
+
+    @patch('sys.argv', new=['ttt', 'watch_path', '-v'])
+    def test_verbosity_single(self):
+        context = MagicMock()
+        with patch('ttt.systemcontext.create_context', return_value=context):
+            with patch('ttt.monitor.create_monitor', autospec=True) as monitor:
+                cli.run()
+                assert len(monitor.call_args_list)
+                args, kwargs = monitor.call_args_list[0]
+                assert 'verbosity' in kwargs
+                assert kwargs['verbosity'] == 1
+
+    @patch('sys.argv', new=['ttt', 'watch_path'])
+    def test_verbosity_none(self):
+        context = MagicMock()
+        with patch('ttt.systemcontext.create_context', return_value=context):
+            with patch('ttt.monitor.create_monitor', autospec=True) as monitor:
+                cli.run()
+                assert len(monitor.call_args_list)
+                args, kwargs = monitor.call_args_list[0]
+                assert 'verbosity' in kwargs
+                assert kwargs['verbosity'] is None
