@@ -47,6 +47,15 @@ class TestIRCReporter:
         r.wait()
         assert irc.poll.call_args == [ () ]
 
+    def test_report_build_failure(self):
+        irc = MagicMock()
+        irc.say = MagicMock()
+        r = IRCReporter(irc)
+        irc.reset_mock()
+
+        r.report_build_failure()
+        assert irc.say.call_args == [ (('TTT: Build failure!'),) ]
+
     def test_report_success(self):
         irc = MagicMock()
         irc.say = MagicMock()

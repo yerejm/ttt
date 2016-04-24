@@ -85,7 +85,10 @@ class Monitor(object):
             self.notify('report_build_path')
             try:
                 self.builder()
-            except IOError:
+            except KeyboardInterrupt as e:
+                raise e
+            except:
+                self.notify('report_build_failure')
                 self.operations.reset()
         return fn
 

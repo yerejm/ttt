@@ -119,10 +119,11 @@ class TestMonitor:
         ]
 
     def test_test_again_on_fix(self):
-        o = watcher = builder = executor = reporter = MagicMock()
+        reporter = MagicMock(spec=Reporter)
+        o = watcher = builder = executor = MagicMock()
         watcher.poll = MagicMock(return_value=WatchState(set(['change']), set(), set(), 0))
         executor.test = MagicMock(return_value={'total_failed':1})
-        m = Monitor(watcher, builder, executor, reporter, interval=0)
+        m = Monitor(watcher, builder, executor, [reporter], interval=0)
         m.run(step=True)
 
         o.reset_mock()
@@ -200,14 +201,17 @@ class TestMonitor:
         def builder():
             raise IOError
 
-        o = watcher = executor = reporter = MagicMock()
+        reporter = MagicMock(spec=Reporter)
+        o = watcher = executor = MagicMock()
         watcher.poll = MagicMock(return_value=WatchState(set(['change']), set(), set(), 0))
-        m = Monitor(watcher, builder, executor, reporter, interval=0)
+        m = Monitor(watcher, builder, executor, [reporter], interval=0)
 
         o.reset_mock()
         m.run(step=True)
 
-        assert 'test' not in set([ c for c,a,kw in o.method_calls ])
+        calls = set([ c for c,a,kw in o.method_calls ])
+        assert 'test' not in calls
+        assert 'report_build_failure' in [ c for c,a,kw in reporter.method_calls ]
 
 class Interrupter:
     def __init__(self, count):

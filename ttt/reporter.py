@@ -33,6 +33,9 @@ class Reporter(object):
     def wait_change(self):
         pass
 
+    def report_build_failure(self):
+        pass
+
     def report_results(self, results):
         pass
 
@@ -57,6 +60,9 @@ class IRCReporter(Reporter):
 
     def halt(self):
         self.irc.disconnect()
+
+    def report_build_failure(self):
+        self.irc.say('TTT: Build failure!')
 
     def report_results(self, results):
         shortstats = '{} passed in {} seconds'.format(
