@@ -207,8 +207,20 @@ class IRCClient(irc.client.SimpleIRCClient):
         """
         The main interface into this client (other than poll() and connect())
         to send messages from the external caller to the IRC channel.
+
+        If there happens to be no connection when something is said, then say
+        nothing. A (re)connection is either happening or the server is down.
+        Note that this is an issue only because a message is sent to the IRC
+        server explicitly and not a handler reacting to something the server
+        has sent (which requires that the connection is up to occur).
         """
-        self.connection.privmsg(self.channel, message)
+        try:
+            self.connection.privmsg(self.channel, message)
+        except irc.client.ServerNotConnectedError as e:
+            # Connection down? Try a reconnect, and skip saying anything. The
+            # time to say it has already passed.
+            self.reconnect()
+            pass
 
 
 class _IRCClient(IRCClient):
