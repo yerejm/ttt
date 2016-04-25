@@ -201,6 +201,7 @@ class IRCClient(irc.client.SimpleIRCClient):
                     server.password, username=self._nickname, ircname=self._nickname,
                     **self.__connect_params)
         except irc.client.ServerConnectionError:
+            self.reconnect() # Schedule a deferred reconnection retry
             pass
 
     def say(self, message):
