@@ -1,6 +1,7 @@
 import os
 import subprocess
 import errno
+import shutil
 from functools import partial
 
 
@@ -35,6 +36,19 @@ def cmake_build(build_path):
 
 
 def cmake_generate(watch_path, build_path, generator):
+    # Check that the cmake that created the build area is the available cmake.
+    # If not, then the build area has to be regenerated for cmake to continue
+    # its build.
+    cmake_cache_file = os.path.join(build_path, 'CMakeCache.txt')
+    if os.path.exists(cmake_cache_file):
+        with open(cmake_cache_file, 'r') as f:
+            for line in f:
+                if 'CMAKE_COMMAND:INTERNAL' in line:
+                    _, cmake_path = line.rstrip().split('=')
+                    if not os.path.exists(cmake_path):
+                        shutil.rmtree(build_path)
+                    break
+
     if not os.path.exists(os.path.join(build_path, 'CMakeFiles')):
         command = ['cmake']
         if generator:
