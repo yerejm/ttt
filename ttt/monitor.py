@@ -2,6 +2,7 @@ import os
 import time
 import collections
 import itertools
+import subprocess
 
 from ttt.builder import create_builder
 from ttt.watcher import watch, derive_tests, has_changes
@@ -87,7 +88,7 @@ class Monitor(object):
                 self.builder()
             except KeyboardInterrupt as e:
                 raise e
-            except:
+            except subprocess.CalledProcessError:
                 self.notify('report_build_failure')
                 self.operations.reset()
         return fn

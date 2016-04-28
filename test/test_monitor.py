@@ -198,8 +198,9 @@ class TestMonitor:
         assert 'report_interrupt' in set([ c for c,a,kw in reporter.method_calls])
 
     def test_builderror(self):
+        import subprocess
         def builder():
-            raise IOError
+            subprocess.check_output("false")
 
         reporter = MagicMock(spec=Reporter)
         o = watcher = executor = MagicMock()
