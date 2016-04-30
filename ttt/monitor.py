@@ -1,3 +1,10 @@
+"""
+ttt.monitor
+~~~~~~~~~~~~
+This module implements the monitor which will poll the watched source tree for
+change and initiate the build and test of the watched source tree.
+:copyright: (c) yerejm
+"""
 import os
 import time
 import collections
@@ -6,7 +13,7 @@ import subprocess
 
 from ttt.builder import create_builder
 from ttt.watcher import watch, derive_tests, has_changes
-from ttt.executor import create_executor
+from ttt.executor import Executor
 from ttt.reporter import create_terminal_reporter, create_irc_reporter
 
 
@@ -14,6 +21,27 @@ DEFAULT_BUILD_PATH_SUFFIX = '-build'
 
 
 def create_monitor(context, watch_path=os.getcwd(), **kwargs):
+    """Creates a monitor and its subordinate objects.
+
+    By default, one reporter object is created to output to the terminal.
+    An optional IRC reporter may be created if irc_server is provided.
+
+    :param context:
+    :param watch_path: the root of the source tree, either relative or
+        absolute. If not provided, the current working directory is assumed to
+        be the root of the source tree.
+    :param build_path: (optional) the desired build path. May be relative. If
+        not provided, it will be generated from the watch path.
+    :param generator: (optional) the cmake build system generator
+    :param irc_server: (optional) the IRC server host if an IRC reporter is
+        required.
+    :param irc_port (optional) the IRC server port. Has no meaning without
+        irc_server.
+    :param irc_channel (optional) the IRC channel to join once connected. Has
+        no meaning without irc_server.
+    :param irc_nick (optional) the IRC nickname to use once connected. Has
+        no meaning without irc_server.
+    """
     watcher = watch(context, watch_path)
     custom_build_path = kwargs.get('build_path')
     build_path = (os.path.abspath(custom_build_path) if custom_build_path
@@ -24,8 +52,12 @@ def create_monitor(context, watch_path=os.getcwd(), **kwargs):
         build_path,
         kwargs.get('generator')
     )
-    executor = create_executor(context, build_path)
-    terminal_reporter = create_terminal_reporter(context, watcher.watch_path, build_path)
+    executor = Executor(context, build_path)
+    terminal_reporter = create_terminal_reporter(
+        context,
+        watcher.watch_path,
+        build_path
+    )
     reporters = [terminal_reporter]
     if 'irc_server' in kwargs and kwargs['irc_server'] is not None:
         reporters.append(create_irc_reporter(
@@ -39,6 +71,15 @@ def create_monitor(context, watch_path=os.getcwd(), **kwargs):
 
 
 def make_build_path(watch_path, suffix=DEFAULT_BUILD_PATH_SUFFIX):
+    """Creates a build path from the watch path by appending a suffix.
+
+    The build path will be an absolute path based on the current working
+    directory.
+
+    :param watch_path: the watch path
+    :param suffix: the suffix to append to the watch path. Defaults to -build.
+    :return the absolute build path
+    """
     return os.path.join(
         os.getcwd(),
         "{}{}".format(os.path.basename(watch_path), suffix)
@@ -46,9 +87,23 @@ def make_build_path(watch_path, suffix=DEFAULT_BUILD_PATH_SUFFIX):
 
 
 class Monitor(object):
+    """The main point of integration for the disparate parts.
+
+    Observers of the monitor are notified for each state that provides a hook.
+    """
     DEFAULT_POLLING_INTERVAL = 1
 
     def __init__(self, watcher, builder, executor, reporters, **kwargs):
+        """:class:`Monitor` constructor.
+
+        :param watcher: the :class:`Watcher` object
+        :param builder: the :class:`Builder` object
+        :param executor: the :class:`Executor` object
+        :param reporters: a list of :class:`Reporter` objects (Monitor
+            listeners)
+        :param interval: (optional) the time in seconds to wait between
+            checking for changes
+        """
         self.watcher = watcher
         self.builder = builder
         self.executor = executor
@@ -60,6 +115,8 @@ class Monitor(object):
         self.polling_interval = first_value(kwargs.get('interval'),
                                             Monitor.DEFAULT_POLLING_INTERVAL)
 
+        # The first poll is to initialise the watcher with the source tree
+        # before the actual polling loop.
         self.watcher.poll()
 
     def notify(self, message, *args):
@@ -76,11 +133,14 @@ class Monitor(object):
                 pass
 
     def report_change(self, watchstate):
+        """Get a function that will notify observers that there was a change.
+        """
         def fn():
             self.notify('report_watchstate', watchstate)
         return fn
 
     def build(self):
+        """Builds the binaries."""
         def fn():
             self.notify('session_start', 'build')
             self.notify('report_build_path')
@@ -94,6 +154,7 @@ class Monitor(object):
         return fn
 
     def test(self):
+        """Executes the tests."""
         def fn():
             self.notify('session_start', 'test')
             results = self.executor.test(
@@ -108,6 +169,7 @@ class Monitor(object):
         return fn
 
     def run(self, **kwargs):
+        """The main polling loop of the monitor."""
         step_mode = first_value(kwargs.get('step'), False)
         while self.runstate.active():
             self.check_for_changes()
@@ -117,6 +179,10 @@ class Monitor(object):
                 break
 
     def check_for_changes(self):
+        """The work side of the polling.
+
+        If there were changes, then executes the base set of operations.
+        """
         try:
             watchstate = self.watcher.poll()
             if has_changes(watchstate) or self.runstate.allowed_once():
@@ -131,6 +197,7 @@ class Monitor(object):
             self.notify('report_interrupt', e)
 
     def wait(self):
+        """The wait side of the polling."""
         try:
             self.notify('wait')
             time.sleep(self.polling_interval)
@@ -140,6 +207,8 @@ class Monitor(object):
             self.verify_stop()
 
     def verify_stop(self):
+        """Verify that the user's interrupt was intended to terminate ttt by
+        waiting for another interrupt."""
         try:
             time.sleep(self.polling_interval)
             self.runstate.allow_once()
@@ -149,6 +218,8 @@ class Monitor(object):
 
 
 class Runstate(object):
+    """Tracks the run state of a test session to support KeyboardInterrupt
+    control of the current session."""
     def __init__(self):
         self._active = True
         self._allow_once = True
@@ -169,6 +240,7 @@ class Runstate(object):
 
 
 class Operations(object):
+    """Maintains the set of operations scheduled to run in the test session."""
     def __init__(self):
         self.execution_stack = collections.deque()
 
@@ -191,4 +263,13 @@ class Operations(object):
 
 
 def first_value(*args):
+    """Get the first value that is not None in the argument list, other use the
+    given default.
+
+      >>> first_value(None, 123)
+      123
+      >>> a = { 'hello': 234 }
+      >>> first_value(a['hello'], 123)
+      234
+    """
     return next(itertools.dropwhile(lambda x: x is None, args), None)

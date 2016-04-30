@@ -1,11 +1,11 @@
 import os
 import termstyle
 from ttt.ircclient import IRCClient
-import socket
 
 
 def create_terminal_reporter(context, watch_path=None, build_path=None):
     return TerminalReporter(context, watch_path, build_path)
+
 
 def create_irc_reporter(server, port, channel, nick):
     if server is None:

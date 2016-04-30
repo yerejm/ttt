@@ -1,5 +1,5 @@
 import irc
-from irc.bot import ServerSpec, Channel, ReconnectStrategy
+from irc.bot import ServerSpec, Channel
 from irc.dict import IRCDict
 from random import random
 
@@ -36,8 +36,9 @@ class IRCClient(irc.client.SimpleIRCClient):
         # Mostly when a nick is already in use
         for i in ["disconnect", "join", "kick", "mode",
                   "namreply", "nick", "part", "quit"]:
-            self.connection.add_global_handler(i, getattr(self, "_on_" + i),
-                -20)
+            self.connection.add_global_handler(
+                i, getattr(self, "_on_" + i), -20
+            )
 
     def _on_disconnect(self, c, e):
         self.channels = IRCDict()
@@ -53,12 +54,15 @@ class IRCClient(irc.client.SimpleIRCClient):
             if not self.connection.is_connected():
                 self.reconnect()
                 if self.connection.is_connected():
-                    self.connection.disconnect(msg)
+                    self.disconnect()
                 self.connect()
 
         if self._check_scheduled:
             return
-        reconnect_wait = max(self.min_reconnect_wait, int(self.max_reconnect_wait * random()))
+        reconnect_wait = max(
+            self.min_reconnect_wait,
+            int(self.max_reconnect_wait * random())
+        )
         self.connection.execute_delayed(reconnect_wait, check)
         self._check_scheduled = True
 
@@ -158,15 +162,17 @@ class IRCClient(irc.client.SimpleIRCClient):
         Disable private messaging with users.
         """
         nick = e.source.nick
-        c.notice(nick, "I am sorry, {}; I do not do private messages.".format(nick))
+        msg = "I am sorry, {}; I do not do private messages.".format(nick)
+        c.notice(nick, msg)
 
     def on_dccmsg(self, c, e):
         """
         Disable dcc messaging with users.
         """
         nick = e.source.nick
-        text = e.arguments[0].decode('utf-8')
-        c.privmsg(nick, "I am sorry, {}; I do not do dcc messages.".format(nick))
+        # text = e.arguments[0].decode('utf-8')
+        msg = "I am sorry, {}; I do not do dcc messages.".format(nick)
+        c.privmsg(nick, msg)
 
     def disconnect(self):
         self.connection.disconnect("Bye!")
@@ -197,11 +203,16 @@ class IRCClient(irc.client.SimpleIRCClient):
         server = self.server
         try:
             super(IRCClient, self).connect(
-                    server.host, server.port, self._nickname,
-                    server.password, username=self._nickname, ircname=self._nickname,
-                    **self.__connect_params)
+                server.host,
+                server.port,
+                self._nickname,
+                server.password,
+                username=self._nickname,
+                ircname=self._nickname,
+                **self.__connect_params
+            )
         except irc.client.ServerConnectionError:
-            self.reconnect() # Schedule a deferred reconnection retry
+            self.reconnect()  # Schedule a deferred reconnection retry
             pass
 
     def say(self, message):
@@ -217,7 +228,7 @@ class IRCClient(irc.client.SimpleIRCClient):
         """
         try:
             self.connection.privmsg(self.channel, message)
-        except irc.client.ServerNotConnectedError as e:
+        except irc.client.ServerNotConnectedError:
             # Connection down? Try a reconnect, and skip saying anything. The
             # time to say it has already passed.
             self.reconnect()
@@ -232,12 +243,10 @@ class _IRCClient(IRCClient):
 
 def main():
     import sys
-    import time
     import argparse
     import jaraco.logging
     import threading
     import queue
-    import itertools
 
     parser = argparse.ArgumentParser()
     parser.add_argument('server')
@@ -248,7 +257,10 @@ def main():
     args = parser.parse_args()
     jaraco.logging.setup(args)
 
-    irc_reporter = _IRCClient(args.channel, args.nickname, args.server, args.port)
+    irc_reporter = _IRCClient(args.channel,
+                              args.nickname,
+                              args.server,
+                              args.port)
     irc_reporter.connect()
 
     def read_input(stream, q):
@@ -256,8 +268,9 @@ def main():
             q.put(line.strip())
 
     inputq = queue.Queue()
-    input_thread = threading.Thread(target=read_input, args=(sys.stdin, inputq))
-    input_thread.daemon = True # Kill thread on main thread exit
+    input_thread = threading.Thread(target=read_input,
+                                    args=(sys.stdin, inputq))
+    input_thread.daemon = True  # Kill thread on main thread exit
     input_thread.start()
     try:
         while True:

@@ -1,3 +1,22 @@
+"""
+ttt.watcher
+~~~~~~~~~~~~
+This module implements the watcher. It "watches" a source tree for changes,
+and identifies tests associated with those files that changed.
+
+The watching follows the polling paradigm: by walking the directory tree from
+a root and checking the modified time of each file found in the traversal.
+Polling was the best general solution for multiple platforms because the main
+use case of the watcher is to watch files on a shared network drive. The native
+file system event APIs do not emit events for changes to files on a network
+drive.
+
+Polling does result in a pulse of CPU activity and this may become unusable on
+large source trees. This potential issue is left to a time when it becomes
+problematic.
+
+:copyright: (c) yerejm
+"""
 import collections
 import re
 import os

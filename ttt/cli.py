@@ -1,6 +1,6 @@
 import argh
 
-from ttt import systemcontext
+from ttt.systemcontext import SystemContext
 from ttt import monitor
 import socket
 
@@ -19,9 +19,9 @@ import socket
 @argh.arg('--irc_port', help='IRC server port.', default=6667)
 @argh.arg('--irc_channel', help='IRC channel.', default='#ttt')
 @argh.arg('--irc_nick', help='IRC nick',
-        default=socket.gethostname().split('.')[0])
+          default=socket.gethostname().split('.')[0])
 def ttt(watch_path, **kwargs):
-    context = systemcontext.create_context(**kwargs)
+    context = SystemContext(kwargs['verbosity'])
     monitor.create_monitor(context, watch_path, **kwargs).run()
 
 

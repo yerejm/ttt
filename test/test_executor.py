@@ -13,7 +13,7 @@ import stat
 
 from testfixtures import TempDirectory
 
-from ttt.executor import create_executor
+from ttt.executor import Executor
 from ttt.systemcontext import SystemContext
 
 class MockContext(SystemContext):
@@ -64,7 +64,7 @@ class TestExecutor:
                     '[  PASSED  ] 1 test.',
                 ]]
             )
-        e = create_executor(sc, BUILDPATH)
+        e = Executor(sc, BUILDPATH)
         results = e.test(testdict)
         assert results == {
                 'total_runtime': 0.001,
@@ -102,7 +102,7 @@ class TestExecutor:
                     ' 1 FAILED TEST',
                 ]]
             )
-        e = create_executor(sc, BUILDPATH)
+        e = Executor(sc, BUILDPATH)
         results = e.test(testdict)
         assert results == {
                 'total_runtime': 0.001,
@@ -151,7 +151,7 @@ class TestExecutor:
                     ' 1 FAILED TEST',
                 ]]
             )
-        e = create_executor(sc, BUILDPATH)
+        e = Executor(sc, BUILDPATH)
         results = e.test(testdict)
         assert results == {
                 'total_runtime': 0.001,
@@ -198,7 +198,7 @@ class TestExecutor:
                     ' 1 FAILED TEST',
                 ]]
             )
-        e = create_executor(sc, BUILDPATH)
+        e = Executor(sc, BUILDPATH)
         e.test(testdict)
         assert e.test_filter() == { DUMMYPATH: ['core.ok'] }
         e.clear_filter()
@@ -251,7 +251,7 @@ class TestExecutor:
                     ' 1 FAILED TEST',
                 ]]
             )
-        e = create_executor(sc, BUILDPATH)
+        e = Executor(sc, BUILDPATH)
         e.test(testdict)
         assert sc.command == [[DUMMYPATH]]
         e.test(testdict)
@@ -319,7 +319,7 @@ class TestExecutor:
                     ' 2 FAILED TESTS',
                 ]]
             )
-        e = create_executor(sc, BUILDPATH)
+        e = Executor(sc, BUILDPATH)
         e.test(testdict)
         assert sc.command == [[DUMMYPATH]]
         e.test(testdict)
@@ -365,7 +365,7 @@ class TestExecutor:
                     '[  PASSED  ] 1 test.',
                 ]]
             )
-        e = create_executor(sc, BUILDPATH)
+        e = Executor(sc, BUILDPATH)
         e.test(testdict)
         assert sc.command == [[DUMMYPATH]]
         e.test(testdict)

@@ -1,3 +1,10 @@
+"""
+ttt.systemcontext
+~~~~~~~~~~~~
+This module implements abstractions to try to hide operating system and python
+specifics from higher level modules.
+:copyright: (c) yerejm
+"""
 import platform
 import os
 import sys
@@ -7,11 +14,13 @@ import threading
 from six.moves import queue
 from six import text_type
 
+# Pick the better timer for the platform
 if platform.system() == 'Windows':
     from time import clock as timer
 else:
     from time import time as timer
 
+# Pick the better scandir for the python
 try:
     from os import scandir, walk
 except ImportError:
@@ -20,20 +29,16 @@ except ImportError:
     except ImportError:
         from os import walk
 
+# When writing to output streams, do not write more than the following width.
 TERMINAL_MAX_WIDTH = 78
+# When traversing a directory tree, do not enter the following directories
 EXCLUSIONS = set(['.git', '.hg'])
 
 
-def create_context(**kwargs):
-    context_kwargs = {}
-    if 'verbosity' in kwargs and kwargs['verbosity']:
-        context_kwargs['verbosity'] = kwargs['verbosity']
-    return SystemContext(**context_kwargs)
-
-
 class SystemContext(object):
-    def __init__(self, **kwargs):
-        self._verbosity = kwargs['verbosity'] if 'verbosity' in kwargs else 0
+    """Hides the operating system level functionality from higher levels."""
+    def __init__(self, verbosity=0):
+        self._verbosity = verbosity
 
     def walk(self, root_directory):
         for dirpath, dirlist, filelist in walk(root_directory, topdown=True):
@@ -45,8 +50,8 @@ class SystemContext(object):
                     yield (
                         dirpath,
                         filename,
-                        filestat.st_mode,
-                        filestat.st_mtime
+                        filestat.st_mode,  # file permissions
+                        filestat.st_mtime  # last modified time
                     )
 
     def execute(self, *args, **kwargs):
@@ -88,6 +93,7 @@ class SystemContext(object):
 
 
 def term_width():
+    """Get the width of the terminal if possible. Defaults to 78."""
     try:
         from shutil import get_terminal_size
         ts = get_terminal_size()
@@ -97,6 +103,23 @@ def term_width():
 
 
 def pad(padchar, string, width):
+    """Pads a string to the given width with the given character such that the
+    string is centered between the padding (separated on each side by a single
+    space). When the amount of padding on either side cannot be the same, the
+    padding favours the right side with the extra padding.
+
+    :param padchar: the padding character
+    :param string: the string to be padded on the left and right with the
+        padding character
+    :param width: the desired width of the padded string. The width is capped
+        to the maximum width of 78.
+    :return the padded string
+
+      >>> pad('*', 'hello', 10)
+      '* hello **'
+      >>> pad('*', 'hello', 11)
+      '** hello **'
+    """
     pad_width = min(width, TERMINAL_MAX_WIDTH)
     strlen = len(string) + 2
     total_padlen = pad_width - strlen
@@ -111,6 +134,10 @@ def pad(padchar, string, width):
 
 
 def call_output(*popenargs, **kwargs):
+    """A custom version of subprocess.call_output() that operates in the same
+    way except it allows the optional provision of a callback that is called
+    for each line of output emitted by the subprocess.
+    """
     def create_process(*popenargs, **kwargs):
         return subprocess.Popen(*popenargs, **kwargs)
 
@@ -135,18 +162,36 @@ def call_output(*popenargs, **kwargs):
     return run(process, line_handler)
 
 
-def read_stream(output_stream, input_stream, io_q):
+def read_stream(stream_name, input_stream, io_q):
+    """Captures lines incoming on the input stream on a queue.
+
+    This queue in intended to be a shared data structure between threads.
+
+    :param stream_name: the name of the stream being read
+    :param input_stream: the stream being read
+    :param io_q: the queue on to which lines from the input_stream are added
+    """
     if not input_stream:
-        io_q.put((output_stream, 'EXIT'))
+        io_q.put((stream_name, 'EXIT'))
         return
     for line in input_stream:
-        io_q.put((output_stream, line))
+        io_q.put((stream_name, line))
     if not input_stream.closed:
         input_stream.close()
-    io_q.put((output_stream, 'EXIT'))
+    io_q.put((stream_name, 'EXIT'))
 
 
 def run(process, line_handler):
+    """Maintains the process being executed in a subprocess until it ends.
+
+    Lines of output being emitted by the process are send to the lin handler if
+    any.
+
+    Communication between the process executing run() and the subprocess is
+    handled by threads reading from the stdout and stderr streams. Threads are
+    required to read the output as it is emitted by the subprocess in real-time
+    or else it would block until the subprocess had ended.
+    """
 
     io_q = queue.Queue(5)
     threads = {
@@ -164,7 +209,19 @@ def run(process, line_handler):
     # currently all captured under stdout. Even more unfortunately, stderr
     # comes through first before stdout. This means writes that are made first
     # to stdout will not be first through the pipe if there is stderr output.
-
+    #
+    # This lack of sychronisation between stdout and stderr output makes
+    # real-time display useless because they aren't captured and passed
+    # through to the handler as they are encountered.
+    #
+    # Worse still, there appear to be issues with subprocess output capture on
+    # Windows.
+    #
+    # A proper resolution would be to provide a custom subprocess module but
+    # since the common usage does not require real-time capture of
+    # stdout/stderr, this is not worth the effort. Manually running whatever
+    # was intended for the subprocess outside ttt is the only recourse.
+    #
     for thread in threads.values():
         thread.start()
 
@@ -198,6 +255,7 @@ def run(process, line_handler):
 
 
 class Timer(object):
+    """Self-capturing time keeper intended for use by the 'with' idiom."""
     def __enter__(self):
         self.start = timer()
         return self

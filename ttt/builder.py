@@ -1,3 +1,10 @@
+"""
+ttt.builder
+~~~~~~~~~~~~
+This module implements the cmake builder.
+:copyright: (c) yerejm
+"""
+
 import os
 import subprocess
 import errno
@@ -6,6 +13,23 @@ from functools import partial
 
 
 def create_builder(context, watch_path, build_path, generator=None):
+    """Constructs a partially evaluated function object.
+
+    This function object represents the execution of the `cmake` command on
+    a source tree to either create a new build area or to rebuild an existing
+    build area.
+
+    :param context: a :class:`SystemContext` object
+    :param watch_path: the absolute root directory path of the source tree
+        where the CMakeLists.txt file exists
+    :param build_path: the absolute root directory path where build objects and
+        binaries are output during compilation
+    :param generator: (optional) the cmake generator. Values are the same as
+        provided by the cmake usage output. e.g. "Unix Makefile", "Ninja"
+        This is because it is passed through via the -G option. Not providing
+        it is the same as not providing it to the cmake command and will make
+        cmake use the default generator for the executing platform
+    """
     if not os.path.isabs(watch_path):
         raise IOError(
             errno.EINVAL, "Watch path {} must be absolute".format(watch_path)
@@ -25,20 +49,43 @@ def create_builder(context, watch_path, build_path, generator=None):
 
 
 def execute(context, commands):
+    """Executes the list of callable objects using the given context.
+
+    Each callable object is a command generator that when called returns a
+    command that can be executed as a subprocess. The command returned will be
+    a list for subprocess's non-string form (ie ['ls', '-la'], not 'ls -la')
+    to avoid shell escaping mishaps.
+
+    :param context: a :class:`SystemContext` object
+    :param commands: a list of callable objects
+    """
     for command_generator in commands:
         command = command_generator()
-        if command:
+        if command:  # Note that command may be None (or empty list)
             context.checked_call(command, stderr=subprocess.STDOUT)
 
 
-def cmake_build(build_path):
-    return ['cmake', '--build', build_path]
-
-
 def cmake_generate(watch_path, build_path, generator):
-    # Check that the cmake that created the build area is the available cmake.
-    # If not, then the build area has to be regenerated for cmake to continue
-    # its build.
+    """Generates the command for cmake that will create a build area for a
+    source tree.
+
+    If the build area has already been created, then the command is None.
+
+    If the build area has already been created, but the cmake command that
+    generated it no longer exists, then the build area is removed first before
+    the command is generated.
+
+    :param watch_path: the absolute root directory path of the source tree
+        where the CMakeLists.txt file exists
+    :param build_path: the absolute root directory path where build objects and
+        binaries are output during compilation
+    :param generator: (optional) the cmake generator. Values are the same as
+        provided by the cmake usage output. e.g. "Unix Makefile", "Ninja"
+        This is because it is passed through via the -G option. Not providing
+        it is the same as not providing it to the cmake command and will make
+        cmake use the default generator for the executing platform
+    :return: command to execute as a subprocess in list form
+    """
     cmake_cache_file = os.path.join(build_path, 'CMakeCache.txt')
     if os.path.exists(cmake_cache_file):
         with open(cmake_cache_file, 'r') as f:
@@ -57,3 +104,13 @@ def cmake_generate(watch_path, build_path, generator):
         command.append('-H{}'.format(watch_path))
         command.append('-B{}'.format(build_path))
         return command
+
+
+def cmake_build(build_path):
+    """Generates the cmake command to (re)build the build area.
+
+    :param build_path: the absolute root directory path where build objects and
+        binaries are output during compilation
+    :return: command to execute as a subprocess in list form
+    """
+    return ['cmake', '--build', build_path]
