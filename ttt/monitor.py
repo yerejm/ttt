@@ -10,6 +10,7 @@ import time
 import collections
 import itertools
 import subprocess
+import socket
 
 from ttt.builder import create_builder
 from ttt.watcher import watch, derive_tests, has_changes
@@ -18,7 +19,6 @@ from ttt.reporter import create_terminal_reporter, create_irc_reporter
 
 
 DEFAULT_BUILD_PATH_SUFFIX = '-build'
-
 
 def create_monitor(context, watch_path=os.getcwd(), **kwargs):
     """Creates a monitor and its subordinate objects.
@@ -65,7 +65,12 @@ def create_monitor(context, watch_path=os.getcwd(), **kwargs):
             kwargs.get('irc_server'),
             kwargs.get('irc_port'),
             kwargs.get('irc_channel'),
-            kwargs.get('irc_nick')
+            first_value(kwargs.get('irc_nick'),
+                '{}-{}{}'.format(
+                    socket.gethostname().split('.')[0],
+                    os.path.basename(watch_path),
+                    '-' + first_value(kwargs.get('config'), '')
+                ))
         ))
 
     return Monitor(watcher, builder, executor, reporters)
