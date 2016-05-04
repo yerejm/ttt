@@ -5,6 +5,7 @@ This module implements the cmake builder.
 :copyright: (c) yerejm
 """
 
+import platform
 import os
 import subprocess
 import errno
@@ -12,7 +13,7 @@ import shutil
 from functools import partial
 
 
-def create_builder(context, watch_path, build_path, generator=None):
+def create_builder(context, watch_path, build_path, generator=None, build_type=None):
     """Constructs a partially evaluated function object.
 
     This function object represents the execution of the `cmake` command on
@@ -24,6 +25,7 @@ def create_builder(context, watch_path, build_path, generator=None):
         where the CMakeLists.txt file exists
     :param build_path: the absolute root directory path where build objects and
         binaries are output during compilation
+    :param build_type: indicates the type of build, e.g. release, debug
     :param generator: (optional) the cmake generator. Values are the same as
         provided by the cmake usage output. e.g. "Unix Makefile", "Ninja"
         This is because it is passed through via the -G option. Not providing
@@ -42,8 +44,8 @@ def create_builder(context, watch_path, build_path, generator=None):
         execute,
         context,
         [
-            partial(cmake_generate, watch_path, build_path, generator),
-            partial(cmake_build, build_path)
+            partial(cmake_generate, watch_path, build_path, build_type, generator),
+            partial(cmake_build, build_path, build_type)
         ]
     )
 
@@ -65,7 +67,7 @@ def execute(context, commands):
             context.checked_call(command, stderr=subprocess.STDOUT)
 
 
-def cmake_generate(watch_path, build_path, generator):
+def cmake_generate(watch_path, build_path, build_type, generator):
     """Generates the command for cmake that will create a build area for a
     source tree.
 
@@ -79,6 +81,7 @@ def cmake_generate(watch_path, build_path, generator):
         where the CMakeLists.txt file exists
     :param build_path: the absolute root directory path where build objects and
         binaries are output during compilation
+    :param build_type: indicates the type of build, e.g. release, debug
     :param generator: (optional) the cmake generator. Values are the same as
         provided by the cmake usage output. e.g. "Unix Makefile", "Ninja"
         This is because it is passed through via the -G option. Not providing
@@ -98,19 +101,33 @@ def cmake_generate(watch_path, build_path, generator):
 
     if not os.path.exists(os.path.join(build_path, 'CMakeFiles')):
         command = ['cmake']
-        if generator:
+        if generator is not None:
             command.append('-G')
             command.append(generator)
         command.append('-H{}'.format(watch_path))
         command.append('-B{}'.format(build_path))
+        # this does nothing for the MSVC generator
+        if build_type is not None:
+            command.append('-DCMAKE_BUILD_TYPE={}'.format(build_type))
         return command
 
 
-def cmake_build(build_path):
+def cmake_build(build_path, build_type):
     """Generates the cmake command to (re)build the build area.
 
     :param build_path: the absolute root directory path where build objects and
         binaries are output during compilation
+    :param build_type: indicates the type of build, e.g. release, debug
     :return: command to execute as a subprocess in list form
     """
-    return ['cmake', '--build', build_path]
+    command = [
+        'cmake',
+        # the order is important. --build must come first
+        '--build', build_path,
+    ]
+    if build_type is not None:
+        # necessary for multi-configuration build systems, e.g. MSVC
+        # should be harmless otherwise
+        command.append('--config')
+        command.append(build_type)
+    return command

@@ -15,6 +15,8 @@ import socket
           help='More v\'s more verbose.')
 @argh.arg('-g', '--generator',
           help='cmake generator: refer to cmake documentation')
+@argh.arg('-c', '--config',
+        help='build configuration: e.g. release, debug', default='debug')
 @argh.arg('--irc_server', help='IRC server hostname.')
 @argh.arg('--irc_port', help='IRC server port.', default=6667)
 @argh.arg('--irc_channel', help='IRC channel.', default='#ttt')

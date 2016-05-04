@@ -45,12 +45,13 @@ def create_monitor(context, watch_path=os.getcwd(), **kwargs):
     watcher = watch(context, watch_path)
     custom_build_path = kwargs.get('build_path')
     build_path = (os.path.abspath(custom_build_path) if custom_build_path
-                  else make_build_path(watcher.watch_path))
+                  else make_build_path(watcher.watch_path, kwargs.get('config')))
     builder = create_builder(
         context,
         watcher.watch_path,
         build_path,
-        kwargs.get('generator')
+        kwargs.get('generator'),
+        kwargs.get('config')
     )
     executor = Executor(context, build_path)
     terminal_reporter = create_terminal_reporter(
@@ -70,19 +71,22 @@ def create_monitor(context, watch_path=os.getcwd(), **kwargs):
     return Monitor(watcher, builder, executor, reporters)
 
 
-def make_build_path(watch_path, suffix=DEFAULT_BUILD_PATH_SUFFIX):
+def make_build_path(watch_path, build_type=None, suffix=DEFAULT_BUILD_PATH_SUFFIX):
     """Creates a build path from the watch path by appending a suffix.
 
     The build path will be an absolute path based on the current working
     directory.
 
     :param watch_path: the watch path
-    :param suffix: the suffix to append to the watch path. Defaults to -build.
+    :param config: the build type
+    :param suffix: (optional) the suffix to append to the watch path. Defaults to -build.
     :return the absolute build path
     """
     return os.path.join(
         os.getcwd(),
-        "{}{}".format(os.path.basename(watch_path), suffix)
+        "{}{}{}".format(os.path.basename(watch_path),
+                      '' if build_type is None else ('-' + build_type),
+                      suffix)
     )
 
 

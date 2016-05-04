@@ -45,6 +45,16 @@ class TestCMake:
                 (['cmake', '--build', '/path/to/build'],),
                 ]
 
+    def test_build_with_build_type(self):
+        ccc = CommandCaptureContext()
+        builder = create_builder(ccc, '/path/to/source', '/path/to/build', 'Ninja', "release")
+        builder()
+
+        assert ccc.calls == [
+                (['cmake', '-G', 'Ninja', '-H/path/to/source', '-B/path/to/build', '-DCMAKE_BUILD_TYPE=release'],),
+                (['cmake', '--build', '/path/to/build', '--config', 'release'],),
+                ]
+
 class TestCMakeSlow:
     def setup(self):
         cmake_source_directory = TempDirectory()
