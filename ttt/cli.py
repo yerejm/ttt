@@ -32,5 +32,8 @@ def run():
         prog='ttt',
         description='Watch, build, and test a cmake enabled source area.'
     )
+    parser.add_argument('--version',
+                        action='version',
+                        version='%(prog)s ' + __version__)
     parser.set_default_command(ttt)
     parser.dispatch()
