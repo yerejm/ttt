@@ -45,9 +45,6 @@ class MockContext(SystemContext):
     def write(self, string):
         self.output += string
 
-    def walk(self, root):
-        return []
-
 class TestMonitor:
     def teardown(self):
         TempDirectory.cleanup_all()

@@ -52,13 +52,6 @@ class TestSystemContext:
     def teardown(self):
         TempDirectory.cleanup_all()
 
-    def test_walk(self):
-        sc = SystemContext()
-
-        wdpathlen = len(self.wd.path) + 1
-        paths = [ os.path.join(d[wdpathlen:], f) for d, f, m, t in sc.walk(self.wd.path) ]
-        assert paths == [ 'dummy2.txt', 'test1.txt', os.path.join('test', 'test3.txt') ]
-
     def test_execute(self):
         sc = SystemContext()
 

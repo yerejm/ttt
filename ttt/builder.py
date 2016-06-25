@@ -5,7 +5,6 @@ This module implements the cmake builder.
 :copyright: (c) yerejm
 """
 
-import platform
 import os
 import subprocess
 import errno
@@ -13,7 +12,9 @@ import shutil
 from functools import partial
 
 
-def create_builder(context, watch_path, build_path, generator=None, build_type=None):
+def create_builder(context,
+                   watch_path, build_path,
+                   generator=None, build_type=None):
     """Constructs a partially evaluated function object.
 
     This function object represents the execution of the `cmake` command on
@@ -44,7 +45,8 @@ def create_builder(context, watch_path, build_path, generator=None, build_type=N
         execute,
         context,
         [
-            partial(cmake_generate, watch_path, build_path, build_type, generator),
+            partial(cmake_generate, watch_path, build_path,
+                    build_type, generator),
             partial(cmake_build, build_path, build_type)
         ]
     )

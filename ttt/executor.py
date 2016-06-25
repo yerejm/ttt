@@ -5,9 +5,6 @@ This module implements the test executor. It assumes the tests being executed
 are based on gtest.
 :copyright: (c) yerejm
 """
-import os
-import stat
-
 from ttt.gtest import GTest
 
 
@@ -36,7 +33,7 @@ class Executor(object):
         again. At this point, the :class:`Executor` will be able to run all
         tests again and the cycle restarts.
 
-        :param testfiles: a list of paths to possible test binaries
+        :param testfiles: a list of (executable path: source path) tuples
         :return a Dict() of test results containing:
           - total_runtime: time to run all tests in seconds
           - total_passed: the number of successful tests
@@ -44,11 +41,8 @@ class Executor(object):
                 of the failures list)
           - failures: a list of lists containing the failure results
         """
-        testlist = [
-            GTest(testfiles[f], os.path.join(d, f), self._context)
-            for d, f, m, t in self._context.walk(self._build_path)
-            if f in testfiles and m & stat.S_IXUSR
-        ]
+        testlist = [GTest(src_relpath, bin_abspath, self._context)
+                    for src_relpath, bin_abspath in testfiles]
         test_results = run_tests(self._context, testlist, self._test_filter)
         self._test_filter = {
             test.executable(): test.failures()

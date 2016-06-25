@@ -5,54 +5,21 @@ This module implements abstractions to try to hide operating system and python
 specifics from higher level modules.
 :copyright: (c) yerejm
 """
-import platform
 import os
 import sys
-import stat
 import subprocess
 import threading
 from six.moves import queue
 from six import text_type
 
-# Pick the better timer for the platform
-if platform.system() == 'Windows':
-    from time import clock as timer
-else:
-    from time import time as timer
-
-# Pick the better scandir for the python
-try:
-    from os import scandir, walk
-except ImportError:
-    try:
-        from scandir import scandir, walk  # noqa
-    except ImportError:
-        from os import walk
-
 # When writing to output streams, do not write more than the following width.
 TERMINAL_MAX_WIDTH = 78
-# When traversing a directory tree, do not enter the following directories
-EXCLUSIONS = set(['.git', '.hg'])
 
 
 class SystemContext(object):
     """Hides the operating system level functionality from higher levels."""
     def __init__(self, verbosity=0):
         self._verbosity = verbosity
-
-    def walk(self, root_directory):
-        for dirpath, dirlist, filelist in walk(root_directory, topdown=True):
-            dirlist[:] = [d for d in dirlist if d not in EXCLUSIONS]
-            for filename in filelist:
-                path = os.path.join(dirpath, filename)
-                filestat = os.stat(path)
-                if stat.S_ISREG(filestat.st_mode):
-                    yield (
-                        dirpath,
-                        filename,
-                        filestat.st_mode,  # file permissions
-                        filestat.st_mtime  # last modified time
-                    )
 
     def execute(self, *args, **kwargs):
         kwargs['universal_newlines'] = True
@@ -252,14 +219,3 @@ def run(process, line_handler):
         t.join()
     process.wait()
     return (process.returncode, stdout, stderr)
-
-
-class Timer(object):
-    """Self-capturing time keeper intended for use by the 'with' idiom."""
-    def __enter__(self):
-        self.start = timer()
-        return self
-
-    def __exit__(self, *args):
-        self.end = timer()
-        self.secs = self.end - self.start

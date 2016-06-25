@@ -15,8 +15,6 @@ from ttt import watcher
 from ttt.watcher import Watcher
 from ttt.watcher import WatchedFile
 from ttt.watcher import create_watchstate
-from ttt.watcher import watch
-from ttt.systemcontext import SystemContext
 
 class TestWatcher:
     def setup(self):
@@ -25,35 +23,41 @@ class TestWatcher:
     def teardown(self):
         TempDirectory.cleanup_all()
 
-    def test_default_watcher(self):
+    def test_default_watcher_gets_all_files(self):
         work_directory = TempDirectory()
         work_directory.write('a.h', b'')
         work_directory.write('a.c', b'')
         work_directory.write('a.cc', b'')
         work_directory.write('CMakeLists.txt', b'')
         work_directory.write('blah.txt', b'')
+        wd_len = len(work_directory.path) + 1
 
-        sc = SystemContext()
-        w = watch(sc, work_directory.path)
-        w.poll()
+        w = Watcher(work_directory.path, None)
+        watchstate = w.poll()
+        filelist = [f[wd_len:] for f in watchstate.inserts]
+        filelist.sort()
+        assert filelist == [
+            'CMakeLists.txt',
+            'a.c',
+            'a.cc',
+            'a.h',
+            'blah.txt'
+        ]
 
-        filelist = w.filelist
-        assert set([ filelist[f].name for f in filelist ]) == set(['a.h', 'a.c', 'a.cc', 'CMakeLists.txt'])
-
-    def test_custom_watcher(self):
+    def test_watcher_with_file_filter(self):
         work_directory = TempDirectory()
         work_directory.write('a.h', b'')
         work_directory.write('a.c', b'')
         work_directory.write('a.cc', b'')
         work_directory.write('CMakeLists.txt', b'')
         work_directory.write('blah.txt', b'')
+        wd_len = len(work_directory.path) + 1
 
-        sc = SystemContext()
-        w = watch(sc, work_directory.path, source_patterns=['CMakeLists.txt'])
-        w.poll()
-
-        filelist = w.filelist
-        assert [ filelist[f].name for f in filelist ] == ['CMakeLists.txt']
+        w = Watcher(work_directory.path, None, source_patterns=['CMakeLists.txt'])
+        watchstate = w.poll()
+        filelist = [f[wd_len:] for f in watchstate.inserts]
+        filelist.sort()
+        assert filelist == [ 'CMakeLists.txt' ]
 
     def test_poll(self):
         work_directory = TempDirectory()
@@ -63,8 +67,7 @@ class TestWatcher:
         work_directory.write('CMakeLists.txt', b'')
         work_directory.write('blah.txt', b'')
 
-        sc = SystemContext()
-        w = watch(sc, work_directory.path)
+        w = Watcher(work_directory.path, None)
 
         watchstate = w.poll()
         assert watcher.has_changes(watchstate)
@@ -76,18 +79,24 @@ class TestWatcher:
         watchstate = w.poll()
         assert watcher.has_changes(watchstate)
 
-    def test_derive_tests(self):
+    def test_testlist(self):
+        import stat
+
         work_directory = TempDirectory()
         work_directory.makedir('test')
         testfile_path = work_directory.write(['test', 'test_dummy.c'], b'')
+        build_directory = TempDirectory()
+        testbin_path = build_directory.write(['test_dummy'], b'')
+        st = os.stat(testbin_path)
+        os.chmod(testbin_path, st.st_mode | stat.S_IEXEC)
 
-        sc = SystemContext()
-        w = watch(sc, work_directory.path)
+        w = Watcher(work_directory.path, build_directory.path)
         w.poll()
 
-        exefile = 'test_dummy' + watcher.EXE_SUFFIX
-        assert(watcher.derive_tests(w.filelist.values()) ==
-                { exefile: os.path.join('test', 'test_dummy.c') })
+        exefile = testbin_path + watcher.EXE_SUFFIX
+        testlist = w.testlist()
+        assert testlist == [ (os.path.join('test', 'test_dummy.c'), exefile) ]
+
 
 class TestWatchState:
     def test_create(self):

@@ -13,14 +13,21 @@ import subprocess
 import socket
 
 from ttt.builder import create_builder
-from ttt.watcher import watch, derive_tests, has_changes
+from ttt.watcher import Watcher, has_changes
 from ttt.executor import Executor
 from ttt.reporter import create_terminal_reporter, create_irc_reporter
 
 
 DEFAULT_BUILD_PATH_SUFFIX = '-build'
+DEFAULT_SOURCE_PATTERNS = [
+    '\.cc$',
+    '\.c$',
+    '\.h$',
+    'CMakeLists.txt$',
+]
 
-def create_monitor(context, watch_path=os.getcwd(), **kwargs):
+
+def create_monitor(context, watch_path=None, **kwargs):
     """Creates a monitor and its subordinate objects.
 
     By default, one reporter object is created to output to the terminal.
@@ -42,10 +49,19 @@ def create_monitor(context, watch_path=os.getcwd(), **kwargs):
     :param irc_nick (optional) the IRC nickname to use once connected. Has
         no meaning without irc_server.
     """
-    watcher = watch(context, watch_path)
+    full_watch_path = os.path.abspath(
+        os.getcwd() if watch_path is None else watch_path
+    )
+    if not os.path.exists(full_watch_path):
+        import errno
+        raise IOError(
+            errno.ENOENT,
+            "Invalid path: {} ({})".format(watch_path, full_watch_path)
+        )
     custom_build_path = kwargs.get('build_path')
     build_path = (os.path.abspath(custom_build_path) if custom_build_path
-                  else make_build_path(watcher.watch_path, kwargs.get('config')))
+                  else make_build_path(full_watch_path, kwargs.get('config')))
+    watcher = Watcher(full_watch_path, build_path, DEFAULT_SOURCE_PATTERNS)
     builder = create_builder(
         context,
         watcher.watch_path,
@@ -61,22 +77,28 @@ def create_monitor(context, watch_path=os.getcwd(), **kwargs):
     )
     reporters = [terminal_reporter]
     if 'irc_server' in kwargs and kwargs['irc_server'] is not None:
-        reporters.append(create_irc_reporter(
-            kwargs.get('irc_server'),
-            kwargs.get('irc_port'),
-            kwargs.get('irc_channel'),
-            first_value(kwargs.get('irc_nick'),
-                '{}-{}{}'.format(
-                    socket.gethostname().split('.')[0],
-                    os.path.basename(watch_path),
-                    '-' + first_value(kwargs.get('config'), '')
-                ))
-        ))
+        reporters.append(
+            create_irc_reporter(
+                kwargs.get('irc_server'),
+                kwargs.get('irc_port'),
+                kwargs.get('irc_channel'),
+                first_value(
+                    kwargs.get('irc_nick'),
+                    '{}-{}{}'.format(
+                        socket.gethostname().split('.')[0],
+                        os.path.basename(watch_path),
+                        '-' + first_value(kwargs.get('config'), '')
+                    )
+                )
+            )
+        )
 
     return Monitor(watcher, builder, executor, reporters)
 
 
-def make_build_path(watch_path, build_type=None, suffix=DEFAULT_BUILD_PATH_SUFFIX):
+def make_build_path(watch_path,
+                    build_type=None,
+                    suffix=DEFAULT_BUILD_PATH_SUFFIX):
     """Creates a build path from the watch path by appending a suffix.
 
     The build path will be an absolute path based on the current working
@@ -84,14 +106,15 @@ def make_build_path(watch_path, build_type=None, suffix=DEFAULT_BUILD_PATH_SUFFI
 
     :param watch_path: the watch path
     :param config: the build type
-    :param suffix: (optional) the suffix to append to the watch path. Defaults to -build.
+    :param suffix: (optional) the suffix to append to the watch path. Defaults
+    to -build.
     :return the absolute build path
     """
     return os.path.join(
         os.getcwd(),
         "{}{}{}".format(os.path.basename(watch_path),
-                      '' if build_type is None else ('-' + build_type),
-                      suffix)
+                        '' if build_type is None else ('-' + build_type),
+                        suffix)
     )
 
 
@@ -109,7 +132,7 @@ class Monitor(object):
         :param builder: the :class:`Builder` object
         :param executor: the :class:`Executor` object
         :param reporters: a list of :class:`Reporter` objects (Monitor
-            listeners)
+        listeners)
         :param interval: (optional) the time in seconds to wait between
             checking for changes
         """
@@ -166,9 +189,7 @@ class Monitor(object):
         """Executes the tests."""
         def fn():
             self.notify('session_start', 'test')
-            results = self.executor.test(
-                derive_tests(self.watcher.filelist.values())
-            )
+            results = self.executor.test(self.watcher.testlist())
             self.notify('report_results', results)
 
             if results['total_failed'] == 0 and self.last_failed > 0:

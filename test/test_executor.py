@@ -17,9 +17,8 @@ from ttt.executor import Executor
 from ttt.systemcontext import SystemContext
 
 class MockContext(SystemContext):
-    def __init__(self, files=[], results=[]):
+    def __init__(self, results=[]):
         super(MockContext, self).__init__()
-        self.files = files
         self.results = results[::-1]
         self.command = []
         self.output = ''
@@ -33,10 +32,6 @@ class MockContext(SystemContext):
             return (0, results, [])
         return (0, [], [])
 
-    def walk(self, path):
-        for x, y, z in self.files:
-            yield x, y, z, 0
-
     def getvalue(self):
         return self.output
 
@@ -48,9 +43,8 @@ DUMMYPATH = os.path.join(BUILDPATH, 'test_core')
 
 class TestExecutor:
     def test_passed(self):
-        testdict = { 'test_core': 'test_core.c' }
+        testdict = [ ('test_core.cc', DUMMYPATH) ]
         sc = MockContext(
-                [[BUILDPATH, 'test_core', stat.S_IXUSR]],
                 [[
                     '[==========] Running 1 test from 1 test case.',
                     '[----------] Global test environment set-up.',
@@ -72,15 +66,14 @@ class TestExecutor:
                 'total_failed': 0,
                 'failures': []
                 }
-        assert sc.getvalue() == 'test_core.c :: core .' + os.linesep
+        assert sc.getvalue() == 'test_core.cc :: core .' + os.linesep
         assert sc.command == [
                 [DUMMYPATH],
                 ]
 
     def test_failed(self):
-        testdict = { 'test_core': 'test_core.c' }
+        testdict = [ ('test_core.cc', DUMMYPATH) ]
         sc = MockContext(
-                [[BUILDPATH, 'test_core', stat.S_IXUSR]],
                 [[
                     '[==========] Running 1 test from 1 test case.',
                     '[----------] Global test environment set-up.',
@@ -119,15 +112,14 @@ class TestExecutor:
                         []
                     ]]
                 }
-        assert sc.getvalue() == 'test_core.c :: core F' + os.linesep
+        assert sc.getvalue() == 'test_core.cc :: core F' + os.linesep
         assert sc.command == [
                 [DUMMYPATH],
                 ]
 
     def test_mixed_results(self):
-        testdict = { 'test_core': 'test_core.c' }
+        testdict = [ ('test_core.cc', DUMMYPATH) ]
         sc = MockContext(
-                [[BUILDPATH, 'test_core', stat.S_IXUSR]],
                 [[
                     '[==========] Running 2 tests from 1 test case.',
                     '[----------] Global test environment set-up.',
@@ -168,15 +160,14 @@ class TestExecutor:
                         []
                     ]]
                 }
-        assert sc.getvalue() == 'test_core.c :: core .F' + os.linesep
+        assert sc.getvalue() == 'test_core.cc :: core .F' + os.linesep
         assert sc.command == [
                 [DUMMYPATH],
                 ]
 
     def test_filter(self):
-        testdict = { 'test_core': 'test_core.c' }
+        testdict = [ ('test_core.cc', DUMMYPATH) ]
         sc = MockContext(
-                [[BUILDPATH, 'test_core', stat.S_IXUSR]],
                 [[
                     '[==========] Running 1 test from 1 test case.',
                     '[----------] Global test environment set-up.',
@@ -205,9 +196,8 @@ class TestExecutor:
         assert e.test_filter() == {}
 
     def test_failed_filter(self):
-        testdict = { 'test_core': 'test_core.c' }
+        testdict = [ ('test_core.cc', DUMMYPATH) ]
         sc = MockContext(
-                [[BUILDPATH, 'test_core', stat.S_IXUSR]],
                 [[
                     '[==========] Running 2 tests from 1 test case.',
                     '[----------] Global test environment set-up.',
@@ -261,9 +251,8 @@ class TestExecutor:
                 ]
 
     def test_multiple_failed_filter(self):
-        testdict = { 'test_core': 'test_core.c' }
+        testdict = [ ('test_core.cc', DUMMYPATH) ]
         sc = MockContext(
-                [[BUILDPATH, 'test_core', stat.S_IXUSR]],
                 [[
                     '[==========] Running 2 tests from 1 test case.',
                     '[----------] Global test environment set-up.',
@@ -329,9 +318,8 @@ class TestExecutor:
                 ]
 
     def test_failure_then_success_reruns_all(self):
-        testdict = { 'test_core': 'test_core.c' }
+        testdict = [ ('test_core.cc', DUMMYPATH) ]
         sc = MockContext(
-                [[BUILDPATH, 'test_core', stat.S_IXUSR]],
                 [[
                     '[==========] Running 1 test from 1 test case.',
                     '[----------] Global test environment set-up.',
