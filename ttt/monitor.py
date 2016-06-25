@@ -5,17 +5,19 @@ This module implements the monitor which will poll the watched source tree for
 change and initiate the build and test of the watched source tree.
 :copyright: (c) yerejm
 """
-import os
-import time
 import collections
 import itertools
-import subprocess
+import os
 import socket
+import subprocess
+import sys
+import time
 
 from ttt.builder import create_builder
 from ttt.watcher import Watcher, has_changes
 from ttt.executor import Executor
 from ttt.reporter import create_terminal_reporter, create_irc_reporter
+from ttt.terminal import Terminal
 
 
 DEFAULT_BUILD_PATH_SUFFIX = '-build'
@@ -69,9 +71,10 @@ def create_monitor(context, watch_path=None, **kwargs):
         kwargs.get('generator'),
         kwargs.get('config')
     )
-    executor = Executor(context, build_path)
+    terminal = Terminal(sys.stdout)
+    executor = Executor(context, terminal)
     terminal_reporter = create_terminal_reporter(
-        context,
+        terminal,
         watcher.watch_path,
         build_path
     )

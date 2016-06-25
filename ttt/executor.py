@@ -6,15 +6,16 @@ are based on gtest.
 :copyright: (c) yerejm
 """
 from ttt.gtest import GTest
+from ttt.terminal import Terminal
 
 
 class Executor(object):
     """Maintains the collection of tests detected by the :class:`Watcher` and
     provides an interface to execute all or some of those tests."""
 
-    def __init__(self, context, build_path):
-        self._context = context
-        self._build_path = build_path
+    def __init__(self, context, terminal=Terminal()):
+        self.context = context
+        self.terminal = terminal
         self._test_filter = {}
 
     def test_filter(self):
@@ -41,9 +42,10 @@ class Executor(object):
                 of the failures list)
           - failures: a list of lists containing the failure results
         """
-        testlist = [GTest(src_relpath, bin_abspath, self._context)
+        testlist = [GTest(src_relpath, bin_abspath, self.terminal)
                     for src_relpath, bin_abspath in testfiles]
-        test_results = run_tests(self._context, testlist, self._test_filter)
+        test_results = run_tests(self.context, self.terminal,
+                                 testlist, self._test_filter)
         self._test_filter = {
             test.executable(): test.failures()
             for test in test_results if test.failures()
@@ -77,7 +79,7 @@ def collate(test_results):
     }
 
 
-def run_tests(context, testlist, test_filter):
+def run_tests(context, terminal, testlist, test_filter):
     """Runs the available tests.
 
     If a test filter is provided, only those tests are run, and only failures
@@ -99,7 +101,7 @@ def run_tests(context, testlist, test_filter):
     """
     results = set()
     for test in testlist:
-        context.writeln("Executing {}".format(test.executable()), verbose=2)
+        terminal.writeln("Executing {}".format(test.executable()), verbose=2)
         if not test_filter or test.executable() in test_filter:
             failures = test.execute(
                 context,

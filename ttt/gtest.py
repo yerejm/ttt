@@ -11,6 +11,8 @@ import termstyle
 import os
 import sys
 
+from ttt.terminal import Terminal
+
 
 TESTCASE_START_RE = re.compile('^\[----------\] \d+ tests? from (.*?)$')
 TESTCASE_END_RE = re.compile(
@@ -75,17 +77,6 @@ TESTCASE_TIME_RE = re.compile(
 #
 
 
-class NullTerminal(object):
-    """Presents a dummy terminal where output intended for stdout/stderr is
-    ignored.
-    """
-    def __getattr__(self, method_name):
-        """All method calls to be invoked will do nothing."""
-        def fn(*args, **kwargs):
-            pass
-        return fn
-
-
 def testcase_starts_at(line):
     """Indicates if the line is the start of a testcase."""
     return TESTCASE_START_RE.match(line)
@@ -122,7 +113,7 @@ class GTest(object):
     """
     WAITING_TESTCASE, WAITING_TEST, IN_TEST = range(3)
 
-    def __init__(self, source=None, executable=None, term=NullTerminal()):
+    def __init__(self, source=None, executable=None, term=Terminal()):
         self._source = source
         self._executable = executable
         self._reset()

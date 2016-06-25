@@ -3,8 +3,8 @@ import termstyle
 from ttt.ircclient import IRCClient
 
 
-def create_terminal_reporter(context, watch_path=None, build_path=None):
-    return TerminalReporter(context, watch_path, build_path)
+def create_terminal_reporter(terminal, watch_path=None, build_path=None):
+    return TerminalReporter(terminal, watch_path, build_path)
 
 
 def create_irc_reporter(server, port, channel, nick):
@@ -78,8 +78,8 @@ class IRCReporter(Reporter):
 
 class TerminalReporter(Reporter):
 
-    def __init__(self, context, watch_path, build_path):
-        self.context = context
+    def __init__(self, terminal, watch_path, build_path):
+        self.terminal = terminal
         self.watch_path = watch_path
         self.build_path = build_path
 
@@ -160,7 +160,7 @@ class TerminalReporter(Reporter):
         self.writeln("Watching stopped.")
 
     def writeln(self, *args, **kwargs):
-        self.context.writeln(*args, **kwargs)
+        self.terminal.writeln(*args, **kwargs)
 
 
 def strip_path(string, path):

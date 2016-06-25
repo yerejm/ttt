@@ -10,10 +10,6 @@ import sys
 import subprocess
 import threading
 from six.moves import queue
-from six import text_type
-
-# When writing to output streams, do not write more than the following width.
-TERMINAL_MAX_WIDTH = 78
 
 
 class SystemContext(object):
@@ -32,72 +28,6 @@ class SystemContext(object):
     def streamed_call(self, *args, **kwargs):
         kwargs['universal_newlines'] = True
         return call_output(*args, **kwargs)
-
-    def write(self, string):
-        sys.stdout.write(text_type(string))
-        sys.stdout.flush()
-
-    def writeln(self, *args, **kwargs):
-        verbosity = kwargs['verbose'] if 'verbose' in kwargs else None
-        if verbosity is not None and verbosity != self._verbosity:
-            return
-
-        line_end = kwargs['end'] if 'end' in kwargs else os.linesep
-        if args:
-            for string in args:
-                string = str(string)
-                if 'pad' in kwargs:
-                    width = (
-                        kwargs['width'] if 'width' in kwargs else term_width()
-                    )
-                    string = pad(kwargs['pad'], string, width)
-                if 'decorator' in kwargs:
-                    for d in kwargs['decorator']:
-                        string = d(string)
-                self.write(string + line_end)
-        else:
-            self.write(line_end)
-
-
-def term_width():
-    """Get the width of the terminal if possible. Defaults to 78."""
-    try:
-        from shutil import get_terminal_size
-        ts = get_terminal_size()
-        return ts.columns
-    except ImportError:
-        return TERMINAL_MAX_WIDTH
-
-
-def pad(padchar, string, width):
-    """Pads a string to the given width with the given character such that the
-    string is centered between the padding (separated on each side by a single
-    space). When the amount of padding on either side cannot be the same, the
-    padding favours the right side with the extra padding.
-
-    :param padchar: the padding character
-    :param string: the string to be padded on the left and right with the
-        padding character
-    :param width: the desired width of the padded string. The width is capped
-        to the maximum width of 78.
-    :return the padded string
-
-      >>> pad('*', 'hello', 10)
-      '* hello **'
-      >>> pad('*', 'hello', 11)
-      '** hello **'
-    """
-    pad_width = min(width, TERMINAL_MAX_WIDTH)
-    strlen = len(string) + 2
-    total_padlen = pad_width - strlen
-    left_padlen = int(total_padlen / 2)
-    right_padlen = total_padlen - left_padlen
-
-    return "{} {} {}".format(
-        ''.ljust(left_padlen, padchar),
-        string,
-        ''.ljust(right_padlen, padchar)
-    )
 
 
 def call_output(*popenargs, **kwargs):

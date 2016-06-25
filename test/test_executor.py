@@ -15,6 +15,7 @@ from testfixtures import TempDirectory
 
 from ttt.executor import Executor
 from ttt.systemcontext import SystemContext
+from ttt.terminal import Terminal
 
 class MockContext(SystemContext):
     def __init__(self, results=[]):
@@ -31,6 +32,11 @@ class MockContext(SystemContext):
                 listener(sys.stdout, line)
             return (0, results, [])
         return (0, [], [])
+
+class MockTerminal(Terminal):
+    def __init__(self):
+        super(MockTerminal, self).__init__()
+        self.output = ''
 
     def getvalue(self):
         return self.output
@@ -58,7 +64,8 @@ class TestExecutor:
                     '[  PASSED  ] 1 test.',
                 ]]
             )
-        e = Executor(sc, BUILDPATH)
+        t = MockTerminal()
+        e = Executor(sc, t)
         results = e.test(testdict)
         assert results == {
                 'total_runtime': 0.001,
@@ -66,7 +73,7 @@ class TestExecutor:
                 'total_failed': 0,
                 'failures': []
                 }
-        assert sc.getvalue() == 'test_core.cc :: core .' + os.linesep
+        assert t.getvalue() == 'test_core.cc :: core .' + os.linesep
         assert sc.command == [
                 [DUMMYPATH],
                 ]
@@ -95,7 +102,8 @@ class TestExecutor:
                     ' 1 FAILED TEST',
                 ]]
             )
-        e = Executor(sc, BUILDPATH)
+        t = MockTerminal()
+        e = Executor(sc, t)
         results = e.test(testdict)
         assert results == {
                 'total_runtime': 0.001,
@@ -112,7 +120,7 @@ class TestExecutor:
                         []
                     ]]
                 }
-        assert sc.getvalue() == 'test_core.cc :: core F' + os.linesep
+        assert t.getvalue() == 'test_core.cc :: core F' + os.linesep
         assert sc.command == [
                 [DUMMYPATH],
                 ]
@@ -143,7 +151,8 @@ class TestExecutor:
                     ' 1 FAILED TEST',
                 ]]
             )
-        e = Executor(sc, BUILDPATH)
+        t = MockTerminal()
+        e = Executor(sc, t)
         results = e.test(testdict)
         assert results == {
                 'total_runtime': 0.001,
@@ -160,7 +169,7 @@ class TestExecutor:
                         []
                     ]]
                 }
-        assert sc.getvalue() == 'test_core.cc :: core .F' + os.linesep
+        assert t.getvalue() == 'test_core.cc :: core .F' + os.linesep
         assert sc.command == [
                 [DUMMYPATH],
                 ]
@@ -189,7 +198,7 @@ class TestExecutor:
                     ' 1 FAILED TEST',
                 ]]
             )
-        e = Executor(sc, BUILDPATH)
+        e = Executor(sc)
         e.test(testdict)
         assert e.test_filter() == { DUMMYPATH: ['core.ok'] }
         e.clear_filter()
@@ -241,7 +250,7 @@ class TestExecutor:
                     ' 1 FAILED TEST',
                 ]]
             )
-        e = Executor(sc, BUILDPATH)
+        e = Executor(sc)
         e.test(testdict)
         assert sc.command == [[DUMMYPATH]]
         e.test(testdict)
@@ -308,7 +317,7 @@ class TestExecutor:
                     ' 2 FAILED TESTS',
                 ]]
             )
-        e = Executor(sc, BUILDPATH)
+        e = Executor(sc)
         e.test(testdict)
         assert sc.command == [[DUMMYPATH]]
         e.test(testdict)
@@ -353,7 +362,7 @@ class TestExecutor:
                     '[  PASSED  ] 1 test.',
                 ]]
             )
-        e = Executor(sc, BUILDPATH)
+        e = Executor(sc)
         e.test(testdict)
         assert sc.command == [[DUMMYPATH]]
         e.test(testdict)

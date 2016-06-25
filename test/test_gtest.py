@@ -13,10 +13,10 @@ import sys
 
 import pytest
 
-from ttt.systemcontext import SystemContext
+from ttt.terminal import Terminal
 from ttt.gtest import GTest
 
-class MockTerminal(SystemContext):
+class MockTerminal(Terminal):
     def __init__(self):
         super(MockTerminal, self).__init__()
         self.output = ''
