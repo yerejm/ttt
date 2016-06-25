@@ -11,7 +11,7 @@ from . import __version__
                'where {dir} is the basename of the source path, and {config} '
                'is the build configuration. If provided and is relative, it '
                'will be created under the local path.')
-@argh.arg('-v', '--verbosity', action='count', default=None,
+@argh.arg('-v', '--verbosity', action='count', default=0,
           help='More v\'s more verbose.')
 @argh.arg('-g', '--generator', default=None,
           help='cmake generator: refer to cmake documentation')

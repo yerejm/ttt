@@ -67,7 +67,7 @@ class TestCLI:
                 cli.run()
                 assert len(monitor.call_args_list)
                 args, kwargs = monitor.call_args_list[0]
-                assert kwargs['verbosity'] is None
+                assert kwargs['verbosity'] == 0
 
     @patch('sys.argv', new=['ttt', 'watch_path'])
     def test_irc_disabled(self):
