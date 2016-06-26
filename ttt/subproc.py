@@ -1,15 +1,14 @@
 """
-ttt.subprocess
+ttt.subproc
 ~~~~~~~~~~~~
 This module provides additional functions for subprocess execution built on top
 of the existing subprocess module.
 
 :copyright: (c) yerejm
 """
-from __future__ import absolute_import
-import subprocess
 
 import os
+import subprocess
 import sys
 import threading
 from six.moves import queue

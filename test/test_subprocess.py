@@ -5,7 +5,7 @@
 test_subprocess
 ----------------------------------
 
-Tests for `subprocess` module.
+Tests for `subproc` module.
 """
 import os
 import subprocess
@@ -13,7 +13,7 @@ import subprocess
 import pytest
 from testfixtures import TempDirectory
 
-from ttt.subprocess import execute, checked_call, streamed_call
+from ttt.subproc import execute, checked_call, streamed_call
 
 PROGRAM_NAME = 'test.py'
 def create_program(exit_code=0):

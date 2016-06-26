@@ -5,13 +5,12 @@ This module implements the monitor which will poll the watched source tree for
 change and initiate the build and test of the watched source tree.
 :copyright: (c) yerejm
 """
-from __future__ import absolute_import
-import subprocess
 
 import collections
 import itertools
 import os
 import socket
+import subprocess
 import time
 
 from ttt.builder import create_builder

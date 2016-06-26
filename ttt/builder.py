@@ -4,12 +4,11 @@ ttt.builder
 This module implements the cmake builder.
 :copyright: (c) yerejm
 """
-from __future__ import absolute_import
-import subprocess
 
 import os
 import errno
 import shutil
+import subprocess
 from functools import partial
 
 
@@ -60,7 +59,7 @@ def execute(commands):
 
     :param commands: a list of callable objects
     """
-    from ttt.subprocess import checked_call
+    from ttt.subproc import checked_call
     for command_generator in commands:
         command = command_generator()
         if command:  # Note that command may be None (or empty list)

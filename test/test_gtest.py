@@ -276,7 +276,7 @@ class TestGTest:
     def test_command_filter_none(self):
         r = (0, [], [])
         gtest = GTest('/test/test_core.cc', '/path/to/test')
-        with patch('ttt.subprocess.streamed_call', return_value=r) as c:
+        with patch('ttt.subproc.streamed_call', return_value=r) as c:
             gtest.execute([])
         args = c.call_args[0]
         assert args[0] == ['/path/to/test']
@@ -284,7 +284,7 @@ class TestGTest:
     def test_command_filter_one(self):
         r = (0, [], [])
         gtest = GTest('/test/test_core.cc', '/path/to/test')
-        with patch('ttt.subprocess.streamed_call', return_value=r) as c:
+        with patch('ttt.subproc.streamed_call', return_value=r) as c:
             gtest.execute([ 'dummy' ])
         args = c.call_args[0]
         assert args[0] == ['/path/to/test', '--gtest_filter=dummy']
@@ -292,7 +292,7 @@ class TestGTest:
     def test_command_filter_many(self):
         r = (0, [], [])
         gtest = GTest('/test/test_core.cc', '/path/to/test')
-        with patch('ttt.subprocess.streamed_call', return_value=r) as c:
+        with patch('ttt.subproc.streamed_call', return_value=r) as c:
             gtest.execute([ 'dummy1', 'dummy2' ])
         args = c.call_args[0]
         assert args[0] == ['/path/to/test', '--gtest_filter=dummy1:dummy2']

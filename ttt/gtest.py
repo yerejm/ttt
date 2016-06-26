@@ -11,7 +11,7 @@ import termstyle
 import os
 import sys
 
-import ttt.subprocess
+from ttt.terminal import Terminal
 
 TESTCASE_START_RE = re.compile('^\[----------\] \d+ tests? from (.*?)$')
 TESTCASE_END_RE = re.compile(
@@ -127,7 +127,7 @@ class GTest(object):
 
         self._source = source
         self._executable = executable
-        self._term = term if term else ttt.terminal.Terminal()
+        self._term = term if term else Terminal()
         self._reset()
 
     def _reset(self):
@@ -169,13 +169,13 @@ class GTest(object):
             --gtest_filter command line option.
         :return a list of failing tests identified by name
         """
+        from ttt.subproc import streamed_call
         command = [self.executable()]
         if test_filters:
             command.append("--gtest_filter={}".format(':'.join(test_filters)))
         self._reset()
         self._term.writeln("Executing {}".format(" ".join(command)), verbose=2)
-        rc, stdout, stderr = ttt.subprocess.streamed_call(command,
-                                                          listener=self)
+        rc, stdout, stderr = streamed_call(command, listener=self)
         self._term.writeln(command, verbose=2)
         self._term.writeln(os.linesep.join(stdout), verbose=2)
         self._term.writeln(os.linesep.join(stderr), verbose=2)
