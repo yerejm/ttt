@@ -15,6 +15,7 @@ except:
 
 from ttt import monitor
 from ttt import cli
+from ttt.terminal import Terminal
 
 
 class TestCLI:
@@ -38,25 +39,19 @@ class TestCLI:
     def test_verbosity_multiple(self):
         with patch('ttt.monitor.create_monitor', autospec=True) as monitor:
             cli.run()
-            assert len(monitor.call_args_list)
-            args, kwargs = monitor.call_args_list[0]
-            assert kwargs['verbosity'] == 2
+        assert Terminal.VERBOSITY == 2
 
     @patch('sys.argv', new=['ttt', 'watch_path', '-v'])
     def test_verbosity_single(self):
         with patch('ttt.monitor.create_monitor', autospec=True) as monitor:
             cli.run()
-            assert len(monitor.call_args_list)
-            args, kwargs = monitor.call_args_list[0]
-            assert kwargs['verbosity'] == 1
+        assert Terminal.VERBOSITY == 1
 
     @patch('sys.argv', new=['ttt', 'watch_path'])
     def test_verbosity_none(self):
         with patch('ttt.monitor.create_monitor', autospec=True) as monitor:
             cli.run()
-            assert len(monitor.call_args_list)
-            args, kwargs = monitor.call_args_list[0]
-            assert kwargs['verbosity'] == 0
+        assert Terminal.VERBOSITY == 0
 
     @patch('sys.argv', new=['ttt', 'watch_path'])
     def test_irc_disabled(self):

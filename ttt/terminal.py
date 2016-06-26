@@ -16,8 +16,11 @@ TERMINAL_MAX_WIDTH = 78
 
 
 class Terminal(object):
+    # Yes, this is a global variable...
+    VERBOSITY = 0
+
     """A Terminal that will write lines given to it to an output stream."""
-    def __init__(self, stream=None, verbosity=0):
+    def __init__(self, stream=None, verbosity=None):
         """Creates a terminal for a specific verbosity.
 
         :param stream: (optional) the output stream to send output. By default,
@@ -26,7 +29,7 @@ class Terminal(object):
         to be set at for output to occur. Default is 0, which is the default
         for lines that do not specify a verbosity.
         """
-        self._verbosity = verbosity
+        self._verbosity = verbosity if verbosity else Terminal.VERBOSITY
         self.stream = stream
 
     def write(self, string):
@@ -53,13 +56,13 @@ class Terminal(object):
         the line is too short, it is padded with the pad string (see pad
         parameter). Default width is 78. The maximum width is 78.
         """
-        verbose = kwargs.pop('verbose', 0)
+        level = kwargs.pop('verbose', 0)
         end = kwargs.pop('end', None)
         decorator = kwargs.pop('decorator', None)
         pad = kwargs.pop('pad', None)
         width = kwargs.pop('width', None)
 
-        if verbose == self._verbosity:
+        if level == self._verbosity:
             line = "".join([str(a) for a in args])
             if width and not pad:
                 raise Exception('An empty pad cannot be provided with a '

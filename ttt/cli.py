@@ -1,6 +1,7 @@
 import argh
 
 from ttt import monitor
+from ttt.terminal import Terminal
 from . import __version__
 
 
@@ -11,7 +12,7 @@ from . import __version__
                'where {dir} is the basename of the source path, and {config} '
                'is the build configuration. If provided and is relative, it '
                'will be created under the local path.')
-@argh.arg('-v', '--verbosity', action='count', default=0,
+@argh.arg('-v', '--verbosity', action='count', default=None,
           help='More v\'s more verbose.')
 @argh.arg('-g', '--generator', default=None,
           help='cmake generator: refer to cmake documentation')
@@ -24,6 +25,8 @@ from . import __version__
           help='IRC nick derived from the watch path and the build '
                'configuration.')
 def ttt(watch_path, **kwargs):
+    verbosity = kwargs.pop("verbosity", 0)
+    Terminal.VERBOSITY = verbosity if verbosity else 0
     monitor.create_monitor(watch_path, **kwargs).run()
 
 
