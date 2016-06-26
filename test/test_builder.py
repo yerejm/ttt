@@ -13,49 +13,18 @@ import platform
 import subprocess
 
 from testfixtures import TempDirectory
-
 from ttt.builder import create_builder
-from ttt.systemcontext import SystemContext
 
-class CommandCaptureContext:
-    def __init__(self):
-        self.calls = []
-    def checked_call(self, *args, **kwargs):
-        self.calls.append(args)
+
+def find_in_file(filename, string):
+    with open(filename, 'r') as f:
+        for line in f:
+            if string in line:
+                return line
+    return False
+
 
 class TestCMake:
-
-    def test_default_build(self):
-        ccc = CommandCaptureContext()
-        builder = create_builder(ccc, '/path/to/source', '/path/to/build')
-        builder()
-
-        assert ccc.calls == [
-                (['cmake', '-H/path/to/source', '-B/path/to/build'],),
-                (['cmake', '--build', '/path/to/build'],),
-                ]
-
-    def test_build_with_generator(self):
-        ccc = CommandCaptureContext()
-        builder = create_builder(ccc, '/path/to/source', '/path/to/build', 'Ninja')
-        builder()
-
-        assert ccc.calls == [
-                (['cmake', '-G', 'Ninja', '-H/path/to/source', '-B/path/to/build'],),
-                (['cmake', '--build', '/path/to/build'],),
-                ]
-
-    def test_build_with_build_type(self):
-        ccc = CommandCaptureContext()
-        builder = create_builder(ccc, '/path/to/source', '/path/to/build', 'Ninja', "release")
-        builder()
-
-        assert ccc.calls == [
-                (['cmake', '-G', 'Ninja', '-H/path/to/source', '-B/path/to/build', '-DCMAKE_BUILD_TYPE=release'],),
-                (['cmake', '--build', '/path/to/build', '--config', 'release'],),
-                ]
-
-class TestCMakeSlow:
     def setup(self):
         cmake_source_directory = TempDirectory()
         self.cmake_source_path = cmake_source_directory.path
@@ -66,9 +35,33 @@ class TestCMakeSlow:
     def teardown(self):
         TempDirectory.cleanup_all()
 
+    def test_build_with_generator(self):
+        builder = create_builder(self.cmake_source_path, self.cmake_build_path, 'Ninja')
+        builder()
+
+        assert os.path.exists(os.path.join(self.cmake_build_path, 'CMakeFiles'))
+        assert os.path.exists(os.path.join(self.cmake_build_path, 'build.ninja'))
+
+    def test_build_with_default_build_type(self):
+        builder = create_builder(self.cmake_source_path, self.cmake_build_path)
+        builder()
+
+        cmakecache = os.path.join(self.cmake_build_path, 'CMakeCache.txt')
+        assert os.path.exists(cmakecache)
+        assert find_in_file(cmakecache, 'CMAKE_BUILD_TYPE:STRING=' + os.linesep)
+
+    def test_build_with_build_type(self):
+        builder = create_builder(self.cmake_source_path, self.cmake_build_path,
+                                 build_type="release")
+        builder()
+
+        cmakecache = os.path.join(self.cmake_build_path, 'CMakeCache.txt')
+        assert os.path.exists(cmakecache)
+        assert find_in_file(cmakecache, 'CMAKE_BUILD_TYPE:STRING=release' + os.linesep)
+
     def test_good_build(self):
         build_file = 'test.sln' if platform.system() == 'Windows' else 'Makefile'
-        builder = create_builder(SystemContext(), self.cmake_source_path, self.cmake_build_path)
+        builder = create_builder(self.cmake_source_path, self.cmake_build_path)
         builder()
 
         assert os.path.exists(os.path.join(self.cmake_build_path, 'CMakeFiles'))
@@ -83,7 +76,7 @@ class TestCMakeSlow:
             '-B{}'.format(build_path)
         ]
 
-        builder = create_builder(SystemContext(), source_path, build_path)
+        builder = create_builder(source_path, build_path)
         try:
             builder()
         except subprocess.CalledProcessError as e:
@@ -92,14 +85,14 @@ class TestCMakeSlow:
     def test_bad_build_from_relative_path(self):
         error = None
         try:
-            create_builder(SystemContext(), 'dummy', self.cmake_build_path)
+            create_builder('dummy', self.cmake_build_path)
         except IOError as e:
             error = e
         assert 'Watch path dummy must be absolute' in str(error)
 
         error = None
         try:
-            create_builder(SystemContext(), self.cmake_source_path, 'dummy')
+            create_builder(self.cmake_source_path, 'dummy')
         except IOError as e:
             error = e
         assert 'Build path dummy must be absolute' in str(error)

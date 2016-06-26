@@ -5,17 +5,13 @@ This module implements the test executor. It assumes the tests being executed
 are based on gtest.
 :copyright: (c) yerejm
 """
-from ttt.gtest import GTest
-from ttt.terminal import Terminal
 
 
 class Executor(object):
     """Maintains the collection of tests detected by the :class:`Watcher` and
     provides an interface to execute all or some of those tests."""
 
-    def __init__(self, context, terminal=Terminal()):
-        self.context = context
-        self.terminal = terminal
+    def __init__(self):
         self._test_filter = {}
 
     def test_filter(self):
@@ -24,17 +20,20 @@ class Executor(object):
     def clear_filter(self):
         self._test_filter.clear()
 
-    def test(self, testfiles):
-        """Executes the tests named and identifiable as executable test binaries.
+    def test(self, testlist):
+        """Executes the tests provided in the given list.
 
-        This is a stateful method. When tests run, the :class:`Executor` will
-        look for the presence of failing tests when running all the identified
-        tests. If any are detected, the test filter will be applied and only
-        those tests identified by the filter will run until all are passing
-        again. At this point, the :class:`Executor` will be able to run all
-        tests again and the cycle restarts.
+        All tests are run and their outcome captured. If any failing tests are
+        detected, a test filter is updated to record those failures. Once this
+        occurs, only those tests identified by the filter will run until all
+        have passed. At this point, the filter is empty.
 
-        :param testfiles: a list of (executable path: source path) tuples
+        This means than if a test in the filter is detected to fail, no other
+        test is allowed to run until that test is passing while the ttt session
+        remains running. This does not persist across ttt sessions and the
+        filter can be removed during a session using clear_filter().
+
+        :param testlist: a list of test objects
         :return a Dict() of test results containing:
           - total_runtime: time to run all tests in seconds
           - total_passed: the number of successful tests
@@ -42,72 +41,40 @@ class Executor(object):
                 of the failures list)
           - failures: a list of lists containing the failure results
         """
-        testlist = [GTest(src_relpath, bin_abspath, self.terminal)
-                    for src_relpath, bin_abspath in testfiles]
-        test_results = run_tests(self.context, self.terminal,
-                                 testlist, self._test_filter)
+        test_filter = self._test_filter
+        test_results = set()
+        for test in testlist:
+            if not test_filter or test.executable() in test_filter:
+                failures = test.execute(
+                    test_filter[test.executable()] if test_filter else []
+                )
+                test_results.add(test)
+                if failures and test_filter:
+                    break
+
+        # update the test filter for those tests that failed
         self._test_filter = {
             test.executable(): test.failures()
             for test in test_results if test.failures()
         }
-        return collate(test_results)
 
+        # collate the test results
+        runtime = 0.0
+        fail_count = 0
+        pass_count = 0
+        failures = []
+        for test in test_results:
+            runtime += test.run_time()
+            fail_count += test.fails()
+            pass_count += test.passes()
+            for failure in test.failures():
+                failed, out, err = test.test_results(failure)
+                failures.append([failure, out, err])
+        runtime /= 1000  # runtime is in milliseconds; summarise using seconds
 
-def collate(test_results):
-    """Collate the test results of the failures into a Dict().
-
-    See Executor.test().
-    """
-    runtime = 0.0
-    fail_count = 0
-    pass_count = 0
-    failures = []
-    for test in test_results:
-        runtime += test.run_time()
-        fail_count += test.fails()
-        pass_count += test.passes()
-        for failure in test.failures():
-            failed, out, err = test.test_results(failure)
-            failures.append([failure, out, err])
-    runtime /= 1000  # runtime is in milliseconds; summarise using seconds
-
-    return {
-        'total_runtime': runtime,
-        'total_passed': pass_count,
-        'total_failed': fail_count,
-        'failures': failures,
-    }
-
-
-def run_tests(context, terminal, testlist, test_filter):
-    """Runs the available tests.
-
-    If a test filter is provided, only those tests are run, and only failures
-    for those tests are returned. This means than if a test in the filter is
-    detected to fail, no other test is allowed to run until that test is
-    passing while the ttt session remains running. This does not persist across
-    ttt sessions.
-
-    Otherwise, all tests are run, no matter how many tests are detected to have
-    failed. This then feeds into the behaviour that requires failing tests to
-    pass first before all tests can run again.
-
-    :param context: the :class:`SystemContext` that will execute the test
-        as a subprocess
-    :param testlist: the list of available test executables
-    :param test_filter: the list of test names to use as a filter to control
-        which tests are run when executing the test executable
-    :return a set of tests that ran
-    """
-    results = set()
-    for test in testlist:
-        terminal.writeln("Executing {}".format(test.executable()), verbose=2)
-        if not test_filter or test.executable() in test_filter:
-            failures = test.execute(
-                context,
-                test_filter[test.executable()] if test_filter else []
-            )
-            results.add(test)
-            if failures and test_filter:
-                break
-    return results
+        return {
+            'total_runtime': runtime,
+            'total_passed': pass_count,
+            'total_failed': fail_count,
+            'failures': failures,
+        }

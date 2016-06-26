@@ -1,10 +1,9 @@
 import os
+import sys
 import termstyle
+
 from ttt.ircclient import IRCClient
-
-
-def create_terminal_reporter(terminal, watch_path=None, build_path=None):
-    return TerminalReporter(terminal, watch_path, build_path)
+from ttt.terminal import Terminal
 
 
 def create_irc_reporter(server, port, channel, nick):
@@ -78,8 +77,8 @@ class IRCReporter(Reporter):
 
 class TerminalReporter(Reporter):
 
-    def __init__(self, terminal, watch_path, build_path):
-        self.terminal = terminal
+    def __init__(self, watch_path, build_path, terminal=None):
+        self.terminal = terminal if terminal else Terminal(stream=sys.stdout)
         self.watch_path = watch_path
         self.build_path = build_path
 

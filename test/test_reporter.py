@@ -7,6 +7,7 @@ test_reporter
 
 Tests for `reporter` module.
 """
+import io
 import os
 import termstyle
 
@@ -16,18 +17,8 @@ except:
     from unittest.mock import Mock, MagicMock, call, patch
 
 from ttt.terminal import Terminal
-from ttt.reporter import create_terminal_reporter, IRCReporter
-
-class MockTerminal(Terminal):
-    def __init__(self):
-        super(MockTerminal, self).__init__()
-        self.output = ''
-
-    def getvalue(self):
-        return self.output
-
-    def write(self, string):
-        self.output += string
+from ttt.reporter import TerminalReporter, IRCReporter
+from ttt.watcher import WatchState
 
 
 class TestIRCReporter:
@@ -94,22 +85,22 @@ class TestIRCReporter:
 
 class TestTerminalReporter:
     def test_session_start(self):
-        t = MockTerminal()
-        r = create_terminal_reporter(t)
+        f = io.StringIO()
+        r = TerminalReporter(watch_path=None, build_path=None, terminal=Terminal(stream=f))
 
         r.session_start('test')
-        assert t.getvalue() == termstyle.bold(
+        assert f.getvalue() == termstyle.bold(
                 ''.ljust(28, '=') +
                 ' test session starts ' +
                 ''.ljust(29, '=')
                 ) + os.linesep
 
     def test_wait_change(self):
-        t = MockTerminal()
-        r = create_terminal_reporter(t, 'watch_path')
+        f = io.StringIO()
+        r = TerminalReporter(watch_path='watch_path', build_path=None, terminal=Terminal(stream=f))
 
         r.wait_change()
-        assert t.getvalue() == termstyle.bold(
+        assert f.getvalue() == termstyle.bold(
                     ''.ljust(28, '#') +
                     ' waiting for changes ' +
                     ''.ljust(29, '#')
@@ -118,8 +109,8 @@ class TestTerminalReporter:
                 ) + os.linesep
 
     def test_report_all_passed(self):
-        t = MockTerminal()
-        r = create_terminal_reporter(t)
+        f = io.StringIO()
+        r = TerminalReporter(watch_path=None, build_path=None, terminal=Terminal(stream=f))
 
         results = {
                 'total_runtime': 2.09,
@@ -128,15 +119,15 @@ class TestTerminalReporter:
                 'failures': []
                 }
         r.report_results(results)
-        assert t.getvalue() == termstyle.bold(termstyle.green(
+        assert f.getvalue() == termstyle.bold(termstyle.green(
                     ''.ljust(26, '=') +
                     ' 1 passed in 2.09 seconds ' +
                     ''.ljust(26, '=')
                 )) + os.linesep
 
     def test_report_all_failed(self):
-        t = MockTerminal()
-        r = create_terminal_reporter(t, '/path')
+        f = io.StringIO()
+        r = TerminalReporter(watch_path='/path', build_path=None, terminal=Terminal(stream=f))
 
         results = {
                 'total_runtime': 2.09,
@@ -169,12 +160,12 @@ class TestTerminalReporter:
             '===================== 1 failed, 0 passed in 2.09 seconds ====================='
             )),
             ]
-        actual = t.getvalue().splitlines()
+        actual = f.getvalue().splitlines()
         assert actual == expected
 
     def test_report_multiple_failed(self):
-        t = MockTerminal()
-        r = create_terminal_reporter(t, '/path')
+        f = io.StringIO()
+        r = TerminalReporter(watch_path='/path', build_path=None, terminal=Terminal(stream=f))
 
         results = {
                 'total_runtime': 2.09,
@@ -224,16 +215,15 @@ class TestTerminalReporter:
             '===================== 2 failed, 0 passed in 2.09 seconds ====================='
             )),
             ]
-        actual = t.getvalue().splitlines()
+        actual = f.getvalue().splitlines()
         assert actual == expected
 
     def test_report_watchstate(self):
-        t = MockTerminal()
-        r = create_terminal_reporter(t)
+        f = io.StringIO()
+        r = TerminalReporter(watch_path=None, build_path=None, terminal=Terminal(stream=f))
 
-        from ttt.watcher import WatchState
         r.report_watchstate(WatchState(['create'], ['delete'], ['modify'], 1.0))
-        assert t.getvalue() == os.linesep.join([
+        assert f.getvalue() == os.linesep.join([
                 termstyle.green('# CREATED create'),
                 termstyle.yellow('# MODIFIED modify'),
                 termstyle.red('# DELETED delete'),
@@ -241,45 +231,45 @@ class TestTerminalReporter:
                 ]) + os.linesep
 
     def test_interrupt_detected(self):
-        t = MockTerminal()
-        r = create_terminal_reporter(t)
+        f = io.StringIO()
+        r = TerminalReporter(watch_path=None, build_path=None, terminal=Terminal(stream=f))
 
         r.interrupt_detected()
-        assert t.getvalue() == os.linesep + 'Interrupt again to exit.' + os.linesep
+        assert f.getvalue() == os.linesep + 'Interrupt again to exit.' + os.linesep
 
     def test_halt(self):
-        t = MockTerminal()
-        r = create_terminal_reporter(t)
+        f = io.StringIO()
+        r = TerminalReporter(watch_path=None, build_path=None, terminal=Terminal(stream=f))
 
         r.halt()
-        assert t.getvalue() == os.linesep + 'Watching stopped.' + os.linesep
+        assert f.getvalue() == os.linesep + 'Watching stopped.' + os.linesep
 
     def test_report_build_path(self):
-        t = MockTerminal()
-        r = create_terminal_reporter(t, 'watch_path', 'build_path')
+        f = io.StringIO()
+        r = TerminalReporter(watch_path='watch_path', build_path='build_path', terminal=Terminal(stream=f))
 
         r.report_build_path()
-        assert t.getvalue() == termstyle.bold('### Building:   build_path') + os.linesep
+        assert f.getvalue() == termstyle.bold('### Building:   build_path') + os.linesep
 
     def test_report_interrupt(self):
-        t = MockTerminal()
-        r = create_terminal_reporter(t, 'watch_path', 'build_path')
+        f = io.StringIO()
+        r = TerminalReporter(watch_path='watch_path', build_path='build_path', terminal=Terminal(stream=f))
 
         try:
             raise KeyboardInterrupt()
         except KeyboardInterrupt as e:
             r.report_interrupt(e)
 
-        assert t.getvalue() == (
+        assert f.getvalue() == (
                 ''.ljust(29, '!') +
                     ' KeyboardInterrupt ' +
                     ''.ljust(30, '!')
                 + os.linesep
                 )
 
-    def test_report_with_stdout_and_stderr(self):
-        t = MockTerminal()
-        r = create_terminal_reporter(t, '/path')
+    def test_report_with_stdout_and_stderr_in_additional_output(self):
+        f = io.StringIO()
+        r = TerminalReporter(watch_path='/path', build_path=None, terminal=Terminal(stream=f))
 
         results = {
                 'total_runtime': 2.09,
@@ -321,13 +311,13 @@ class TestTerminalReporter:
             '===================== 1 failed, 0 passed in 2.09 seconds ====================='
             )),
             ]
-        actual = t.getvalue().splitlines()
+        actual = f.getvalue().splitlines()
         assert actual == expected
 
 
-    def test_path_stripping(self):
-        t = MockTerminal()
-        r = create_terminal_reporter(t, '/path/to/watch', '/path/to/build')
+    def test_path_stripping_in_test_failure_last_line(self):
+        f = io.StringIO()
+        r = TerminalReporter(watch_path='/path/to/watch', build_path='/path/to/build', terminal=Terminal(stream=f))
 
         failures = [[
                         'core.ok',
@@ -354,6 +344,5 @@ class TestTerminalReporter:
             '____________________________ test/test_core.cc:12 ____________________________',
             )),
             ]
-        actual = t.getvalue().splitlines()
+        actual = f.getvalue().splitlines()
         assert actual == expected
-

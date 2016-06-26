@@ -4,16 +4,16 @@ ttt.builder
 This module implements the cmake builder.
 :copyright: (c) yerejm
 """
+from __future__ import absolute_import
+import subprocess
 
 import os
-import subprocess
 import errno
 import shutil
 from functools import partial
 
 
-def create_builder(context,
-                   watch_path, build_path,
+def create_builder(watch_path, build_path,
                    generator=None, build_type=None):
     """Constructs a partially evaluated function object.
 
@@ -21,7 +21,6 @@ def create_builder(context,
     a source tree to either create a new build area or to rebuild an existing
     build area.
 
-    :param context: a :class:`SystemContext` object
     :param watch_path: the absolute root directory path of the source tree
         where the CMakeLists.txt file exists
     :param build_path: the absolute root directory path where build objects and
@@ -43,7 +42,6 @@ def create_builder(context,
         )
     return partial(
         execute,
-        context,
         [
             partial(cmake_generate, watch_path, build_path,
                     build_type, generator),
@@ -52,21 +50,21 @@ def create_builder(context,
     )
 
 
-def execute(context, commands):
-    """Executes the list of callable objects using the given context.
+def execute(commands):
+    """Executes the list of callable objects.
 
     Each callable object is a command generator that when called returns a
     command that can be executed as a subprocess. The command returned will be
     a list for subprocess's non-string form (ie ['ls', '-la'], not 'ls -la')
     to avoid shell escaping mishaps.
 
-    :param context: a :class:`SystemContext` object
     :param commands: a list of callable objects
     """
+    from ttt.subprocess import checked_call
     for command_generator in commands:
         command = command_generator()
         if command:  # Note that command may be None (or empty list)
-            context.checked_call(command, stderr=subprocess.STDOUT)
+            checked_call(command, stderr=subprocess.STDOUT)
 
 
 def cmake_generate(watch_path, build_path, build_type, generator):
@@ -93,6 +91,8 @@ def cmake_generate(watch_path, build_path, build_type, generator):
     """
     cmake_cache_file = os.path.join(build_path, 'CMakeCache.txt')
     if os.path.exists(cmake_cache_file):
+        # If the cmake version has changed since the build area was created,
+        # recreate it.
         with open(cmake_cache_file, 'r') as f:
             for line in f:
                 if 'CMAKE_COMMAND:INTERNAL' in line:

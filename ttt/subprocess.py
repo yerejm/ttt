@@ -1,33 +1,68 @@
 """
-ttt.systemcontext
+ttt.subprocess
 ~~~~~~~~~~~~
-This module implements abstractions to try to hide operating system and python
-specifics from higher level modules.
+This module provides additional functions for subprocess execution built on top
+of the existing subprocess module.
+
 :copyright: (c) yerejm
 """
+from __future__ import absolute_import
+import subprocess
+
 import os
 import sys
-import subprocess
 import threading
 from six.moves import queue
 
 
-class SystemContext(object):
-    """Hides the operating system level functionality from higher levels."""
-    def __init__(self, verbosity=0):
-        self._verbosity = verbosity
+def execute(*args, **kwargs):
+    """Wrapper around subprocess.check_output where the universal newlines
+    option is enabled.
 
-    def execute(self, *args, **kwargs):
-        kwargs['universal_newlines'] = True
-        return subprocess.check_output(*args, **kwargs).splitlines()
+    Otherwise, operates the same as that function.
+    """
+    kwargs['universal_newlines'] = True
+    return subprocess.check_output(*args, **kwargs).splitlines()
 
-    def checked_call(self, *args, **kwargs):
-        kwargs['universal_newlines'] = True
-        return subprocess.check_call(*args, **kwargs)
 
-    def streamed_call(self, *args, **kwargs):
-        kwargs['universal_newlines'] = True
-        return call_output(*args, **kwargs)
+def checked_call(*args, **kwargs):
+    """Wrapper around subprocess.checked_call where the universal newlines
+    option is enabled.
+
+    Otherwise, operates the same as that function.
+    """
+    kwargs['universal_newlines'] = True
+    return subprocess.check_call(*args, **kwargs)
+
+
+def streamed_call(*args, **kwargs):
+    """A subprocess.call where output can be sent to the caller in real time.
+
+    Arguments to subprocess.Popen are applicable to streamed_call with a few
+    differences.
+
+    To receive the lines of output, an object specified for the listener
+    keywork argument that must provide the interface fn(channel, message),
+    where channel is the where the message was sent (e.g. stdout, stderr), and
+    message is the line of output without the platform line end.
+
+    Due to the nature of this call, keywork arguments stdout and stdin cannot
+    be provided.
+
+    Universal newline handling is forced.
+
+    :param listener: (optional) an object that consumes the output from the
+    executing subprocess.
+    :return (process.returncode, stdout list, stderr list) tuple
+    """
+    kwargs['universal_newlines'] = True
+    return call_output(*args, **kwargs)
+
+
+#
+# The following functions should not be used directly.
+# They play with threads.
+#
 
 
 def call_output(*popenargs, **kwargs):
@@ -44,11 +79,7 @@ def call_output(*popenargs, **kwargs):
         raise ValueError('stdin argument not allowed, it will be overridden.')
 
     kwargs['stdin'] = subprocess.PIPE
-
-    line_handler = None
-    if 'listener' in kwargs:
-        line_handler = kwargs['listener']
-        del kwargs['listener']
+    line_handler = kwargs.pop('listener', None)
 
     process = create_process(
         *popenargs,
@@ -57,25 +88,6 @@ def call_output(*popenargs, **kwargs):
         **kwargs
     )
     return run(process, line_handler)
-
-
-def read_stream(stream_name, input_stream, io_q):
-    """Captures lines incoming on the input stream on a queue.
-
-    This queue in intended to be a shared data structure between threads.
-
-    :param stream_name: the name of the stream being read
-    :param input_stream: the stream being read
-    :param io_q: the queue on to which lines from the input_stream are added
-    """
-    if not input_stream:
-        io_q.put((stream_name, 'EXIT'))
-        return
-    for line in input_stream:
-        io_q.put((stream_name, line))
-    if not input_stream.closed:
-        input_stream.close()
-    io_q.put((stream_name, 'EXIT'))
 
 
 def run(process, line_handler):
@@ -149,3 +161,25 @@ def run(process, line_handler):
         t.join()
     process.wait()
     return (process.returncode, stdout, stderr)
+
+
+def read_stream(stream_name, input_stream, io_q):
+    """Captures lines incoming on the input stream on a queue.
+
+    This function is intended to be the function executed by a thread.
+
+    :param stream_name: the name of the stream being read
+    :param input_stream: the stream being read
+    :param io_q: the queue on to which lines from the input_stream are added.
+    It is intended to be a shared data structure between multiple threads of
+    execution (primarily between the main thread and the thread executing this
+    function).
+    """
+    if not input_stream:
+        io_q.put((stream_name, 'EXIT'))
+        return
+    for line in input_stream:
+        io_q.put((stream_name, line))
+    if not input_stream.closed:
+        input_stream.close()
+    io_q.put((stream_name, 'EXIT'))

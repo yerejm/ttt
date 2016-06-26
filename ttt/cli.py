@@ -1,6 +1,5 @@
 import argh
 
-from ttt.systemcontext import SystemContext
 from ttt import monitor
 from . import __version__
 
@@ -25,8 +24,7 @@ from . import __version__
           help='IRC nick derived from the watch path and the build '
                'configuration.')
 def ttt(watch_path, **kwargs):
-    context = SystemContext(kwargs['verbosity'])
-    monitor.create_monitor(context, watch_path, **kwargs).run()
+    monitor.create_monitor(watch_path, **kwargs).run()
 
 
 def run():

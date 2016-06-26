@@ -5,19 +5,19 @@ This module implements the monitor which will poll the watched source tree for
 change and initiate the build and test of the watched source tree.
 :copyright: (c) yerejm
 """
+from __future__ import absolute_import
+import subprocess
+
 import collections
 import itertools
 import os
 import socket
-import subprocess
-import sys
 import time
 
 from ttt.builder import create_builder
 from ttt.watcher import Watcher, has_changes
 from ttt.executor import Executor
-from ttt.reporter import create_terminal_reporter, create_irc_reporter
-from ttt.terminal import Terminal
+from ttt.reporter import TerminalReporter, create_irc_reporter
 
 
 DEFAULT_BUILD_PATH_SUFFIX = '-build'
@@ -29,13 +29,12 @@ DEFAULT_SOURCE_PATTERNS = [
 ]
 
 
-def create_monitor(context, watch_path=None, **kwargs):
+def create_monitor(watch_path=None, **kwargs):
     """Creates a monitor and its subordinate objects.
 
     By default, one reporter object is created to output to the terminal.
     An optional IRC reporter may be created if irc_server is provided.
 
-    :param context:
     :param watch_path: the root of the source tree, either relative or
         absolute. If not provided, the current working directory is assumed to
         be the root of the source tree.
@@ -65,19 +64,13 @@ def create_monitor(context, watch_path=None, **kwargs):
                   else make_build_path(full_watch_path, kwargs.get('config')))
     watcher = Watcher(full_watch_path, build_path, DEFAULT_SOURCE_PATTERNS)
     builder = create_builder(
-        context,
         watcher.watch_path,
         build_path,
         kwargs.get('generator'),
         kwargs.get('config')
     )
-    terminal = Terminal(sys.stdout)
-    executor = Executor(context, terminal)
-    terminal_reporter = create_terminal_reporter(
-        terminal,
-        watcher.watch_path,
-        build_path
-    )
+    executor = Executor()
+    terminal_reporter = TerminalReporter(watcher.watch_path, build_path)
     reporters = [terminal_reporter]
     if 'irc_server' in kwargs and kwargs['irc_server'] is not None:
         reporters.append(

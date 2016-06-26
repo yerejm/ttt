@@ -94,7 +94,7 @@ class TestWatcher:
         w.poll()
 
         exefile = testbin_path + watcher.EXE_SUFFIX
-        testlist = w.testlist()
+        testlist = [ (g.source(), g.executable()) for g in w.testlist() ]
         assert testlist == [ (os.path.join('test', 'test_dummy.c'), exefile) ]
 
 

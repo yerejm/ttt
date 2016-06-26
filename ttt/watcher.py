@@ -18,10 +18,14 @@ potential issue is left to a time when it becomes problematic.
 :copyright: (c) yerejm
 """
 import collections
-import re
 import os
 import platform
+import re
 import stat
+import sys
+
+from ttt.gtest import GTest
+from ttt.terminal import Terminal
 
 DEFAULT_TEST_PREFIX = 'test_'
 
@@ -125,9 +129,10 @@ class Watcher(object):
             for w in watchedfiles if w.name.startswith(test_prefix)
         }
         # Scan the build tree. If an expected test binary is encountered, add a
-        # (relative source path, absolute binary path) tuple to the test list.
+        # GTest().
         return [
-            (testfiles[f], os.path.join(d, f))
+            GTest(testfiles[f], os.path.join(d, f),
+                  term=Terminal(stream=sys.stdout))
             for d, f, m, t in walk(self.build_path)
             if f in testfiles and m & stat.S_IXUSR
         ]

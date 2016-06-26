@@ -17,7 +17,6 @@ try:
 except:
     from unittest.mock import Mock, MagicMock, call, patch
 
-from ttt.systemcontext import SystemContext
 from ttt.watcher import Watcher
 from ttt.watcher import WatchState
 from ttt.monitor import Monitor
@@ -34,33 +33,21 @@ def chdir(path):
     finally:
         os.chdir(old_dir)
 
-class MockContext(SystemContext):
-    def __init__(self):
-        super(MockContext, self).__init__()
-        self.output = ''
-
-    def getvalue(self):
-        return self.output
-
-    def write(self, string):
-        self.output += string
-
 class TestMonitor:
     def teardown(self):
         TempDirectory.cleanup_all()
 
     def test_create_with_invalid_watch_area(self):
-        c = MockContext()
         error = None
         bad_path = os.path.abspath(os.path.sep + os.path.join('bad', 'path'))
         try:
-            create_monitor(c, bad_path)
+            create_monitor(bad_path)
         except IOError as e:
             error = e
         assert 'Invalid path: {bad} ({bad})'.format(bad=bad_path) in str(error)
 
     def test_create_monitor_default_paths(self):
-        m = create_monitor(MagicMock())
+        m = create_monitor()
         cwd = os.getcwd()
         assert len(m.reporters) == 1
         reporter = m.reporters[0]
@@ -73,7 +60,7 @@ class TestMonitor:
         build_path = wd.makedir('build')
 
         with chdir(wd.path):
-            m = create_monitor(MagicMock(), source_path)
+            m = create_monitor(source_path)
         assert len(m.reporters) == 1
         reporter = m.reporters[0]
         assert reporter.watch_path == source_path
@@ -85,7 +72,7 @@ class TestMonitor:
         build_path = wd.makedir('build')
 
         with chdir(wd.path):
-            m = create_monitor(MagicMock(), source_path, build_path=os.path.basename(build_path))
+            m = create_monitor(source_path, build_path=os.path.basename(build_path))
         assert len(m.reporters) == 1
         reporter = m.reporters[0]
         assert reporter.watch_path == source_path

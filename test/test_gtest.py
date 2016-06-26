@@ -7,36 +7,19 @@ test_gtest
 
 Tests for `gtest` module.
 """
-
+import io
 import os
 import sys
 
 import pytest
+try:
+    from mock import Mock, MagicMock, call, patch
+except:
+    from unittest.mock import Mock, MagicMock, call, patch
 
 from ttt.terminal import Terminal
 from ttt.gtest import GTest
 
-class MockTerminal(Terminal):
-    def __init__(self):
-        super(MockTerminal, self).__init__()
-        self.output = ''
-
-    def write(self, string):
-        self.output += string
-
-    def getvalue(self):
-        return self.output
-
-class MockProcess:
-    def __init__(self, output):
-        self.output = output
-        self.command = None
-
-    def streamed_call(self, command, listener):
-        self.command = command
-        for line in self.output:
-            listener(sys.stdout, line)
-        return (0, self.output, [])
 
 class TestGTest:
     def test_run_time(self):
@@ -55,9 +38,10 @@ class TestGTest:
 '[==========] 2 tests from 1 test case ran. (3 ms total)',
 '[  PASSED  ] 2 tests.'
                 ]
-        f = MockTerminal()
-        gtest = GTest('/test/test_core.cc', term=f)
-        gtest.execute(MockProcess(results), [])
+        f = io.StringIO()
+        gtest = GTest('/test/test_core.cc', 'test_core', term=Terminal(f))
+        for line in results:
+            gtest(sys.stdout, line)
 
         assert gtest.run_time() == 3
 
@@ -76,9 +60,10 @@ class TestGTest:
 '[==========] 1 test from 1 test case ran. (0 ms total)',
 '[  PASSED  ] 1 test.',
                 ]
-        f = MockTerminal()
-        gtest = GTest('/test/test_core.cc', term=f)
-        gtest.execute(MockProcess(results), [])
+        f = io.StringIO()
+        gtest = GTest('/test/test_core.cc', 'test_core', term=Terminal(f))
+        for line in results:
+            gtest(sys.stdout, line)
 
         assert f.getvalue() == '/test/test_core.cc :: core .' + os.linesep
         assert gtest.results() == { 'core.ok': (False, [], []), }
@@ -102,9 +87,10 @@ class TestGTest:
 '[==========] 2 tests from 1 test case ran. (0 ms total)',
 '[  PASSED  ] 2 tests.'
                 ]
-        f = MockTerminal()
-        gtest = GTest('/test/test_core.cc', term=f)
-        gtest.execute(MockProcess(results), [])
+        f = io.StringIO()
+        gtest = GTest('/test/test_core.cc', 'test_core', term=Terminal(f))
+        for line in results:
+            gtest(sys.stdout, line)
 
         assert f.getvalue() == '/test/test_core.cc :: dummy ..' + os.linesep
         assert gtest.results() == {
@@ -142,9 +128,10 @@ class TestGTest:
 '[==========] 6 tests from 2 test cases ran. (0 ms total)',
 '[  PASSED  ] 6 tests.',
                 ]
-        f = MockTerminal()
-        gtest = GTest('/test/test_core.cc', term=f)
-        gtest.execute(MockProcess(results), [])
+        f = io.StringIO()
+        gtest = GTest('/test/test_core.cc', 'test_core', term=Terminal(f))
+        for line in results:
+            gtest(sys.stdout, line)
 
         assert f.getvalue() == os.linesep.join([
             '/test/test_core.cc :: core ....',
@@ -192,9 +179,10 @@ class TestGTest:
 '',
 ' 2 FAILED TESTS',
                 ]
-        f = MockTerminal()
-        gtest = GTest('/test/test_core.cc', term=f)
-        gtest.execute(MockProcess(results), [])
+        f = io.StringIO()
+        gtest = GTest('/test/test_core.cc', 'test_core', term=Terminal(f))
+        for line in results:
+            gtest(sys.stdout, line)
 
         assert f.getvalue() == '/test/test_core.cc :: core FF' + os.linesep
         assert gtest.results() == {
@@ -216,7 +204,7 @@ class TestGTest:
         assert gtest.passes() == 0
 
     def test_multiple_testcase_failure(self):
-        results = [
+        results = (0, [
 'Running main() from gtest_main.cc',
 '[==========] Running 6 tests from 2 test cases.',
 '[----------] Global test environment set-up.',
@@ -252,10 +240,12 @@ class TestGTest:
 '[  FAILED  ] 2 tests, listed below:',
 '[  FAILED  ] core.okshadow',
 '[  FAILED  ] blah.test2',
-                ]
-        f = MockTerminal()
-        gtest = GTest('/test/test_core.cc', term=f)
-        gtest.execute(MockProcess(results), [])
+                ], [])
+
+        f = io.StringIO()
+        gtest = GTest('/test/test_core.cc', 'test_core', term=Terminal(f))
+        for line in results[1]:
+            gtest(sys.stdout, line)
 
         assert f.getvalue() == os.linesep.join([
             '/test/test_core.cc :: core .F..',
@@ -284,26 +274,32 @@ class TestGTest:
         assert gtest.passes() == 4
 
     def test_command_filter_none(self):
-        process = MockProcess([])
+        r = (0, [], [])
         gtest = GTest('/test/test_core.cc', '/path/to/test')
-        gtest.execute(process, [])
-        assert process.command == [ '/path/to/test' ]
+        with patch('ttt.subprocess.streamed_call', return_value=r) as c:
+            gtest.execute([])
+        args = c.call_args[0]
+        assert args[0] == ['/path/to/test']
 
     def test_command_filter_one(self):
-        process = MockProcess([])
+        r = (0, [], [])
         gtest = GTest('/test/test_core.cc', '/path/to/test')
-        gtest.execute(process, [ 'dummy' ])
-        assert process.command == [ '/path/to/test', '--gtest_filter=dummy' ]
+        with patch('ttt.subprocess.streamed_call', return_value=r) as c:
+            gtest.execute([ 'dummy' ])
+        args = c.call_args[0]
+        assert args[0] == ['/path/to/test', '--gtest_filter=dummy']
 
     def test_command_filter_many(self):
-        process = MockProcess([])
+        r = (0, [], [])
         gtest = GTest('/test/test_core.cc', '/path/to/test')
-        gtest.execute(process, [ 'dummy1', 'dummy2' ])
-        assert process.command == [ '/path/to/test', '--gtest_filter=dummy1:dummy2' ]
+        with patch('ttt.subprocess.streamed_call', return_value=r) as c:
+            gtest.execute([ 'dummy1', 'dummy2' ])
+        args = c.call_args[0]
+        assert args[0] == ['/path/to/test', '--gtest_filter=dummy1:dummy2']
 
     def test_corrupt_test_output_missing_testcase(self):
-        f = MockTerminal()
-        gtest = GTest('/test/test_core.cc', term=f)
+        f = io.StringIO()
+        gtest = GTest('/test/test_core.cc', 'test_core', term=Terminal(f))
 
         with pytest.raises(Exception):
             gtest.end_test('')

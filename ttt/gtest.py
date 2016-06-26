@@ -11,8 +11,7 @@ import termstyle
 import os
 import sys
 
-from ttt.terminal import Terminal
-
+import ttt.subprocess
 
 TESTCASE_START_RE = re.compile('^\[----------\] \d+ tests? from (.*?)$')
 TESTCASE_END_RE = re.compile(
@@ -113,11 +112,23 @@ class GTest(object):
     """
     WAITING_TESTCASE, WAITING_TEST, IN_TEST = range(3)
 
-    def __init__(self, source=None, executable=None, term=Terminal()):
+    def __init__(self, source, executable, term=None):
+        """Creates a representation of a GTest binary.
+
+        :param source: Path of the test source file
+        :param executable: Path of the test executable
+        :param term: (optional) Terminal object to send output of test
+        execution. Default Terminal() will send no output.
+        """
+        if not source:
+            raise Exception('Invalid source')
+        if not executable:
+            raise Exception('Invalid executable')
+
         self._source = source
         self._executable = executable
+        self._term = term if term else ttt.terminal.Terminal()
         self._reset()
-        self._term = term
 
     def _reset(self):
         self._output = []
@@ -138,6 +149,10 @@ class GTest(object):
         """The number of failing tests detected in the latest test run."""
         return self._fail_count
 
+    def source(self):
+        """The relative path to the test source file."""
+        return self._source
+
     def executable(self):
         """The absolute path to the gtest binary executable."""
         return self._executable
@@ -146,11 +161,9 @@ class GTest(object):
         """The elapsed time in milliseconds to run the tests."""
         return self._elapsed
 
-    def execute(self, context, test_filters):
+    def execute(self, test_filters):
         """Executes the test executable, with this instance as a line listener.
 
-        :param context: the :class:`SystemContext` that will execute the test
-            as a subprocess
         :param test_filters: a list of tests identified by name to be executed.
             This is a passed through as a colon separated string to the
             --gtest_filter command line option.
@@ -160,7 +173,9 @@ class GTest(object):
         if test_filters:
             command.append("--gtest_filter={}".format(':'.join(test_filters)))
         self._reset()
-        rc, stdout, stderr = context.streamed_call(command, listener=self)
+        self._term.writeln("Executing {}".format(" ".join(command)), verbose=2)
+        rc, stdout, stderr = ttt.subprocess.streamed_call(command,
+                                                          listener=self)
         self._term.writeln(command, verbose=2)
         self._term.writeln(os.linesep.join(stdout), verbose=2)
         self._term.writeln(os.linesep.join(stderr), verbose=2)
