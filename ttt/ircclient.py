@@ -3,6 +3,35 @@ from irc.bot import ServerSpec, Channel
 from irc.dict import IRCDict
 from random import random
 
+from ttt.reporter import Reporter
+
+
+class IRCReporter(Reporter):
+
+    def __init__(self, irc):
+        self.irc = irc
+        self.irc.connect()
+
+    def wait(self):
+        self.irc.poll()
+
+    def halt(self):
+        self.irc.disconnect()
+
+    def report_build_failure(self):
+        self.irc.say('TTT: Build failure!')
+
+    def report_results(self, results):
+        shortstats = '{} passed in {} seconds'.format(
+            results['total_passed'],
+            results['total_runtime']
+        )
+        total_failed = results['total_failed']
+        if total_failed > 0:
+            self.irc.say('TTT: {} failed, {}'.format(total_failed, shortstats))
+        else:
+            self.irc.say('TTT: {}'.format(shortstats))
+
 
 class IRCClient(irc.client.SimpleIRCClient):
     """
@@ -24,6 +53,8 @@ class IRCClient(irc.client.SimpleIRCClient):
 
     def __init__(self, channel, nickname, server, port=6667, **connect_params):
         super(IRCClient, self).__init__()
+        if server is None:
+            raise Exception("IRC Server not provided")
         self.__connect_params = connect_params
         self.channels = IRCDict()
         self.channel = channel

@@ -12,22 +12,36 @@ from . import __version__
                'where {dir} is the basename of the source path, and {config} '
                'is the build configuration. If provided and is relative, it '
                'will be created under the local path.')
-@argh.arg('-v', '--verbosity', action='count', default=None,
+@argh.arg('-v', '--verbosity', default=None, action='count',
           help='More v\'s more verbose.')
 @argh.arg('-g', '--generator', default=None,
           help='cmake generator: refer to cmake documentation')
-@argh.arg('-c', '--config',
-          help='build configuration: e.g. release, debug', default='debug')
-@argh.arg('--irc_server', default=None, help='IRC server hostname.')
-@argh.arg('--irc_port', help='IRC server port.', default=6667)
-@argh.arg('--irc_channel', help='IRC channel.', default='#ttt')
+@argh.arg('-c', '--config', default='debug',
+          help='build configuration: e.g. release, debug')
+@argh.arg('--irc_server', default=None,
+          help='IRC server hostname. Requires --watch')
+@argh.arg('--irc_port', default=6667,
+          help='IRC server port. Requires --irc_server')
+@argh.arg('--irc_channel', default='#ttt',
+          help='IRC channel. Requires --irc_server')
 @argh.arg('--irc_nick',
-          help='IRC nick derived from the watch path and the build '
-               'configuration.')
+          help='IRC nick or derived from the watch path and the build '
+               'configuration. Requires --irc_server')
+@argh.arg('--watch', default=False,
+          help='Enable the watch, build, test cycle.')
+@argh.arg('--test', default=False,
+          help='Test after build.')
 def ttt(watch_path, **kwargs):
     verbosity = kwargs.pop("verbosity", 0)
     Terminal.VERBOSITY = verbosity if verbosity else 0
-    monitor.create_monitor(watch_path, **kwargs).run()
+    m = monitor.create_monitor(watch_path, **kwargs)
+
+    if kwargs.pop("watch", False):
+        m.run()
+    else:
+        m.build()
+        if kwargs.pop("test", False):
+            m.test()
 
 
 def run():

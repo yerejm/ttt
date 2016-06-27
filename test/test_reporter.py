@@ -16,8 +16,8 @@ try:
 except:
     from unittest.mock import Mock, MagicMock, call, patch
 
-from ttt.terminal import Terminal
-from ttt.reporter import TerminalReporter, IRCReporter
+from ttt.terminal import Terminal, TerminalReporter
+from ttt.ircclient import IRCReporter
 from ttt.watcher import WatchState
 
 

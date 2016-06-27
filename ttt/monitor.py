@@ -16,7 +16,8 @@ import time
 from ttt.builder import create_builder
 from ttt.watcher import Watcher, has_changes
 from ttt.executor import Executor
-from ttt.reporter import TerminalReporter, create_irc_reporter
+from ttt.terminal import TerminalReporter
+from ttt.ircclient import IRCReporter, IRCClient
 
 
 DEFAULT_BUILD_PATH_SUFFIX = '-build'
@@ -49,68 +50,90 @@ def create_monitor(watch_path=None, **kwargs):
     :param irc_nick (optional) the IRC nickname to use once connected. Has
         no meaning without irc_server.
     """
-    full_watch_path = os.path.abspath(
-        os.getcwd() if watch_path is None else watch_path
-    )
-    if not os.path.exists(full_watch_path):
-        import errno
-        raise IOError(
-            errno.ENOENT,
-            "Invalid path: {} ({})".format(watch_path, full_watch_path)
-        )
-    custom_build_path = kwargs.get('build_path')
-    build_path = (os.path.abspath(custom_build_path) if custom_build_path
-                  else make_build_path(full_watch_path, kwargs.get('config')))
-    watcher = Watcher(full_watch_path, build_path, DEFAULT_SOURCE_PATTERNS)
-    builder = create_builder(
-        watcher.watch_path,
-        build_path,
-        kwargs.get('generator'),
-        kwargs.get('config')
-    )
-    executor = Executor()
-    terminal_reporter = TerminalReporter(watcher.watch_path, build_path)
-    reporters = [terminal_reporter]
-    if 'irc_server' in kwargs and kwargs['irc_server'] is not None:
-        reporters.append(
-            create_irc_reporter(
-                kwargs.get('irc_server'),
-                kwargs.get('irc_port'),
-                kwargs.get('irc_channel'),
-                first_value(
-                    kwargs.get('irc_nick'),
-                    '{}-{}{}'.format(
-                        socket.gethostname().split('.')[0],
-                        os.path.basename(watch_path),
-                        '-' + first_value(kwargs.get('config'), '')
-                    )
-                )
-            )
-        )
+    build_config = kwargs.pop("config", None)
+    generator = kwargs.pop("generator", None)
+    watch_path = make_watch_path(watch_path)
+    build_path = make_build_path(kwargs.pop('build_path', None),
+                                 watch_path,
+                                 build_config)
+    watcher = Watcher(watch_path, build_path, DEFAULT_SOURCE_PATTERNS)
+    builder = create_builder(watch_path, build_path, generator, build_config)
 
+    reporters = [TerminalReporter(watch_path, build_path)]
+
+    irc_server = kwargs.pop("irc_server", None)
+    if irc_server:
+        irc_port = kwargs.pop("irc_port", None)
+        irc_channel = kwargs.pop('irc_channel', None)
+        irc_nick = (kwargs.pop('irc_nick', None) or
+                    make_nick(watch_path, build_config))
+        r = IRCReporter(IRCClient(irc_channel, irc_nick, irc_server, irc_port))
+        reporters.append(r)
+
+    executor = Executor()
     return Monitor(watcher, builder, executor, reporters)
 
 
-def make_build_path(watch_path,
+def make_nick(watch_path, build_config):
+    return '{}-{}-{}'.format(socket.gethostname().split('.')[0],
+                             os.path.basename(watch_path),
+                             build_config)
+
+
+def make_watch_path(watch_path=None):
+    if watch_path is None:
+        watch_path = os.getcwd()
+    watch_abspath = os.path.abspath(watch_path)
+    if not os.path.exists(watch_abspath):
+        import errno
+        raise IOError(
+            errno.ENOENT,
+            "Invalid path: {} ({})".format(watch_abspath, watch_path)
+        )
+    return watch_abspath
+
+
+def make_build_path(build_path,
+                    watch_path=None,
                     build_type=None,
                     suffix=DEFAULT_BUILD_PATH_SUFFIX):
-    """Creates a build path from the watch path by appending a suffix.
+    """Creates a absolute build path.
 
-    The build path will be an absolute path based on the current working
-    directory.
+    If the build path is given, returns the absolute version.
 
-    :param watch_path: the watch path
-    :param config: the build type
+    If the build path is None, then an absolute path will be created. It will
+    be rooted in the current working directory with a name derived from the
+    combination of the watch_path, the build_type, and the suffix.
+
+    >>> os.path.basename(make_build_path('build'))
+    build-build
+    >>> os.path.basename(make_build_path('build', 'watch'))
+    build-build
+    >>> os.path.basename(make_build_path(None, 'watch'))
+    watch-build
+    >>> os.path.basename(make_build_path(None, 'watch', 'debug'))
+    watch-debug-build
+    >>> os.path.basename(make_build_path(None, None, 'debug'))
+    debug-build
+    >>> os.path.basename(make_build_path(None))
+    build
+
+    :param build_path: the build path
+    :param watch_path: (optional) the watch path from which the build path is
+    derived
+    :param build_type: (optional) the build type e.g. debug, release
     :param suffix: (optional) the suffix to append to the watch path. Defaults
-    to -build.
+    to -build
     :return the absolute build path
     """
-    return os.path.join(
-        os.getcwd(),
-        "{}{}{}".format(os.path.basename(watch_path),
-                        '' if build_type is None else ('-' + build_type),
-                        suffix)
-    )
+    if not build_path:
+        build_path = os.path.join(
+            os.getcwd(),
+            "{}{}{}".format(os.path.basename(watch_path),
+                            '' if build_type is None else ('-' + build_type),
+                            suffix)
+        )
+    return os.path.abspath(build_path)
 
 
 class Monitor(object):
@@ -168,30 +191,26 @@ class Monitor(object):
 
     def build(self):
         """Builds the binaries."""
-        def fn():
-            self.notify('session_start', 'build')
-            self.notify('report_build_path')
-            try:
-                self.builder()
-            except KeyboardInterrupt as e:
-                raise e
-            except subprocess.CalledProcessError:
-                self.notify('report_build_failure')
-                self.operations.reset()
-        return fn
+        self.notify('session_start', 'build')
+        self.notify('report_build_path')
+        try:
+            self.builder()
+        except KeyboardInterrupt as e:
+            raise e
+        except subprocess.CalledProcessError:
+            self.notify('report_build_failure')
+            self.operations.reset()
 
     def test(self):
         """Executes the tests."""
-        def fn():
-            self.notify('session_start', 'test')
-            results = self.executor.test(self.watcher.testlist())
-            self.notify('report_results', results)
+        self.notify('session_start', 'test')
+        results = self.executor.test(self.watcher.testlist())
+        self.notify('report_results', results)
 
-            if results['total_failed'] == 0 and self.last_failed > 0:
-                self.last_failed = 0
-                self.operations.append(self.test())
-            self.last_failed = results['total_failed']
-        return fn
+        if results['total_failed'] == 0 and self.last_failed > 0:
+            self.last_failed = 0
+            self.operations.append(self.test)
+        self.last_failed = results['total_failed']
 
     def run(self, **kwargs):
         """The main polling loop of the monitor."""
@@ -213,8 +232,8 @@ class Monitor(object):
             if has_changes(watchstate) or self.runstate.allowed_once():
                 self.operations.append(
                     self.report_change(watchstate),
-                    self.build(),
-                    self.test()
+                    self.build,
+                    self.test
                 )
                 self.operations.run()
                 self.notify('wait_change')
