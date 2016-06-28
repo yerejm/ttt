@@ -101,6 +101,23 @@ def test_elapsed_at(line):
     return TESTCASE_TIME_RE.match(line)
 
 
+class TestOutputPrinter(object):
+    """Proxy around the Terminal that provides a different verbosity behaviour.
+
+    The TestOutputPrinter allows output of a specific verbosity level only to
+    be sent to the Terminal. However, it flattens the level to 0 when it does
+    so.
+    """
+    def __init__(self, terminal):
+        self.terminal = terminal
+
+    def writeln(self, *args, **kwargs):
+        terminal = self.terminal
+        verbose = kwargs.pop("verbose", 0)
+        if (verbose == terminal.verbosity):
+            terminal.writeln(*args, **kwargs)
+
+
 class GTest(object):
     """Representation of the execution, output capture and output parsing of a
     gtest-based binary.
@@ -127,7 +144,7 @@ class GTest(object):
 
         self._source = source
         self._executable = executable
-        self._term = term if term else Terminal()
+        self._term = TestOutputPrinter(term) if term else Terminal()
         self._reset()
 
     def _reset(self):
@@ -177,8 +194,10 @@ class GTest(object):
         self._term.writeln("Executing {}".format(" ".join(command)), verbose=2)
         rc, stdout, stderr = streamed_call(command, listener=self)
         self._term.writeln(command, verbose=2)
-        self._term.writeln(os.linesep.join(stdout), verbose=2)
-        self._term.writeln(os.linesep.join(stderr), verbose=2)
+        if stdout:
+            self._term.writeln(os.linesep.join(stdout), verbose=2)
+        if stderr:
+            self._term.writeln(os.linesep.join(stderr), verbose=2)
         return self.failures()
 
     def failures(self):

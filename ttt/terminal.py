@@ -142,7 +142,7 @@ class Terminal(object):
         to be set at for output to occur. Default is 0, which is the default
         for lines that do not specify a verbosity.
         """
-        self._verbosity = verbosity if verbosity else Terminal.VERBOSITY
+        self.verbosity = verbosity if verbosity else Terminal.VERBOSITY
         self.stream = stream
 
     def write(self, string):
@@ -157,7 +157,8 @@ class Terminal(object):
 
         :param *args: variadic list of objects to be output in string form
         :param verbose: (optional) the verbosity level of the line output.
-        Default is 0, which is the default verbosity of the Terminal.
+        Default is 0, which is the default verbosity of the Terminal. Output of
+        levels at and below the terminal verbosity level will be printed.
         :param end: (optional) the line end character. Default is the platform
         specific line end.
         :param decorator: (optional) list of functions to be executed on the
@@ -175,7 +176,7 @@ class Terminal(object):
         pad = kwargs.pop('pad', None)
         width = kwargs.pop('width', None)
 
-        if level == self._verbosity:
+        if level <= self.verbosity:
             line = "".join([str(a) for a in args])
             if width and not pad:
                 raise Exception('An empty pad cannot be provided with a '

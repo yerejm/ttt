@@ -315,3 +315,64 @@ class TestGTest:
 
         assert f.getvalue() == '.'
 
+    def test_detailed_verbosity(self):
+        results = [
+'Running main() from gtest_main.cc',
+'Note: Google Test filter = core.ok',
+'[==========] Running 1 test from 1 test case.',
+'[----------] Global test environment set-up.',
+'[----------] 1 test from core',
+'[ RUN      ] core.ok',
+'[       OK ] core.ok (0 ms)',
+'[----------] 1 test from core (0 ms total)',
+'',
+'[----------] Global test environment tear-down',
+'[==========] 1 test from 1 test case ran. (0 ms total)',
+'[  PASSED  ] 1 test.',
+                ]
+        f = io.StringIO()
+        gtest = GTest('/test/test_core.cc', 'test_core',
+                      term=Terminal(f, verbosity=1))
+        for line in results:
+            gtest(sys.stdout, line)
+
+        import termstyle
+        expected_results = results[:2]
+        for l in results[2:]:
+            if l.startswith('['):
+                expected_results.append('{}{}'.format(
+                    termstyle.green(termstyle.bold(l[:13])),
+                    l[13:]
+                ))
+            else:
+                expected_results.append(l)
+        assert f.getvalue() == os.linesep.join(expected_results) + os.linesep
+
+    def test_detailed_raw_verbosity(self):
+        results = [
+'Running main() from gtest_main.cc',
+'Note: Google Test filter = core.ok',
+'[==========] Running 1 test from 1 test case.',
+'[----------] Global test environment set-up.',
+'[----------] 1 test from core',
+'[ RUN      ] core.ok',
+'[       OK ] core.ok (0 ms)',
+'[----------] 1 test from core (0 ms total)',
+'',
+'[----------] Global test environment tear-down',
+'[==========] 1 test from 1 test case ran. (0 ms total)',
+'[  PASSED  ] 1 test.',
+                ]
+        f = io.StringIO()
+        gtest = GTest('/test/test_core.cc', 'test_core',
+                      term=Terminal(f, verbosity=2))
+        r = (0, results, [])
+        with patch('ttt.subproc.streamed_call', return_value=r) as c:
+            gtest.execute([])
+
+        header = [
+            "Executing test_core",
+            "['test_core']"
+        ]
+        assert f.getvalue() == (os.linesep.join(header) + os.linesep +
+                                os.linesep.join(results) + os.linesep)

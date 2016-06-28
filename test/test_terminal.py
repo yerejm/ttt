@@ -51,7 +51,7 @@ class TestTerminal:
         f = io.StringIO()
         t = Terminal(stream=f, verbosity=1)
         t.writeln('hello')
-        assert f.getvalue() == ''
+        assert f.getvalue() == 'hello' + os.linesep
 
         f = io.StringIO()
         t = Terminal(stream=f)
