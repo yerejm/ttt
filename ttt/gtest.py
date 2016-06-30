@@ -101,23 +101,6 @@ def test_elapsed_at(line):
     return TESTCASE_TIME_RE.match(line)
 
 
-class TestOutputPrinter(object):
-    """Proxy around the Terminal that provides a different verbosity behaviour.
-
-    The TestOutputPrinter allows output of a specific verbosity level only to
-    be sent to the Terminal. However, it flattens the level to 0 when it does
-    so.
-    """
-    def __init__(self, terminal):
-        self.terminal = terminal
-
-    def writeln(self, *args, **kwargs):
-        terminal = self.terminal
-        verbose = kwargs.pop("verbose", 0)
-        if (verbose == terminal.verbosity):
-            terminal.writeln(*args, **kwargs)
-
-
 class GTest(object):
     """Representation of the execution, output capture and output parsing of a
     gtest-based binary.
@@ -144,10 +127,17 @@ class GTest(object):
 
         self._source = source
         self._executable = executable
-        self._term = TestOutputPrinter(term) if term else Terminal()
-        self._reset()
+        self._term = term if term else Terminal()
+        self.reset()
 
-    def _reset(self):
+    def out(self, *args, **kwargs):
+        """Print at the specific verbosity level."""
+        t = self._term
+        verbose = kwargs.pop("verbose", 0)
+        if (verbose == t.verbosity):
+            t.writeln(*args, **kwargs)
+
+    def reset(self):
         self._output = []
         self._error = []
         self._tests = collections.OrderedDict()
@@ -190,14 +180,14 @@ class GTest(object):
         command = [self.executable()]
         if test_filters:
             command.append("--gtest_filter={}".format(':'.join(test_filters)))
-        self._reset()
-        self._term.writeln("Executing {}".format(" ".join(command)), verbose=2)
+        self.reset()
+        self.out("Executing {}".format(" ".join(command)), verbose=2)
         rc, stdout, stderr = streamed_call(command, listener=self)
-        self._term.writeln(command, verbose=2)
+        self.out(command, verbose=2)
         if stdout:
-            self._term.writeln(os.linesep.join(stdout), verbose=2)
+            self.out(os.linesep.join(stdout), verbose=2)
         if stderr:
-            self._term.writeln(os.linesep.join(stderr), verbose=2)
+            self.out(os.linesep.join(stderr), verbose=2)
         return self.failures()
 
     def failures(self):
@@ -254,8 +244,8 @@ class GTest(object):
             termstyle.bold,
             termstyle.red if '[  FAILED  ]' in line else termstyle.green
         ] if '[' in leader else []
-        self._term.writeln(leader, decorator=decorator, end='', verbose=1)
-        self._term.writeln(trailer, verbose=1)
+        self.out(leader, decorator=decorator, end='', verbose=1)
+        self.out(trailer, verbose=1)
 
     def begin_testcase(self, line):
         """Tracks when a test case starts.
@@ -266,9 +256,8 @@ class GTest(object):
         testcase = line[line.rfind(' ') + 1:]
         self._testcase = testcase
 
-        self._term.writeln('{} :: {} '.format(str(self._source), testcase),
-                           end='',
-                           verbose=0)
+        self.out('{} :: {} '.format(str(self._source), testcase),
+                 end='', verbose=0)
 
     def end_testcase(self, line):
         """Tracks when a test case ends.
@@ -278,7 +267,7 @@ class GTest(object):
         """
         self._testcase = None
 
-        self._term.writeln(verbose=0)
+        self.out(verbose=0)
 
     def begin_test(self, line):
         """Tracks when a test starts."""
@@ -312,10 +301,10 @@ class GTest(object):
 
         if failed:
             self._fail_count += 1
-            self._term.writeln('F', end='', verbose=0)
+            self.out('F', end='', verbose=0)
         else:
             self._pass_count += 1
-            self._term.writeln('.', end='', verbose=0)
+            self.out('.', end='', verbose=0)
 
     def results(self):
         """Gets the test results of the last test execution.
