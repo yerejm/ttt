@@ -51,13 +51,52 @@ class TestWatcher:
         work_directory.write('a.cc', b'')
         work_directory.write('CMakeLists.txt', b'')
         work_directory.write('blah.txt', b'')
+        work_directory.makedir('blah')
+        testfile_path = work_directory.write(['blah', 'test_dummy.c'], b'')
         wd_len = len(work_directory.path) + 1
+
+        w = Watcher(work_directory.path, None, [])
+        watchstate = w.poll()
+        filelist = [f[wd_len:] for f in watchstate.inserts]
+        filelist.sort()
+        assert filelist == [
+            'CMakeLists.txt',
+            'a.c',
+            'a.cc',
+            'a.h',
+            'blah.txt',
+            'blah/test_dummy.c'
+        ]
 
         w = Watcher(work_directory.path, None, source_patterns=['CMakeLists.txt'])
         watchstate = w.poll()
         filelist = [f[wd_len:] for f in watchstate.inserts]
         filelist.sort()
         assert filelist == [ 'CMakeLists.txt' ]
+
+        w = Watcher(work_directory.path, None, source_patterns=['*.txt'])
+        watchstate = w.poll()
+        filelist = [f[wd_len:] for f in watchstate.inserts]
+        filelist.sort()
+        assert filelist == [ 'CMakeLists.txt', 'blah.txt' ]
+
+        w = Watcher(work_directory.path, None, source_patterns=['?.cc'])
+        watchstate = w.poll()
+        filelist = [f[wd_len:] for f in watchstate.inserts]
+        filelist.sort()
+        assert filelist == [ 'a.cc' ]
+
+        w = Watcher(work_directory.path, None, source_patterns=['blah'])
+        watchstate = w.poll()
+        filelist = [f[wd_len:] for f in watchstate.inserts]
+        filelist.sort()
+        assert filelist == [ 'blah.txt', 'blah/test_dummy.c' ]
+
+        w = Watcher(work_directory.path, None, source_patterns=['blah/'])
+        watchstate = w.poll()
+        filelist = [f[wd_len:] for f in watchstate.inserts]
+        filelist.sort()
+        assert filelist == [ 'blah/test_dummy.c' ]
 
     def test_poll(self):
         work_directory = TempDirectory()

@@ -6,6 +6,14 @@ from . import __version__
 
 
 @argh.arg('watch_path', help='Source path to watch.')
+@argh.arg('filename', nargs='*', default=monitor.DEFAULT_SOURCE_PATTERNS,
+          help='A series of file names or file name patterns to be watched. '
+               'These are only meaningful when watch mode is enabled. '
+               'When files identified by the file name or file name patterns '
+               'are detected to have been added, changed, or deleted, this '
+               'triggers a watch, build, test cycle. If not provided, files '
+               'matching *.cc, *.c, *.h, and CMakeLists.txt are watched. '
+               'Be aware of shell expansion!')
 @argh.arg('-b', '--build_path',
           help='Path to the build area. If not provided, it will be in a '
                'directory under the local path named {dir}-{config}-build '
@@ -27,14 +35,19 @@ from . import __version__
 @argh.arg('--irc_nick',
           help='IRC nick or derived from the watch path and the build '
                'configuration. Requires --irc_server')
-@argh.arg('--watch', default=False,
-          help='Enable the watch, build, test cycle.')
-@argh.arg('--test', default=False,
+@argh.arg('-w', '--watch', default=False,
+          help='Enable watch mode - the watch, build, test cycle.')
+@argh.arg('-t', '--test', default=False,
           help='Test after build.')
-def ttt(watch_path, **kwargs):
+def ttt(watch_path, *filename, **kwargs):
     verbosity = kwargs.pop("verbosity", 0)
     Terminal.VERBOSITY = verbosity if verbosity else 0
-    m = monitor.create_monitor(watch_path, **kwargs)
+    patterns = set([ ''.join(f) for f in filename ])  # why join?
+    if verbosity:
+        print("Watching:")
+        for p in patterns:
+            print(p)
+    m = monitor.create_monitor(watch_path, patterns, **kwargs)
 
     if kwargs.pop("watch", False):
         m.run()

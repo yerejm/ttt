@@ -22,22 +22,25 @@ from ttt.ircclient import IRCReporter, IRCClient
 
 DEFAULT_BUILD_PATH_SUFFIX = '-build'
 DEFAULT_SOURCE_PATTERNS = [
-    '\.cc$',
-    '\.c$',
-    '\.h$',
-    'CMakeLists.txt$',
+    '*.cc',
+    '*.c',
+    '*.h',
+    'CMakeLists.txt',
 ]
 
 
-def create_monitor(watch_path=None, **kwargs):
+def create_monitor(watch_path=None, patterns=None, **kwargs):
     """Creates a monitor and its subordinate objects.
 
     By default, one reporter object is created to output to the terminal.
     An optional IRC reporter may be created if irc_server is provided.
 
-    :param watch_path: the root of the source tree, either relative or
-        absolute. If not provided, the current working directory is assumed to
-        be the root of the source tree.
+    :param watch_path: (optional) the root of the source tree, either relative
+        or absolute. If not provided, the current working directory is assumed
+        to be the root of the source tree.
+    :param patterns: (optional) a list of file names or patterns that identify
+        the files to be tracked. By default, all files are tracked unless this
+        list is specified and not empty.
     :param build_path: (optional) the desired build path. May be relative. If
         not provided, it will be generated from the watch path.
     :param generator: (optional) the cmake build system generator
@@ -56,7 +59,7 @@ def create_monitor(watch_path=None, **kwargs):
     build_path = make_build_path(kwargs.pop('build_path', None),
                                  watch_path,
                                  build_config)
-    watcher = Watcher(watch_path, build_path, DEFAULT_SOURCE_PATTERNS)
+    watcher = Watcher(watch_path, build_path, patterns)
     builder = create_builder(watch_path, build_path, generator, build_config)
 
     reporters = [TerminalReporter(watch_path, build_path)]

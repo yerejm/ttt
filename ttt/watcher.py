@@ -54,13 +54,13 @@ class Watcher(object):
     be tracked.
 
     :param watch_path: the absolute path to the root of the directory tree
-    where the modification times of all files under it are tracked.
+        where the modification times of all files under it are tracked.
     :param build_path: the absolute path to the root of the directory tree
-    where the build artifacts derived from the files in the watch area are
-    located.
-    :param source_patterns: (optional) a list of regular expressions
-    (uncompiled) that identify the files to be tracked. By default, all files
-    are tracked unless this list is specified and not empty.
+        where the build artifacts derived from the files in the watch area are
+        located.
+    :param source_patterns: (optional) a list of file names or patterns that
+        identify the files to be tracked. By default, all files are tracked
+        unless this list is specified and not empty.
     """
     def __init__(self,
                  watch_path,
@@ -70,7 +70,7 @@ class Watcher(object):
             source_patterns = []  # get everything by default
         self.watch_path = watch_path
         self.build_path = build_path
-        self.source_patterns = [re.compile(p) for p in source_patterns]
+        self.source_patterns = compile_patterns(source_patterns)
 
         # The file list will be a dict of absolute source file paths to
         # WatchedFile objects.
@@ -101,7 +101,7 @@ class Watcher(object):
                 os.path.join(d, f):
                     WatchedFile(f, os.path.join(d[rootdir_end_index:], f), t)
                 for d, f, _, t in walk(self.watch_path, EXCLUSIONS)
-                if include_file(f, self.source_patterns)
+                if include_file(os.path.join(d, f), self.source_patterns)
             }
         watchstate = create_watchstate(self.filelist, current_filelist, t.secs)
         self.filelist = current_filelist
@@ -212,6 +212,13 @@ def walk(root_directory, exclusions=None):
                     filestat.st_mode,  # file permissions
                     filestat.st_mtime  # last modified time
                 )
+
+
+def compile_patterns(pattern_list):
+    return [
+        re.compile(re.escape(p).replace('\?', '.').replace('\*', '.*?'))
+        for p in pattern_list
+    ]
 
 
 class Timer(object):

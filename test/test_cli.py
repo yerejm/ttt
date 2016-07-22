@@ -53,6 +53,14 @@ class TestCLI:
             cli.run()
         assert Terminal.VERBOSITY == 0
 
+    @patch('sys.argv', new=['ttt', 'watch_path', 'file1', 'file2'])
+    def test_patterns(self):
+        with patch('ttt.monitor.create_monitor', autospec=True) as monitor:
+            cli.run()
+            assert len(monitor.call_args_list)
+            args, kwargs = monitor.call_args_list[0]
+            assert args == ('watch_path', set(['file1', 'file2']))
+
     @patch('sys.argv', new=['ttt', 'watch_path'])
     def test_irc_disabled(self):
         with patch('ttt.monitor.create_monitor', autospec=True) as monitor:
