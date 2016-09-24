@@ -235,3 +235,5 @@ def pad_line(string, pad, width):
         string,
         ''.ljust(right_padlen, pad)
     )
+
+global_term = Terminal(stream=sys.stdout)

@@ -39,10 +39,12 @@ from . import __version__
           help='Enable watch mode - the watch, build, test cycle.')
 @argh.arg('-t', '--test', default=False,
           help='Test after build.')
+@argh.arg('-D', metavar='VAR=VALUE', dest='define', action='append',
+          help='Used like CMake\'s -Dvar=value options.')
 def ttt(watch_path, *filename, **kwargs):
     verbosity = kwargs.pop("verbosity", 0)
     Terminal.VERBOSITY = verbosity if verbosity else 0
-    patterns = set([ ''.join(f) for f in filename ])  # why join?
+    patterns = set([''.join(f) for f in filename])  # why join?
     if verbosity:
         print("Watching:")
         for p in patterns:

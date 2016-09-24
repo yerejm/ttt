@@ -22,10 +22,8 @@ import os
 import platform
 import re
 import stat
-import sys
 
 from ttt.gtest import GTest
-from ttt.terminal import Terminal
 
 DEFAULT_TEST_PREFIX = 'test_'
 
@@ -61,16 +59,19 @@ class Watcher(object):
     :param source_patterns: (optional) a list of file names or patterns that
         identify the files to be tracked. By default, all files are tracked
         unless this list is specified and not empty.
+    :param term: (optional) output stream for verbose output
     """
     def __init__(self,
                  watch_path,
                  build_path,
-                 source_patterns=None):
+                 source_patterns=None,
+                 term=None):
         if source_patterns is None:
             source_patterns = []  # get everything by default
         self.watch_path = watch_path
         self.build_path = build_path
         self.source_patterns = compile_patterns(source_patterns)
+        self.term = term
 
         # The file list will be a dict of absolute source file paths to
         # WatchedFile objects.
@@ -131,8 +132,7 @@ class Watcher(object):
         # Scan the build tree. If an expected test binary is encountered, add a
         # GTest().
         return [
-            GTest(testfiles[f], os.path.join(d, f),
-                  term=Terminal(stream=sys.stdout))
+            GTest(testfiles[f], os.path.join(d, f), term=self.term)
             for d, f, m, t in walk(self.build_path)
             if f in testfiles and m & stat.S_IXUSR
         ]

@@ -12,8 +12,12 @@ import subprocess
 from functools import partial
 
 
-def create_builder(watch_path, build_path,
-                   generator=None, build_type=None):
+def create_builder(watch_path,
+                   build_path,
+                   generator=None,
+                   build_type=None,
+                   defines=[],
+                   term=None):
     """Constructs a partially evaluated function object.
 
     This function object represents the execution of the `cmake` command on
@@ -24,12 +28,15 @@ def create_builder(watch_path, build_path,
         where the CMakeLists.txt file exists
     :param build_path: the absolute root directory path where build objects and
         binaries are output during compilation
-    :param build_type: indicates the type of build, e.g. release, debug
     :param generator: (optional) the cmake generator. Values are the same as
         provided by the cmake usage output. e.g. "Unix Makefile", "Ninja"
         This is because it is passed through via the -G option. Not providing
         it is the same as not providing it to the cmake command and will make
         cmake use the default generator for the executing platform
+    :param build_type: (optional) indicates the type of build,
+        e.g. release, debug
+    :param defines: (optional) list of var=val strings for CMake's -D option
+    :param term: (optional) output stream for verbose output
     """
     if not os.path.isabs(watch_path):
         raise IOError(
@@ -43,13 +50,14 @@ def create_builder(watch_path, build_path,
         execute,
         [
             partial(cmake_generate, watch_path, build_path,
-                    build_type, generator),
+                    build_type, generator, defines),
             partial(cmake_build, build_path, build_type)
-        ]
+        ],
+        term
     )
 
 
-def execute(commands):
+def execute(commands, term=None):
     """Executes the list of callable objects.
 
     Each callable object is a command generator that when called returns a
@@ -58,17 +66,22 @@ def execute(commands):
     to avoid shell escaping mishaps.
 
     :param commands: a list of callable objects
+    :param term: (optional) output stream for verbose output
     """
     from ttt.subproc import checked_call
     for command_generator in commands:
         command = command_generator()
         if command:  # Note that command may be None (or empty list)
+            if term:
+                term.writeln("execute: {}".format(command), verbose=1)
             checked_call(command, stderr=subprocess.STDOUT)
 
 
-def cmake_generate(watch_path, build_path, build_type, generator):
+def cmake_generate(watch_path, build_path, build_type, generator, defines):
     """Generates the command for cmake that will create a build area for a
     source tree.
+
+    This creates the Makefile, build.ninja, project.sln, etc for the project.
 
     If the build area has already been created, then the command is None.
 
@@ -86,6 +99,7 @@ def cmake_generate(watch_path, build_path, build_type, generator):
         This is because it is passed through via the -G option. Not providing
         it is the same as not providing it to the cmake command and will make
         cmake use the default generator for the executing platform
+    :param defines: (optional) list of var=val strings for CMake's -D option
     :return: command to execute as a subprocess in list form
     """
     cmake_cache_file = os.path.join(build_path, 'CMakeCache.txt')
@@ -110,11 +124,15 @@ def cmake_generate(watch_path, build_path, build_type, generator):
         # this does nothing for the MSVC generator
         if build_type is not None:
             command.append('-DCMAKE_BUILD_TYPE={}'.format(build_type))
+        for define in defines:
+            command.append('-D{}'.format(define))
         return command
 
 
 def cmake_build(build_path, build_type):
     """Generates the cmake command to (re)build the build area.
+
+    This is the call to the platform's compiler.
 
     :param build_path: the absolute root directory path where build objects and
         binaries are output during compilation

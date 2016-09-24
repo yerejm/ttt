@@ -35,6 +35,14 @@ class TestCLI:
             assert kwargs['build_path'] == 'buildpath'
             assert kwargs['generator'] == 'Ninja'
 
+    @patch('sys.argv', new=['ttt', 'watch_path', '-D', 'test=yes', '-Dfoo=bar'])
+    def test_define_list(self):
+        with patch('ttt.monitor.create_monitor', autospec=True) as monitor:
+            cli.run()
+            assert len(monitor.call_args_list)
+            args, kwargs = monitor.call_args_list[0]
+            assert kwargs['define'] == ['test=yes', 'foo=bar']
+
     @patch('sys.argv', new=['ttt', 'watch_path', '-vv'])
     def test_verbosity_multiple(self):
         with patch('ttt.monitor.create_monitor', autospec=True) as monitor:

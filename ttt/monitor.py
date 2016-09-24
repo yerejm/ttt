@@ -11,12 +11,13 @@ import itertools
 import os
 import socket
 import subprocess
+import sys
 import time
 
 from ttt.builder import create_builder
 from ttt.watcher import Watcher, has_changes
 from ttt.executor import Executor
-from ttt.terminal import TerminalReporter
+from ttt.terminal import TerminalReporter, Terminal
 from ttt.ircclient import IRCReporter, IRCClient
 
 
@@ -44,6 +45,7 @@ def create_monitor(watch_path=None, patterns=None, **kwargs):
     :param build_path: (optional) the desired build path. May be relative. If
         not provided, it will be generated from the watch path.
     :param generator: (optional) the cmake build system generator
+    :param defines: (optional) list of var=val strings for CMake's -D option
     :param irc_server: (optional) the IRC server host if an IRC reporter is
         required.
     :param irc_port (optional) the IRC server port. Has no meaning without
@@ -59,8 +61,17 @@ def create_monitor(watch_path=None, patterns=None, **kwargs):
     build_path = make_build_path(kwargs.pop('build_path', None),
                                  watch_path,
                                  build_config)
-    watcher = Watcher(watch_path, build_path, patterns)
-    builder = create_builder(watch_path, build_path, generator, build_config)
+    term = Terminal(stream=sys.stdout)
+    watcher = Watcher(watch_path, build_path, patterns, term)
+
+    builder = create_builder(
+            watch_path,
+            build_path,
+            generator,
+            build_config,
+            kwargs.pop("define", []),
+            term
+        )
 
     reporters = [TerminalReporter(watch_path, build_path)]
 
