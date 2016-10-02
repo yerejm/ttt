@@ -59,6 +59,15 @@ class TestCMake:
         assert os.path.exists(cmakecache)
         assert find_in_file(cmakecache, 'CMAKE_BUILD_TYPE:STRING=release' + os.linesep)
 
+    def test_build_with_none_define(self):
+        builder = create_builder(self.cmake_source_path, self.cmake_build_path,
+                                 build_type="release",
+                                 defines=None)
+        builder()
+
+        cmakecache = os.path.join(self.cmake_build_path, 'CMakeCache.txt')
+        assert os.path.exists(cmakecache)
+
     def test_build_with_define(self):
         builder = create_builder(self.cmake_source_path, self.cmake_build_path,
                                  build_type="release",

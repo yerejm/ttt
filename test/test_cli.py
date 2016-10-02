@@ -34,6 +34,7 @@ class TestCLI:
             assert 'watch_path' in args
             assert kwargs['build_path'] == 'buildpath'
             assert kwargs['generator'] == 'Ninja'
+            assert kwargs['define'] == None
 
     @patch('sys.argv', new=['ttt', 'watch_path', '-D', 'test=yes', '-Dfoo=bar'])
     def test_define_list(self):

@@ -16,7 +16,7 @@ def create_builder(watch_path,
                    build_path,
                    generator=None,
                    build_type=None,
-                   defines=[],
+                   defines=None,
                    term=None):
     """Constructs a partially evaluated function object.
 
@@ -50,7 +50,7 @@ def create_builder(watch_path,
         execute,
         [
             partial(cmake_generate, watch_path, build_path,
-                    build_type, generator, defines),
+                    build_type, generator, defines if defines else []),
             partial(cmake_build, build_path, build_type)
         ],
         term
