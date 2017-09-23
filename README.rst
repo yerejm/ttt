@@ -10,7 +10,7 @@ Run As
 Module
 ^^^^^^
 
-For Python 3.5: ``pip install -r requirements.txt``
+For Python 3.6: ``pip install -r requirements.txt``
 
 For Python 2.7: ``pip install -r requirements-py27.txt``
 
