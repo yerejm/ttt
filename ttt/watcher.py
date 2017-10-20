@@ -204,15 +204,19 @@ def walk(root_directory, exclusions=None):
         dirlist[:] = [d for d in dirlist if d not in exclusions]
         for filename in filelist:
             path = os.path.join(dirpath, filename)
-            filestat = os.stat(path)
-            if stat.S_ISREG(filestat.st_mode):
-                yield (
-                    dirpath,
-                    filename,
-                    filestat.st_mode,  # file permissions
-                    filestat.st_mtime  # last modified time
-                )
-
+            try:
+                filestat = os.stat(path)
+                if stat.S_ISREG(filestat.st_mode):
+                    yield (
+                        dirpath,
+                        filename,
+                        filestat.st_mode,  # file permissions
+                        filestat.st_mtime  # last modified time
+                    )
+            except FileNotFoundError as e:
+                # Deleted after the walk found it but before processing here.
+                # Ignore it and keep going.
+                continue
 
 def compile_patterns(pattern_list):
     return [
