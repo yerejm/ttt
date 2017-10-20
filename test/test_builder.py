@@ -90,17 +90,14 @@ class TestCMake:
     def test_bad_build(self):
         source_path = '{}'.format(os.path.join(os.getcwd(), 'dummy'))
         build_path = os.path.join(os.getcwd(), 'dummy-build')
-        expected = [
-            'cmake',
-            '-H{}'.format(source_path),
-            '-B{}'.format(build_path)
-        ]
 
         builder = create_builder(source_path, build_path)
+        raised = None
         try:
             builder()
-        except subprocess.CalledProcessError as e:
-            assert e.cmd == expected
+        except IOError as e:
+            raised = str(e)
+        assert raised == "[Errno 22] No CMakeLists.txt detected in {}".format(source_path)
 
     def test_bad_build_from_relative_path(self):
         error = None

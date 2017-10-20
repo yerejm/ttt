@@ -102,6 +102,11 @@ def cmake_generate(watch_path, build_path, build_type, generator, defines):
     :param defines: (optional) list of var=val strings for CMake's -D option
     :return: command to execute as a subprocess in list form
     """
+    cmake_lists_file = os.path.join(watch_path, 'CMakeLists.txt')
+    if not os.path.exists(cmake_lists_file):
+        raise IOError(
+            errno.EINVAL, "No CMakeLists.txt detected in {}".format(watch_path)
+        )
     cmake_cache_file = os.path.join(build_path, 'CMakeCache.txt')
     if os.path.exists(cmake_cache_file):
         # If the cmake version has changed since the build area was created,
