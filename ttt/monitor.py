@@ -13,6 +13,7 @@ import socket
 import subprocess
 import sys
 import time
+from timeit import default_timer as timer
 
 from ttt.builder import create_builder
 from ttt.watcher import Watcher, has_changes
@@ -208,18 +209,25 @@ class Monitor(object):
         self.notify('session_start', 'build')
         self.notify('report_build_path')
         try:
+            start = timer()
             self.builder()
+            end = timer()
         except KeyboardInterrupt as e:
             raise e
         except subprocess.CalledProcessError:
+            end = timer()
             self.notify('report_build_failure')
             self.operations.reset()
+        self.notify('session_end', 'build', end - start)
 
     def test(self):
         """Executes the tests."""
         self.notify('session_start', 'test')
+        start = timer()
         results = self.executor.test(self.watcher.testlist())
+        end = timer()
         self.notify('report_results', results)
+        self.notify('session_end', 'test')
 
         if results['total_failed'] == 0 and self.last_failed > 0:
             self.last_failed = 0

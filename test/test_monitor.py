@@ -97,8 +97,10 @@ class TestMonitor:
             'report_watchstate',
             'session_start', # build
             'report_build_path',
+            'session_end', # build
             'session_start', # test
             'report_results',
+            'session_end', # test
             'wait_change'
         ]
 

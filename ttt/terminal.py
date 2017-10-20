@@ -12,6 +12,7 @@ import os
 import sys
 import termstyle
 from six import text_type
+from datetime import timedelta
 
 from ttt.reporter import Reporter
 
@@ -30,6 +31,12 @@ class TerminalReporter(Reporter):
         self.writeln('{} session starts'.format(session_descriptor),
                      decorator=[termstyle.bold],
                      pad='=')
+
+    def session_end(self, session_descriptor, duration=None):
+        s = '{} session ends'.format(session_descriptor)
+        if duration is not None:
+            s += '; time to complete: {}'.format(timedelta(seconds=duration))
+        self.writeln(s, decorator=[termstyle.bold], pad='=')
 
     def report_build_path(self):
         self.writeln('### Building:   {}'.format(self.build_path),
