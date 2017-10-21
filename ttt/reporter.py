@@ -6,7 +6,7 @@ class Reporter(object):
     def session_start(self, session_descriptor):
         pass
 
-    def session_end(self, session_descriptor, duration):
+    def session_end(self, session_descriptor, duration=None):
         pass
 
     def report_build_path(self):

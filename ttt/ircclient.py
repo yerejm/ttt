@@ -1,7 +1,9 @@
+from . import __version__
 import irc
 from irc.bot import ServerSpec, Channel
 from irc.dict import IRCDict
 from random import random
+import socket
 
 from ttt.reporter import Reporter
 
@@ -10,6 +12,7 @@ class IRCReporter(Reporter):
 
     def __init__(self, irc):
         self.irc = irc
+        # print('{}@{}:{}/{}'.format(irc._nickname, irc.server.host, irc.server.port, irc.channel))
         self.irc.connect()
 
     def wait(self):
@@ -29,6 +32,7 @@ class IRCReporter(Reporter):
         total_failed = results['total_failed']
         if total_failed > 0:
             self.irc.say('TTT: {} failed, {}'.format(total_failed, shortstats))
+            self._test_failed = True
         else:
             self.irc.say('TTT: {}'.format(shortstats))
 
@@ -55,11 +59,16 @@ class IRCClient(irc.client.SimpleIRCClient):
         super(IRCClient, self).__init__()
         if server is None:
             raise Exception("IRC Server not provided")
+        if nickname is None or ' ' in nickname:
+            raise Exception("Invalid nickname: must be one word")
+        if channel is None or ' ' in channel or '#' not in channel:
+            raise Exception("Invalid channel: must be one word starting with #")
         self.__connect_params = connect_params
         self.channels = IRCDict()
         self.channel = channel
         self.server = ServerSpec(server, port)
         self._nickname = nickname
+        self.clientname = socket.gethostname().split('.')[0]
         assert 0 <= self.min_reconnect_wait <= self.max_reconnect_wait
         self._check_scheduled = False
 
@@ -94,7 +103,7 @@ class IRCClient(irc.client.SimpleIRCClient):
             self.min_reconnect_wait,
             int(self.max_reconnect_wait * random())
         )
-        self.connection.execute_delayed(reconnect_wait, check)
+        self.reactor.scheduler.execute_after(reconnect_wait, check)
         self._check_scheduled = True
 
     def _on_join(self, c, e):
@@ -187,6 +196,7 @@ class IRCClient(irc.client.SimpleIRCClient):
         Automatically join the channel once welcomed by the server.
         """
         c.join(self.channel)
+        self.say('ttt has started on host {}'.format(self.clientname))
 
     def on_privmsg(self, c, e):
         """
@@ -209,7 +219,7 @@ class IRCClient(irc.client.SimpleIRCClient):
         self.connection.disconnect("Bye!")
 
     def get_version(self):
-        return "ttt irc reporter ({version})".format(
+        return "irc.client ({version})".format(
             version=irc.client.VERSION_STRING)
 
     def on_ctcp(self, c, e):
@@ -219,6 +229,20 @@ class IRCClient(irc.client.SimpleIRCClient):
         elif e.arguments[0] == "PING":
             if len(e.arguments) > 1:
                 c.ctcp_reply(nick, "PING " + e.arguments[1])
+
+    def on_pubmsg(self, c, e):
+        nick = e.source.nick
+        command = e.arguments[0]
+        if 'hello' in command or 'hi' in command:
+            self.say("Hello, {}".format(nick))
+        elif 'help' in command:
+            self.say("Commands are: version".format(nick))
+        elif 'version' in command:
+            self.say("I am running ttt {} using {} on {}".format(
+                __version__,
+                self.get_version(),
+                self.clientname
+            ))
 
     def poll(self):
         """

@@ -9,6 +9,7 @@ change and initiate the build and test of the watched source tree.
 import collections
 import itertools
 import os
+import platform
 import socket
 import subprocess
 import sys
@@ -84,21 +85,18 @@ def create_monitor(watch_path=None, patterns=None, **kwargs):
 
     irc_server = kwargs.pop("irc_server", None)
     if irc_server:
-        irc_port = kwargs.pop("irc_port", None)
-        irc_channel = kwargs.pop('irc_channel', None)
-        irc_nick = (kwargs.pop('irc_nick', None) or
-                    make_nick(watch_path, build_config))
-        r = IRCReporter(IRCClient(irc_channel, irc_nick, irc_server, irc_port))
+        r = IRCReporter(IRCClient(
+            (kwargs.pop('irc_channel', None) or
+                '#ttt-{}'.format(os.path.basename(watch_path))),
+            (kwargs.pop('irc_nick', None) or
+                '{}_{}'.format(platform.system(), build_config)),
+            irc_server,
+            kwargs.pop("irc_port", None)
+        ))
         reporters.append(r)
 
     executor = Executor() if run_tests else None
     return Monitor(watcher, builder, executor, reporters)
-
-
-def make_nick(watch_path, build_config):
-    return '{}-{}-{}'.format(socket.gethostname().split('.')[0],
-                             os.path.basename(watch_path),
-                             build_config)
 
 
 def make_watch_path(watch_path=None):
@@ -231,9 +229,7 @@ class Monitor(object):
         if self.executor is None:
             return
         self.notify('session_start', 'test')
-        start = timer()
         results = self.executor.test(self.watcher.testlist())
-        end = timer()
         self.notify('report_results', results)
         self.notify('session_end', 'test')
 
