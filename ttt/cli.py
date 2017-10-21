@@ -38,7 +38,7 @@ from . import __version__
 @argh.arg('-w', '--watch', default=False,
           help='Enable watch mode - the watch, build, test cycle.')
 @argh.arg('-t', '--test', default=False,
-          help='Test after build.')
+          help='Test after build. If given, -DENABLE_TESTS=ON is implied.')
 @argh.arg('-D', metavar='VAR=VALUE', dest='define', action='append',
           help='Used like CMake\'s -Dvar=value options.')
 def ttt(watch_path, *filename, **kwargs):
@@ -55,8 +55,7 @@ def ttt(watch_path, *filename, **kwargs):
         m.run()
     else:
         m.build()
-        if kwargs.pop("test", False):
-            m.test()
+        m.test()
 
 
 def run():

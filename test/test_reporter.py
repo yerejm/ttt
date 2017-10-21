@@ -98,7 +98,7 @@ class TestTerminalReporter:
 
     def test_wait_change(self):
         f = io.StringIO()
-        r = TerminalReporter(watch_path='watch_path', build_path=None, terminal=Terminal(stream=f))
+        r = TerminalReporter(watch_path='watch_path', build_path='build_path', terminal=Terminal(stream=f))
 
         r.wait_change()
         assert f.getvalue() == termstyle.bold(
@@ -107,6 +107,8 @@ class TestTerminalReporter:
                     ''.ljust(29, '#')
                 ) + os.linesep + termstyle.bold(
                     '### Watching:   watch_path'
+                ) + os.linesep + termstyle.bold(
+                    '### Build at:   build_path'
                 ) + os.linesep
 
     def test_report_all_passed(self):

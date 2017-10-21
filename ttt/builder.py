@@ -118,6 +118,12 @@ def cmake_generate(watch_path, build_path, build_type, generator, defines):
                     if not os.path.exists(cmake_path):
                         shutil.rmtree(build_path)
                     break
+                if 'ENABLE_TESTS:BOOL=OFF' in line:
+                    for d in defines:
+                        if 'ENABLE_TESTS' in d:
+                            if 'ON' in d:
+                                shutil.rmtree(build_path)
+                                break
 
     if not os.path.exists(os.path.join(build_path, 'CMakeFiles')):
         command = ['cmake']

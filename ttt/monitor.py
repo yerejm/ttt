@@ -65,12 +65,18 @@ def create_monitor(watch_path=None, patterns=None, **kwargs):
     term = Terminal(stream=sys.stdout)
     watcher = Watcher(watch_path, build_path, patterns, term)
 
+    run_tests = kwargs.pop("test", False)
+    defines = kwargs.pop("define", [])
+    if run_tests:
+        if defines is None:
+            defines = []
+        defines.append('ENABLE_TESTS=ON')
     builder = create_builder(
             watch_path,
             build_path,
             generator,
             build_config,
-            kwargs.pop("define", []),
+            defines,
             term
         )
 
@@ -85,7 +91,7 @@ def create_monitor(watch_path=None, patterns=None, **kwargs):
         r = IRCReporter(IRCClient(irc_channel, irc_nick, irc_server, irc_port))
         reporters.append(r)
 
-    executor = Executor()
+    executor = Executor() if run_tests else None
     return Monitor(watcher, builder, executor, reporters)
 
 
@@ -222,6 +228,8 @@ class Monitor(object):
 
     def test(self):
         """Executes the tests."""
+        if self.executor is None:
+            return
         self.notify('session_start', 'test')
         start = timer()
         results = self.executor.test(self.watcher.testlist())
@@ -269,7 +277,8 @@ class Monitor(object):
             time.sleep(self.polling_interval)
         except KeyboardInterrupt:
             self.notify('interrupt_detected')
-            self.executor.clear_filter()
+            if self.executor is not None:
+                self.executor.clear_filter()
             self.verify_stop()
 
     def verify_stop(self):
