@@ -62,6 +62,8 @@ class TerminalReporter(Reporter):
                      pad='#')
         self.writeln('### Watching:   {}'.format(self.watch_path),
                      decorator=[termstyle.bold])
+        self.writeln('### Build at:   {}'.format(self.build_path),
+                     decorator=[termstyle.bold])
 
     def report_results(self, results):
         shortstats = '{} passed in {} seconds'.format(
