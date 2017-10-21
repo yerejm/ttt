@@ -16,6 +16,7 @@ try:
 except:
     from unittest.mock import Mock, MagicMock, call, patch
 
+from ttt.executor import FAILED
 from ttt.terminal import Terminal, TerminalReporter
 from ttt.ircclient import IRCReporter
 from ttt.watcher import WatchState
@@ -139,7 +140,7 @@ class TestTerminalReporter:
                         'results line 2',
                         'results line 3',
                         'results line 4',
-                        ], []
+                        ], [], FAILED
                     ],
                 ]
             }
@@ -177,14 +178,14 @@ class TestTerminalReporter:
                         'results line 2',
                         'results line 3',
                         'results line 4',
-                        ], []
+                        ], [], FAILED
                     ],
                     [ 'fail2', [
                         '/path/to/file:102: blah',
                         'results line 2',
                         'results line 3',
                         'results line 4',
-                        ], []
+                        ], [], FAILED
                     ],
                 ]
             }
@@ -285,9 +286,7 @@ class TestTerminalReporter:
                             'results line 1',
                             'results line 2',
                             'results line 3',
-                        ],
-                        [
-                        ]
+                        ], [ ], FAILED
                     ],
                 ]
             }
@@ -326,9 +325,7 @@ class TestTerminalReporter:
                             'Value of: 2',
                             'Expected: ok()',
                             'Which is: 42',
-                        ],
-                        [
-                        ]
+                        ], [ ], FAILED
                     ]]
         r.report_failures(failures)
         expected = [

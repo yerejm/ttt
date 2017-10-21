@@ -9,8 +9,10 @@ import collections
 import re
 import termstyle
 import os
+import signal
 import sys
 
+from ttt.executor import PASSED, FAILED, CRASHED
 from ttt.terminal import Terminal
 
 TESTCASE_START_RE = re.compile('^\[----------\] \d+ tests? from (.*?)$')
@@ -22,6 +24,7 @@ TEST_END_RE = re.compile('^\[  (FAILED |     OK) \] (.*?)$')
 TESTCASE_TIME_RE = re.compile(
     '^\[==========\] \d tests? from \d test cases? ran. \((\d+) ms total\)$'
 )
+
 # The patterns above are to match against the relevant output of a gtest run.
 # TESTCASE refers to a group of TESTs. There can be more than one TESTCASE per
 # gtest run.
@@ -75,7 +78,6 @@ TESTCASE_TIME_RE = re.compile(
 #  1 FAILED TEST
 #
 
-
 def testcase_starts_at(line):
     """Indicates if the line is the start of a testcase."""
     return TESTCASE_START_RE.match(line)
@@ -84,7 +86,6 @@ def testcase_starts_at(line):
 def testcase_ends_at(line):
     """Indicates if the line is the end of a testcase."""
     return TESTCASE_END_RE.match(line)
-
 
 def test_starts_at(line):
     """Indicates if the line is the start of a test."""
@@ -188,13 +189,27 @@ class GTest(object):
             self.out(os.linesep.join(stdout), verbose=2)
         if stderr:
             self.out(os.linesep.join(stderr), verbose=2)
+
+        if rc < 0:
+            # TODO Handle non-test crash?
+
+            # probably crashed: note the test that did it and accept that
+            # remaining tests do not run
+            if self._test is not None:
+                self._tests[self._test] = (CRASHED, [signalstring(rc)] + self._output, self._error,)
+                self._fail_count += 1
+                self.out(' {}'.format(signalstring(rc)),
+                         decorator=[termstyle.bold, termstyle.red],
+                         verbose=0)
         return self.failures()
 
     def failures(self):
         """Gets the list of tests that failed by name."""
         # results[0] is the first item in the results tuple. This is the
-        # boolean indicator oof test failure.
-        return [test for test, results in self._tests.items() if results[0]]
+        # boolean indicator of test failure.
+        return [
+            test for test, results in self._tests.items() if results[0] != PASSED
+        ]
 
     def __call__(self, channel, line):
         """Listener interface for lines output during test execution.
@@ -293,11 +308,10 @@ class GTest(object):
             raise Exception('Invalid current test')
         failed = '[  FAILED  ]' in line
         self._tests[self._test] = (
-            failed,
+            FAILED if failed else PASSED,
             self._output[:-1],  # cut the [ OK/FAILED ] line
             self._error[:],
         )
-        self._current_test = None
 
         if failed:
             self._fail_count += 1
@@ -313,7 +327,7 @@ class GTest(object):
         filter (see execute()).
 
         This is a Dict() of test name key to a tuple of:
-          - pass/fail indicator
+          - pass/fail/crash indicator
           - whatever appeared on the stdout stream during test execution
           - whatever appeared on the stderr stream during test execution
         """
@@ -322,3 +336,20 @@ class GTest(object):
     def test_results(self, testname):
         """Gets the test results for a particular test."""
         return self._tests[testname]
+
+def signalstring(value):
+    coresignals = {
+        -3 : 'SIGQUIT',
+        -4 : 'SIGILL',
+        -5 : 'SIGTRAP',
+        -6 : 'SIGABRT',
+        -7 : 'SIGEMT',
+        -8 : 'SIGFPE',
+        -10 : 'SIGBUS',
+        -11 : 'SIGSEGV',
+        -12 : 'SIGSYS',
+    }
+    if value in coresignals:
+        return coresignals[value]
+    else:
+        return "CRASH"

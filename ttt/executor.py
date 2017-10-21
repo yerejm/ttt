@@ -6,6 +6,9 @@ are based on gtest.
 :copyright: (c) yerejm
 """
 
+PASSED = 0
+FAILED = 1
+CRASHED = 2
 
 class Executor(object):
     """Maintains the collection of tests detected by the :class:`Watcher` and
@@ -67,9 +70,9 @@ class Executor(object):
             runtime += test.run_time()
             fail_count += test.fails()
             pass_count += test.passes()
-            for failure in test.failures():
-                failed, out, err = test.test_results(failure)
-                failures.append([failure, out, err])
+            for failed_test in test.failures():
+                outcome, out, err = test.test_results(failed_test)
+                failures.append([failed_test, out, err, outcome])
         runtime /= 1000  # runtime is in milliseconds; summarise using seconds
 
         return {

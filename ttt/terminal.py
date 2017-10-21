@@ -14,6 +14,7 @@ import termstyle
 from six import text_type
 from datetime import timedelta
 
+from ttt.executor import PASSED, FAILED, CRASHED
 from ttt.reporter import Reporter
 
 # When writing to output streams, do not write more than the following width.
@@ -80,24 +81,34 @@ class TerminalReporter(Reporter):
 
     def report_failures(self, results):
         self.writeln('FAILURES', pad='=')
-        for testname, out, err in results:
+        for testname, out, err, outcome in results:
             self.writeln(testname,
                          decorator=[termstyle.red, termstyle.bold],
                          pad='_')
-            test_output_pos = find_source_file_line(out, self.watch_path)
-            results = out[test_output_pos:]
+            extra_out = []
+            if outcome == FAILED:
+                test_output_pos = find_source_file_line(out, self.watch_path)
+                results = out[test_output_pos:]
+                extra_out = out[:test_output_pos]
+            elif outcome == CRASHED:
+                results = out[1:]
             self.writeln(os.linesep.join(results))
 
-            extra_out = out[:test_output_pos]
             if extra_out:
                 self.writeln('Additional output', pad='-')
                 self.writeln(os.linesep.join(extra_out))
 
-            if self.watch_path is None:
-                locator = results[0]
-            else:
-                locator = strip_path(results[0], self.watch_path)
-            self.writeln(strip_trailer(locator),
+            trailer = ''
+            if outcome == FAILED:
+                if self.watch_path is None:
+                    locator = results[0]
+                else:
+                    locator = strip_path(results[0], self.watch_path)
+                trailer = strip_trailer(locator)
+            elif outcome == CRASHED:
+                trailer = ' !!! {} !!!'.format(out[0])
+
+            self.writeln(trailer,
                          decorator=[termstyle.red, termstyle.bold],
                          pad='_')
 

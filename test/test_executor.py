@@ -13,7 +13,7 @@ import stat
 
 from testfixtures import TempDirectory
 
-from ttt.executor import Executor
+from ttt.executor import Executor, FAILED
 from ttt.terminal import Terminal
 from ttt.gtest import GTest
 
@@ -97,7 +97,8 @@ class TestExecutor:
                             'Expected: ok()',
                             'Which is: 42',
                         ],
-                        []
+                        [],
+                        FAILED
                     ]]
                 }
 
@@ -139,7 +140,8 @@ class TestExecutor:
                             'Expected: ok()',
                             'Which is: 42',
                         ],
-                        []
+                        [],
+                        FAILED
                     ]]
                 }
 
