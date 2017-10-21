@@ -13,7 +13,7 @@ import stat
 
 from testfixtures import TempDirectory
 
-from ttt.executor import Executor, FAILED
+from ttt.executor import Executor, FAILED, CRASHED
 from ttt.terminal import Terminal
 from ttt.gtest import GTest
 
@@ -99,6 +99,42 @@ class TestExecutor:
                         ],
                         [],
                         FAILED
+                    ]]
+                }
+
+    def test_windows_seh_crash(self):
+        e = Executor()
+
+        g = make_test('test_core.cc', DUMMYPATH, [
+            '[==========] Running 1 test from 1 test case.',
+            '[----------] Global test environment set-up.',
+            '[----------] 1 test from core',
+            '[ RUN      ] core.ok',
+            'unknown file: error: SEH exception with code 0xc0000005 thrown in the test body',
+            '[  FAILED  ] core.ok (0 ms)',
+            '[----------] 1 test from core (1 ms total)',
+            '',
+            '[----------] Global test environment tear-down',
+            '[==========] 1 test from 1 test case ran. (1 ms total)',
+            '[  PASSED  ] 0 tests.',
+            '[  FAILED  ] 1 test, listed below:',
+            '[  FAILED  ] core.ok',
+            '',
+            ' 1 FAILED TEST',
+            ])
+        results = e.test([g])
+        assert results == {
+                'total_runtime': 0.001,
+                'total_passed': 0,
+                'total_failed': 1,
+                'failures': [[
+                        'core.ok',
+                        [
+                            'SEH Exception',
+                            'unknown file: error: SEH exception with code 0xc0000005 thrown in the test body',
+                        ],
+                        [],
+                        CRASHED
                     ]]
                 }
 

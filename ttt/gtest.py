@@ -190,7 +190,7 @@ class GTest(object):
         if stderr:
             self.out(os.linesep.join(stderr), verbose=2)
 
-        if rc < 0:
+        if rc != 0:
             # TODO Handle non-test crash?
 
             # probably crashed: note the test that did it and accept that
@@ -307,18 +307,35 @@ class GTest(object):
         if self._test is None:
             raise Exception('Invalid current test')
         failed = '[  FAILED  ]' in line
+
+        # windows crash is a failure
+        seh = False
+        for l in self._output:
+            if 'error: SEH exception' in l:
+                seh = True
+                break
+        outcome = PASSED
+        if seh:
+            outcome = CRASHED
+            self._output = ['SEH Exception'] + self._output
+        elif failed:
+            outcome = FAILED
+
         self._tests[self._test] = (
-            FAILED if failed else PASSED,
+            outcome,
             self._output[:-1],  # cut the [ OK/FAILED ] line
             self._error[:],
         )
 
         if failed:
             self._fail_count += 1
-            self.out('F', end='', verbose=0)
+            self.out('X' if seh else 'F', end='', verbose=0)
         else:
             self._pass_count += 1
             self.out('.', end='', verbose=0)
+        self._test = None
+        self._output = []
+        self._error = []
 
     def results(self):
         """Gets the test results of the last test execution.
@@ -339,6 +356,10 @@ class GTest(object):
 
 def signalstring(value):
     coresignals = {
+        # windows
+        1 : 'ERROR',
+        3 : 'ABORT',
+        # posix
         -3 : 'SIGQUIT',
         -4 : 'SIGILL',
         -5 : 'SIGTRAP',

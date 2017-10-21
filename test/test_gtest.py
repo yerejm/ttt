@@ -17,6 +17,7 @@ try:
 except:
     from unittest.mock import Mock, MagicMock, call, patch
 
+from ttt.executor import CRASHED
 from ttt.terminal import Terminal
 from ttt.gtest import GTest
 
@@ -272,6 +273,41 @@ class TestGTest:
         assert gtest.failures() == [ 'core.okshadow', 'blah.test2' ]
         assert gtest.fails() == 2
         assert gtest.passes() == 4
+
+    def test_windows_seh_crash_failure(self):
+        results = [
+'Running main() from gtest_main.cc',
+'[==========] Running 2 tests from 1 test case.',
+'[----------] Global test environment set-up.',
+'[----------] 2 tests from core',
+'[ RUN      ] core.ok',
+'unknown file: error: SEH exception with code 0xc0000005 thrown in the test body',
+'[  FAILED  ] core.ok (0 ms)',
+'[----------] 1 test from core (1 ms total)',
+'',
+'[----------] Global test environment tear-down',
+'[==========] 1 test from 1 test case ran. (1 ms total)',
+'[  PASSED  ] 0 tests.',
+'[  FAILED  ] 1 test, listed below:',
+'[  FAILED  ] core.ok',
+'',
+' 1 FAILED TEST',
+                ]
+        f = io.StringIO()
+        gtest = GTest('/test/test_core.cc', 'test_core', term=Terminal(f))
+        for line in results:
+            gtest(sys.stdout, line)
+
+        assert f.getvalue() == '/test/test_core.cc :: core X' + os.linesep
+        assert gtest.results() == {
+                'core.ok': (CRASHED, [
+                    'SEH Exception',
+                    'unknown file: error: SEH exception with code 0xc0000005 thrown in the test body',
+                    ], []),
+            }
+        assert gtest.failures() == ['core.ok']
+        assert gtest.fails() == 1
+        assert gtest.passes() == 0
 
     def test_command_filter_none(self):
         r = (0, [], [])
