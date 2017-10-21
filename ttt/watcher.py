@@ -213,10 +213,10 @@ def walk(root_directory, exclusions=None):
                         filestat.st_mode,  # file permissions
                         filestat.st_mtime  # last modified time
                     )
-            except FileNotFoundError as e:
-                # Deleted after the walk found it but before processing here.
-                # Ignore it and keep going.
+            except OSError:
+                # probably FileNotFoundError, but OSError on Windows
                 continue
+
 
 def compile_patterns(pattern_list):
     return [

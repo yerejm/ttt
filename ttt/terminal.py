@@ -14,7 +14,7 @@ import termstyle
 from six import text_type
 from datetime import timedelta
 
-from ttt.executor import PASSED, FAILED, CRASHED
+from ttt.executor import FAILED, CRASHED
 from ttt.reporter import Reporter
 
 # When writing to output streams, do not write more than the following width.
@@ -255,5 +255,6 @@ def pad_line(string, pad, width):
         string,
         ''.ljust(right_padlen, pad)
     )
+
 
 global_term = Terminal(stream=sys.stdout)

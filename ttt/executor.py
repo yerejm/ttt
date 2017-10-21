@@ -10,6 +10,7 @@ PASSED = 0
 FAILED = 1
 CRASHED = 2
 
+
 class Executor(object):
     """Maintains the collection of tests detected by the :class:`Watcher` and
     provides an interface to execute all or some of those tests."""

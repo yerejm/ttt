@@ -9,7 +9,6 @@ import collections
 import re
 import termstyle
 import os
-import signal
 import sys
 
 from ttt.executor import PASSED, FAILED, CRASHED
@@ -78,6 +77,7 @@ TESTCASE_TIME_RE = re.compile(
 #  1 FAILED TEST
 #
 
+
 def testcase_starts_at(line):
     """Indicates if the line is the start of a testcase."""
     return TESTCASE_START_RE.match(line)
@@ -86,6 +86,7 @@ def testcase_starts_at(line):
 def testcase_ends_at(line):
     """Indicates if the line is the end of a testcase."""
     return TESTCASE_END_RE.match(line)
+
 
 def test_starts_at(line):
     """Indicates if the line is the start of a test."""
@@ -196,7 +197,11 @@ class GTest(object):
             # probably crashed: note the test that did it and accept that
             # remaining tests do not run
             if self._test is not None:
-                self._tests[self._test] = (CRASHED, [signalstring(rc)] + self._output, self._error,)
+                self._tests[self._test] = (
+                    CRASHED,
+                    [signalstring(rc)] + self._output,
+                    self._error,
+                )
                 self._fail_count += 1
                 self.out(' {}'.format(signalstring(rc)),
                          decorator=[termstyle.bold, termstyle.red],
@@ -208,7 +213,8 @@ class GTest(object):
         # results[0] is the first item in the results tuple. This is the
         # boolean indicator of test failure.
         return [
-            test for test, results in self._tests.items() if results[0] != PASSED
+            test for test, results in self._tests.items()
+            if results[0] != PASSED
         ]
 
     def __call__(self, channel, line):
@@ -354,21 +360,22 @@ class GTest(object):
         """Gets the test results for a particular test."""
         return self._tests[testname]
 
+
 def signalstring(value):
     coresignals = {
         # windows
-        1 : 'ERROR',
-        3 : 'ABORT',
+        1: 'ERROR',
+        3: 'ABORT',
         # posix
-        -3 : 'SIGQUIT',
-        -4 : 'SIGILL',
-        -5 : 'SIGTRAP',
-        -6 : 'SIGABRT',
-        -7 : 'SIGEMT',
-        -8 : 'SIGFPE',
-        -10 : 'SIGBUS',
-        -11 : 'SIGSEGV',
-        -12 : 'SIGSYS',
+        -3: 'SIGQUIT',
+        -4: 'SIGILL',
+        -5: 'SIGTRAP',
+        -6: 'SIGABRT',
+        -7: 'SIGEMT',
+        -8: 'SIGFPE',
+        -10: 'SIGBUS',
+        -11: 'SIGSEGV',
+        -12: 'SIGSYS',
     }
     if value in coresignals:
         return coresignals[value]

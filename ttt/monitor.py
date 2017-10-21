@@ -10,7 +10,6 @@ import collections
 import itertools
 import os
 import platform
-import socket
 import subprocess
 import sys
 import time
@@ -85,14 +84,18 @@ def create_monitor(watch_path=None, patterns=None, **kwargs):
 
     irc_server = kwargs.pop("irc_server", None)
     if irc_server:
-        r = IRCReporter(IRCClient(
+        irc = IRCClient(
             (kwargs.pop('irc_channel', None) or
                 '#ttt-{}'.format(os.path.basename(watch_path))),
             (kwargs.pop('irc_nick', None) or
                 '{}_{}'.format(platform.system(), build_config)),
             irc_server,
             kwargs.pop("irc_port", None)
-        ))
+        )
+        # print('{}@{}:{}/{}'.format(
+        #     irc._nickname, irc.server.host, irc.server.port, irc.channel)
+        # )
+        r = IRCReporter(irc)
         reporters.append(r)
 
     executor = Executor() if run_tests else None

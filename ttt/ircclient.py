@@ -12,7 +12,6 @@ class IRCReporter(Reporter):
 
     def __init__(self, irc):
         self.irc = irc
-        # print('{}@{}:{}/{}'.format(irc._nickname, irc.server.host, irc.server.port, irc.channel))
         self.irc.connect()
 
     def wait(self):
@@ -62,7 +61,7 @@ class IRCClient(irc.client.SimpleIRCClient):
         if nickname is None or ' ' in nickname:
             raise Exception("Invalid nickname: must be one word")
         if channel is None or ' ' in channel or '#' not in channel:
-            raise Exception("Invalid channel: must be one word starting with #")
+            raise Exception("Invalid channel: must be a word starting with #")
         self.__connect_params = connect_params
         self.channels = IRCDict()
         self.channel = channel
@@ -338,6 +337,7 @@ def main():
         print("Exiting...")
     finally:
         irc_reporter.disconnect()
+
 
 if __name__ == "__main__":
     main()
