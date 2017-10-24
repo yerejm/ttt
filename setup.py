@@ -45,7 +45,7 @@ requirements = [
     'python-termstyle',
     'colorama',
     'argh',
-    'irc'
+    'irc==16.0'
 ]
 try:
     from os import scandir
