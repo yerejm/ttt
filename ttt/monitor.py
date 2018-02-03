@@ -245,8 +245,14 @@ class Monitor(object):
         """The main polling loop of the monitor."""
         step_mode = first_value(kwargs.get('step'), False)
         while self.runstate.active():
-            self.check_for_changes()
-            self.wait()
+            try:
+                self.check_for_changes()
+                self.wait()
+            except KeyboardInterrupt:
+                self.notify('interrupt_detected')
+                if self.executor is not None:
+                    self.executor.clear_filter()
+                self.verify_stop()
 
             if step_mode:
                 break
@@ -256,29 +262,20 @@ class Monitor(object):
 
         If there were changes, then executes the base set of operations.
         """
-        try:
-            watchstate = self.watcher.poll()
-            if has_changes(watchstate) or self.runstate.allowed_once():
-                self.operations.append(
-                    self.report_change(watchstate),
-                    self.build,
-                    self.test
-                )
-                self.operations.run()
-                self.notify('wait_change')
-        except KeyboardInterrupt as e:
-            self.notify('report_interrupt', e)
+        watchstate = self.watcher.poll()
+        if has_changes(watchstate) or self.runstate.allowed_once():
+            self.operations.append(
+                self.report_change(watchstate),
+                self.build,
+                self.test
+            )
+            self.operations.run()
+            self.notify('wait_change')
 
     def wait(self):
         """The wait side of the polling."""
-        try:
-            self.notify('wait')
-            time.sleep(self.polling_interval)
-        except KeyboardInterrupt:
-            self.notify('interrupt_detected')
-            if self.executor is not None:
-                self.executor.clear_filter()
-            self.verify_stop()
+        self.notify('wait')
+        time.sleep(self.polling_interval)
 
     def verify_stop(self):
         """Verify that the user's interrupt was intended to terminate ttt by

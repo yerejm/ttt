@@ -136,7 +136,7 @@ class TestMonitor:
         m.run(step=True)
 
         assert 'poll' in [ c for c,a,kw in watcher.method_calls ]
-        assert [ c for c,a,kw in reporter.method_calls ] == [ 'report_interrupt' ]
+        assert [ c for c,a,kw in reporter.method_calls ] == [ 'interrupt_detected' ]
 
     def test_keyboardinterrupt_during_wait(self):
         reporter = MagicMock(spec=Reporter)
@@ -181,7 +181,7 @@ class TestMonitor:
         o.reset_mock()
         m.run(step=True)
 
-        assert 'report_interrupt' in set([ c for c,a,kw in reporter.method_calls])
+        assert 'interrupt_detected' in set([ c for c,a,kw in reporter.method_calls])
 
     def test_builderror(self):
         import subprocess
