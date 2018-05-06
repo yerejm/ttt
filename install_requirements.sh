@@ -10,9 +10,6 @@ for pyver in $(pyenv versions | grep -v system | cut -c 3- | awk '{print $1}'); 
         3)
             pip install -r requirements.txt && pip install -r dev-requirements.txt
             ;;
-        2)
-            pip install -r requirements-py27.txt && pip install -r dev-requirements-py27.txt
-            ;;
         *)
             echo "Unknown python ${major_ver}!"
             ;;
