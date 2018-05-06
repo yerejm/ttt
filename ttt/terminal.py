@@ -12,7 +12,7 @@ import os
 import sys
 import termstyle
 from six import text_type
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 from ttt.executor import FAILED, CRASHED
 from ttt.reporter import Reporter
@@ -20,13 +20,16 @@ from ttt.reporter import Reporter
 # When writing to output streams, do not write more than the following width.
 TERMINAL_MAX_WIDTH = 78
 
+def DEFAULT_TIMESTAMP():
+    return datetime.now().strftime('%d/%m/%Y %H:%M:%S')
 
 class TerminalReporter(Reporter):
 
-    def __init__(self, watch_path, build_path, terminal=None):
+    def __init__(self, watch_path, build_path, terminal=None, timestamp=DEFAULT_TIMESTAMP):
         self.terminal = terminal if terminal else Terminal(stream=sys.stdout)
         self.watch_path = watch_path
         self.build_path = build_path
+        self.timestamp = timestamp
 
     def session_start(self, session_descriptor):
         self.writeln('{} session starts'.format(session_descriptor),
@@ -60,6 +63,8 @@ class TerminalReporter(Reporter):
         self.writeln('waiting for changes',
                      decorator=[termstyle.bold],
                      pad='#')
+        self.writeln('### Since:      {}'.format(self.timestamp()),
+                     decorator=[termstyle.bold])
         self.writeln('### Watching:   {}'.format(self.watch_path),
                      decorator=[termstyle.bold])
         self.writeln('### Build at:   {}'.format(self.build_path),

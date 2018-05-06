@@ -98,13 +98,16 @@ class TestTerminalReporter:
 
     def test_wait_change(self):
         f = io.StringIO()
-        r = TerminalReporter(watch_path='watch_path', build_path='build_path', terminal=Terminal(stream=f))
+        r = TerminalReporter(watch_path='watch_path', build_path='build_path',
+                terminal=Terminal(stream=f), timestamp=lambda: 'timestamp')
 
         r.wait_change()
         assert f.getvalue() == termstyle.bold(
                     ''.ljust(28, '#') +
                     ' waiting for changes ' +
                     ''.ljust(29, '#')
+                ) + os.linesep + termstyle.bold(
+                    '### Since:      timestamp'
                 ) + os.linesep + termstyle.bold(
                     '### Watching:   watch_path'
                 ) + os.linesep + termstyle.bold(
