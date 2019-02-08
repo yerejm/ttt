@@ -43,7 +43,10 @@ DEFAULT_GEN = WINGEN if platform.system() is 'Windows' else None
 @argh.arg('-t', '--test', default=False,
           help='Test after build. If given, -DENABLE_TESTS=ON is implied.')
 @argh.arg('-D', metavar='VAR=VALUE', dest='define', action='append',
-          help='Used like CMake\'s -Dvar=value options.')
+          help='Used like CMake\'s -Dvar=value options. Repeatable.')
+@argh.arg('-x', metavar='VAR=VALUE', dest='exclude', action='append',
+          help='Exclude files and directories by name or by pattern. '
+               'Repeatable.')
 def ttt(watch_path, *filename, **kwargs):
     verbosity = kwargs.pop("verbosity", 0)
     Terminal.VERBOSITY = verbosity if verbosity else 0

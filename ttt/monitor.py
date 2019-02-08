@@ -63,7 +63,8 @@ def create_monitor(watch_path=None, patterns=None, **kwargs):
                                  watch_path,
                                  build_config)
     term = Terminal(stream=sys.stdout)
-    watcher = Watcher(watch_path, build_path, patterns, term)
+    exclusions = kwargs.pop("exclude", [])
+    watcher = Watcher(watch_path, build_path, patterns, exclusions, term)
 
     run_tests = kwargs.pop("test", False)
     defines = kwargs.pop("define", [])

@@ -78,6 +78,22 @@ class TestCLI:
             args, kwargs = monitor.call_args_list[0]
             assert kwargs['irc_server'] is None
 
+    @patch('sys.argv', new=['ttt', 'watch_path', '-x', '*.o'])
+    def test_define_list(self):
+        with patch('ttt.monitor.create_monitor', autospec=True) as monitor:
+            cli.run()
+            assert len(monitor.call_args_list)
+            args, kwargs = monitor.call_args_list[0]
+            assert kwargs['exclude'] == ['*.o']
+
+    @patch('sys.argv', new=['ttt', 'watch_path', '-x', '*.o', '-x', 'blah'])
+    def test_define_list(self):
+        with patch('ttt.monitor.create_monitor', autospec=True) as monitor:
+            cli.run()
+            assert len(monitor.call_args_list)
+            args, kwargs = monitor.call_args_list[0]
+            assert kwargs['exclude'] == ['*.o', 'blah']
+
     @patch('sys.argv', new=['ttt', 'watch_path',
         '--irc_server', 'testserver', '--irc_port', '6666',
         '--irc_channel', '#test', '--irc_nick', 'testtest'])

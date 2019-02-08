@@ -59,18 +59,24 @@ class Watcher(object):
     :param source_patterns: (optional) a list of file names or patterns that
         identify the files to be tracked. By default, all files are tracked
         unless this list is specified and not empty.
+    :param source_exclusions: (optional) a list of file names or patterns that
+        identify the files to be ignored.
     :param term: (optional) output stream for verbose output
     """
     def __init__(self,
                  watch_path,
                  build_path,
                  source_patterns=None,
+                 source_exclusions=None,
                  term=None):
         if source_patterns is None:
             source_patterns = []  # get everything by default
+        if source_exclusions is None:
+            source_exclusions = []
         self.watch_path = watch_path
         self.build_path = build_path
         self.source_patterns = compile_patterns(source_patterns)
+        self.source_exclusions = compile_patterns(source_exclusions)
         self.term = term
 
         # The file list will be a dict of absolute source file paths to
@@ -80,6 +86,8 @@ class Watcher(object):
     def poll(self):
         """Traverses the watch area to refresh the dictionary of tracked files.
 
+        Exclusion is applied before inclusion.
+
         Certain subdirectories detected during traversal are skipped entirely.
         This list is currently limited to the git and mercurial repository
         meta-areas.
@@ -88,9 +96,14 @@ class Watcher(object):
         area i.e. whether there are new files, changed files, deleted files.
         """
 
-        def include_file(filename, inclusion_patterns):
+        def include_file(filename, inclusion_patterns, exclusion_patterns):
+            for pattern in exclusion_patterns:
+                if pattern.search(filename):
+                    return False
+
             if not inclusion_patterns:
                 return True
+
             for pattern in inclusion_patterns:
                 if pattern.search(filename):
                     return True
@@ -102,7 +115,11 @@ class Watcher(object):
                 os.path.join(d, f):
                     WatchedFile(f, os.path.join(d[rootdir_end_index:], f), t)
                 for d, f, _, t in walk(self.watch_path, EXCLUSIONS)
-                if include_file(os.path.join(d, f), self.source_patterns)
+                if include_file(
+                    os.path.join(d, f),
+                    self.source_patterns,
+                    self.source_exclusions
+                )
             }
         watchstate = create_watchstate(self.filelist, current_filelist, t.secs)
         self.filelist = current_filelist
@@ -220,7 +237,7 @@ def walk(root_directory, exclusions=None):
 
 def compile_patterns(pattern_list):
     return [
-        re.compile(re.escape(p).replace('\?', '.').replace('\*', '.*?'))
+        re.compile(re.escape(p).replace('\\?', '.').replace('\\*', '.*?'))
         for p in pattern_list
     ]
 
