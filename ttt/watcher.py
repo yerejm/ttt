@@ -19,6 +19,8 @@ potential issue is left to a time when it becomes problematic.
 """
 import collections
 import os
+from os import scandir
+from os import walk as walk_fn
 import platform
 import re
 import stat
@@ -199,22 +201,6 @@ def walk(root_directory, exclusions=None):
     example, a directory name identifying a subdirectory whose own traversal is
     not required.
     """
-    # Pick the better scandir for the python
-    try:
-        # If scandir is present in the os module, then this is python 3 and its
-        # walk can be used.
-        from os import scandir  # noqa
-        from os import walk as walk_fn
-    except ImportError:
-        # python 2 is used
-        try:
-            # Look for the scandir module and use its walk if present.
-            from scandir import scandir  # noqa
-            from scandir import walk as walk_fn
-        except ImportError:
-            # Use python 2's walk as the last resort.
-            from os import walk as walk_fn
-
     if exclusions is None:
         exclusions = set()
     for dirpath, dirlist, filelist in walk_fn(root_directory, topdown=True):

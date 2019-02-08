@@ -10,9 +10,7 @@ Run As
 Module
 ^^^^^^
 
-For Python 3.6: ``pip install -r requirements.txt``
-
-For Python 2.7: ``pip install -r requirements-py27.txt``
+Install dependencies: ``pip install -r requirements.txt``
 
 Then: ``PYTHONPATH=/path/to/ttt:$PYTHONPATH python -m ttt source_path``
 
@@ -23,12 +21,6 @@ Executable
 Install: ``python setup.py install``
 
 Then: ``ttt source_path``
-
------
-Notes
------
-
-Installation of the ``scandir`` module for Python 2.7 requires compilation.
 
 -------
 Caveats

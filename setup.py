@@ -47,10 +47,6 @@ requirements = [
     'argh',
     'irc==16.0'
 ]
-try:
-    from os import scandir
-except:
-    requirements.append('scandir')
 
 test_requirements = [
     'pytest',
