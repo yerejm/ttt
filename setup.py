@@ -88,7 +88,6 @@ setup(
         'License :: OSI Approved :: ISC License (ISCL)',
         'Natural Language :: English',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
     ],
     test_suite='test',
     cmdclass = {'test': PyTest},
