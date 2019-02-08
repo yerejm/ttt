@@ -14,14 +14,15 @@ import sys
 from ttt.executor import PASSED, FAILED, CRASHED
 from ttt.terminal import Terminal
 
-TESTCASE_START_RE = re.compile('^\[----------\] \d+ tests? from (.*?)$')
+TESTCASE_START_RE = re.compile('^\\[----------\\] \\d+ tests? from (.*?)$')
 TESTCASE_END_RE = re.compile(
-    '^\[----------\] \d+ tests? from (.*?) \(\d+ ms total\)$'
+    '^\\[----------\\] \\d+ tests? from (.*?) \\(\\d+ ms total\\)$'
 )
-TEST_START_RE = re.compile('^\[ RUN      \] (.*?)$')
-TEST_END_RE = re.compile('^\[  (FAILED |     OK) \] (.*?)$')
+TEST_START_RE = re.compile('^\\[ RUN      \\] (.*?)$')
+TEST_END_RE = re.compile('^\\[  (FAILED |     OK) \\] (.*?)$')
 TESTCASE_TIME_RE = re.compile(
-    '^\[==========\] \d tests? from \d test cases? ran. \((\d+) ms total\)$'
+    '^\\[==========\\] \\d tests? from \\d test cases? ran. '
+    '\\((\\d+) ms total\\)$'
 )
 
 # The patterns above are to match against the relevant output of a gtest run.
