@@ -8,6 +8,7 @@ import platform
 WINGEN = 'Visual Studio 15 2017 Win64'
 DEFAULT_GEN = WINGEN if platform.system() is 'Windows' else None
 
+
 @argh.arg('watch_path', help='Source path to watch.')
 @argh.arg('filename', nargs='*', default=monitor.DEFAULT_SOURCE_PATTERNS,
           help='A series of file names or file name patterns to be watched. '

@@ -9,12 +9,7 @@ Tests for `executor` module.
 """
 import os
 import sys
-import stat
-
-from testfixtures import TempDirectory
-
 from ttt.executor import Executor, FAILED, CRASHED
-from ttt.terminal import Terminal
 from ttt.gtest import GTest
 
 
@@ -110,7 +105,8 @@ class TestExecutor:
             '[----------] Global test environment set-up.',
             '[----------] 1 test from core',
             '[ RUN      ] core.ok',
-            'unknown file: error: SEH exception with code 0xc0000005 thrown in the test body',
+            'unknown file: error: SEH exception with code 0xc0000005 thrown in'
+            ' the test body',
             '[  FAILED  ] core.ok (0 ms)',
             '[----------] 1 test from core (1 ms total)',
             '',
@@ -131,7 +127,8 @@ class TestExecutor:
                         'core.ok',
                         [
                             'SEH Exception',
-                            'unknown file: error: SEH exception with code 0xc0000005 thrown in the test body',
+                            'unknown file: error: SEH exception with code '
+                            '0xc0000005 thrown in the test body',
                         ],
                         [],
                         CRASHED

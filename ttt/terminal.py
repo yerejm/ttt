@@ -20,12 +20,18 @@ from ttt.reporter import Reporter
 # When writing to output streams, do not write more than the following width.
 TERMINAL_MAX_WIDTH = 78
 
+
 def DEFAULT_TIMESTAMP():
     return datetime.now().strftime('%d/%m/%Y %H:%M:%S')
 
+
 class TerminalReporter(Reporter):
 
-    def __init__(self, watch_path, build_path, terminal=None, timestamp=DEFAULT_TIMESTAMP):
+    def __init__(self,
+                 watch_path,
+                 build_path,
+                 terminal=None,
+                 timestamp=DEFAULT_TIMESTAMP):
         self.terminal = terminal if terminal else Terminal(stream=sys.stdout)
         self.watch_path = watch_path
         self.build_path = build_path

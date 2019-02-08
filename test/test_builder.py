@@ -9,8 +9,8 @@ Tests for `builder` module.
 """
 
 import os
+from os.path import join, exists
 import platform
-import subprocess
 
 from testfixtures import TempDirectory
 from ttt.builder import create_builder
@@ -36,28 +36,32 @@ class TestCMake:
         TempDirectory.cleanup_all()
 
     def test_build_with_generator(self):
-        builder = create_builder(self.cmake_source_path, self.cmake_build_path, 'Ninja')
+        builder = create_builder(self.cmake_source_path,
+                                 self.cmake_build_path,
+                                 'Ninja')
         builder()
 
-        assert os.path.exists(os.path.join(self.cmake_build_path, 'CMakeFiles'))
-        assert os.path.exists(os.path.join(self.cmake_build_path, 'build.ninja'))
+        assert exists(join(self.cmake_build_path, 'CMakeFiles'))
+        assert exists(join(self.cmake_build_path, 'build.ninja'))
 
     def test_build_with_default_build_type(self):
         builder = create_builder(self.cmake_source_path, self.cmake_build_path)
         builder()
 
-        cmakecache = os.path.join(self.cmake_build_path, 'CMakeCache.txt')
-        assert os.path.exists(cmakecache)
-        assert find_in_file(cmakecache, 'CMAKE_BUILD_TYPE:STRING=' + os.linesep)
+        cmakecache = join(self.cmake_build_path, 'CMakeCache.txt')
+        assert exists(cmakecache)
+        assert find_in_file(cmakecache,
+                            'CMAKE_BUILD_TYPE:STRING=' + os.linesep)
 
     def test_build_with_build_type(self):
         builder = create_builder(self.cmake_source_path, self.cmake_build_path,
                                  build_type="release")
         builder()
 
-        cmakecache = os.path.join(self.cmake_build_path, 'CMakeCache.txt')
-        assert os.path.exists(cmakecache)
-        assert find_in_file(cmakecache, 'CMAKE_BUILD_TYPE:STRING=release' + os.linesep)
+        cmakecache = join(self.cmake_build_path, 'CMakeCache.txt')
+        assert exists(cmakecache)
+        assert find_in_file(cmakecache,
+                            'CMAKE_BUILD_TYPE:STRING=release' + os.linesep)
 
     def test_build_with_none_define(self):
         builder = create_builder(self.cmake_source_path, self.cmake_build_path,
@@ -65,8 +69,8 @@ class TestCMake:
                                  defines=None)
         builder()
 
-        cmakecache = os.path.join(self.cmake_build_path, 'CMakeCache.txt')
-        assert os.path.exists(cmakecache)
+        cmakecache = join(self.cmake_build_path, 'CMakeCache.txt')
+        assert exists(cmakecache)
 
     def test_build_with_define(self):
         builder = create_builder(self.cmake_source_path, self.cmake_build_path,
@@ -74,22 +78,22 @@ class TestCMake:
                                  defines=['FOO=BAR', 'A:STRING=VALUE'])
         builder()
 
-        cmakecache = os.path.join(self.cmake_build_path, 'CMakeCache.txt')
-        assert os.path.exists(cmakecache)
+        cmakecache = join(self.cmake_build_path, 'CMakeCache.txt')
+        assert exists(cmakecache)
         assert find_in_file(cmakecache, 'FOO:UNINITIALIZED=BAR' + os.linesep)
         assert find_in_file(cmakecache, 'A:STRING=VALUE' + os.linesep)
 
     def test_good_build(self):
-        build_file = 'test.sln' if platform.system() == 'Windows' else 'Makefile'
+        build_file = 'test.sln' if platform.system() == 'Windows' else 'Makefile' # noqa
         builder = create_builder(self.cmake_source_path, self.cmake_build_path)
         builder()
 
-        assert os.path.exists(os.path.join(self.cmake_build_path, 'CMakeFiles'))
-        assert os.path.exists(os.path.join(self.cmake_build_path, build_file))
+        assert exists(join(self.cmake_build_path, 'CMakeFiles'))
+        assert exists(join(self.cmake_build_path, build_file))
 
     def test_bad_build(self):
-        source_path = '{}'.format(os.path.join(os.getcwd(), 'dummy'))
-        build_path = os.path.join(os.getcwd(), 'dummy-build')
+        source_path = '{}'.format(join(os.getcwd(), 'dummy'))
+        build_path = join(os.getcwd(), 'dummy-build')
 
         builder = create_builder(source_path, build_path)
         raised = None
@@ -97,7 +101,7 @@ class TestCMake:
             builder()
         except IOError as e:
             raised = str(e)
-        assert raised == "[Errno 22] No CMakeLists.txt detected in {}".format(source_path)
+        assert raised == "[Errno 22] No CMakeLists.txt detected in {}".format(source_path) # noqa
 
     def test_bad_build_from_relative_path(self):
         error = None
@@ -113,4 +117,3 @@ class TestCMake:
         except IOError as e:
             error = e
         assert 'Build path dummy must be absolute' in str(error)
-

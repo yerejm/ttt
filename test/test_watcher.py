@@ -9,12 +9,12 @@ Tests for `watcher` module.
 """
 
 import os
-import re
 from testfixtures import TempDirectory
 from ttt import watcher
 from ttt.watcher import Watcher
 from ttt.watcher import WatchedFile
 from ttt.watcher import create_watchstate
+
 
 class TestWatcher:
     def setup(self):
@@ -54,7 +54,7 @@ class TestWatcher:
         work_directory.write('CMakeLists.txt', b'')
         work_directory.write('blah.txt', b'')
         work_directory.makedir('blah')
-        testfile_path = work_directory.write(['blah', 'test_dummy.c'], b'')
+        work_directory.write(['blah', 'test_dummy.c'], b'')
         wd_len = len(work_directory.path) + 1
 
         w = Watcher(work_directory.path, None, [])
@@ -70,56 +70,57 @@ class TestWatcher:
             'blah/test_dummy.c'
         ]
 
-        w = Watcher(work_directory.path, None, source_patterns=['CMakeLists.txt'])
+        w = Watcher(work_directory.path, None,
+                    source_patterns=['CMakeLists.txt'])
         watchstate = w.poll()
         filelist = [f[wd_len:] for f in watchstate.inserts]
         filelist.sort()
-        assert filelist == [ 'CMakeLists.txt' ]
+        assert filelist == ['CMakeLists.txt']
 
         w = Watcher(work_directory.path, None, source_patterns=['*.txt'])
         watchstate = w.poll()
         filelist = [f[wd_len:] for f in watchstate.inserts]
         filelist.sort()
-        assert filelist == [ 'CMakeLists.txt', 'blah.txt' ]
+        assert filelist == ['CMakeLists.txt', 'blah.txt']
 
         w = Watcher(work_directory.path, None, source_patterns=['?.cc'])
         watchstate = w.poll()
         filelist = [f[wd_len:] for f in watchstate.inserts]
         filelist.sort()
-        assert filelist == [ 'a.cc' ]
+        assert filelist == ['a.cc']
 
         w = Watcher(work_directory.path, None, source_patterns=['blah'])
         watchstate = w.poll()
         filelist = [f[wd_len:] for f in watchstate.inserts]
         filelist.sort()
-        assert filelist == [ 'blah.txt', 'blah/test_dummy.c' ]
+        assert filelist == ['blah.txt', 'blah/test_dummy.c']
 
         w = Watcher(work_directory.path, None, source_patterns=['blah/'])
         watchstate = w.poll()
         filelist = [f[wd_len:] for f in watchstate.inserts]
         filelist.sort()
-        assert filelist == [ 'blah/test_dummy.c' ]
+        assert filelist == ['blah/test_dummy.c']
 
         w = Watcher(work_directory.path, None, source_patterns=['*.txt'],
-                source_exclusions=['blah.txt'])
+                    source_exclusions=['blah.txt'])
         watchstate = w.poll()
         filelist = [f[wd_len:] for f in watchstate.inserts]
         filelist.sort()
-        assert filelist == [ 'CMakeLists.txt' ]
+        assert filelist == ['CMakeLists.txt']
 
         w = Watcher(work_directory.path, None, source_patterns=['*.txt'],
-                source_exclusions=['blah.*'])
+                    source_exclusions=['blah.*'])
         watchstate = w.poll()
         filelist = [f[wd_len:] for f in watchstate.inserts]
         filelist.sort()
-        assert filelist == [ 'CMakeLists.txt' ]
+        assert filelist == ['CMakeLists.txt']
 
         w = Watcher(work_directory.path, None, None,
-                source_exclusions=['*.txt', 'blah'])
+                    source_exclusions=['*.txt', 'blah'])
         watchstate = w.poll()
         filelist = [f[wd_len:] for f in watchstate.inserts]
         filelist.sort()
-        assert filelist == [ 'a.c', 'a.cc', 'a.h' ]
+        assert filelist == ['a.c', 'a.cc', 'a.h']
 
     def test_poll(self):
         work_directory = TempDirectory()
@@ -146,7 +147,7 @@ class TestWatcher:
 
         work_directory = TempDirectory()
         work_directory.makedir('test')
-        testfile_path = work_directory.write(['test', 'test_dummy.c'], b'')
+        work_directory.write(['test', 'test_dummy.c'], b'')
         build_directory = TempDirectory()
         testbin_path = build_directory.write(['test_dummy'], b'')
         st = os.stat(testbin_path)
@@ -156,8 +157,8 @@ class TestWatcher:
         w.poll()
 
         exefile = testbin_path + watcher.EXE_SUFFIX
-        testlist = [ (g.source(), g.executable()) for g in w.testlist() ]
-        assert testlist == [ (os.path.join('test', 'test_dummy.c'), exefile) ]
+        testlist = [(g.source(), g.executable()) for g in w.testlist()]
+        assert testlist == [(os.path.join('test', 'test_dummy.c'), exefile)]
 
 
 class TestWatchState:
@@ -167,8 +168,8 @@ class TestWatchState:
         assert not watcher.has_changes(ws)
 
     def test_equality(self):
-        before = { 'test': WatchedFile(relpath='', name='', mtime='') }
-        after = { 'test': WatchedFile(relpath='', name='', mtime='') }
+        before = {'test': WatchedFile(relpath='', name='', mtime='')}
+        after = {'test': WatchedFile(relpath='', name='', mtime='')}
 
         ws1 = create_watchstate(before, after)
         ws2 = create_watchstate(dict(), dict())
