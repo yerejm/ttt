@@ -5,10 +5,6 @@ from ttt.terminal import Terminal
 from . import __version__
 import platform
 
-WINGEN = 'Visual Studio 15 2017 Win64'
-DEFAULT_GEN = WINGEN if platform.system() is 'Windows' else None
-
-
 @argh.arg('watch_path', help='Source path to watch.')
 @argh.arg('filename', nargs='*', default=monitor.DEFAULT_SOURCE_PATTERNS,
           help='A series of file names or file name patterns to be watched. '
@@ -26,7 +22,7 @@ DEFAULT_GEN = WINGEN if platform.system() is 'Windows' else None
                'will be created under the local path.')
 @argh.arg('-v', '--verbosity', default=None, action='count',
           help='More v\'s more verbose.')
-@argh.arg('-g', '--generator', default=DEFAULT_GEN,
+@argh.arg('-g', '--generator', default=None,
           help='cmake generator: refer to cmake documentation')
 @argh.arg('-c', '--config', default='Debug',
           help='build configuration: e.g. Release, Debug')
