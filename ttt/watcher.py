@@ -25,6 +25,15 @@ import platform
 import re
 import stat
 
+try:
+    from timeit import default_timer as timer
+except:
+    # Pick the better resolution timer for the platform
+    if platform.system() == 'Windows':
+        from time import clock as timer
+    else:
+        from time import time as timer
+
 from ttt.gtest import GTest
 
 DEFAULT_TEST_PREFIX = 'test_'
@@ -231,18 +240,10 @@ def compile_patterns(pattern_list):
 class Timer(object):
     """Self-capturing time keeper intended for use by the 'with' idiom."""
 
-    def __init__(self):
-        # Pick the better resolution timer for the platform
-        if platform.system() == 'Windows':
-            from time import clock as timer
-        else:
-            from time import time as timer
-        self.timer = timer
-
     def __enter__(self):
-        self.start = self.timer()
+        self.start = timer()
         return self
 
     def __exit__(self, *args):
-        self.end = self.timer()
+        self.end = timer()
         self.secs = self.end - self.start
