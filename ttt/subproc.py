@@ -80,13 +80,13 @@ def call_output(*popenargs, **kwargs):
     kwargs['stdin'] = subprocess.PIPE
     line_handler = kwargs.pop('listener', None)
 
-    process = create_process(
+    with create_process(
         *popenargs,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         **kwargs
-    )
-    return run(process, line_handler)
+        ) as process:
+        return run(process, line_handler)
 
 
 def run(process, line_handler):
