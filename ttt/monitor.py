@@ -13,6 +13,7 @@ import platform
 import subprocess
 import sys
 import time
+import shutil
 from timeit import default_timer as timer
 
 from ttt.builder import create_builder
@@ -62,6 +63,8 @@ def create_monitor(watch_path=None, patterns=None, **kwargs):
     build_path = make_build_path(kwargs.pop('build_path', None),
                                  watch_path,
                                  build_config)
+    if kwargs.pop("clean", False) and os.path.exists(build_path):
+        shutil.rmtree(build_path)
     term = Terminal(stream=sys.stdout)
     exclusions = kwargs.pop("exclude", [])
     watcher = Watcher(watch_path, build_path, patterns, exclusions, term)

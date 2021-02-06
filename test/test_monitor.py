@@ -74,6 +74,22 @@ class TestMonitor:
         assert reporter.watch_path == source_path
         assert reporter.build_path == '{}'.format(os.path.realpath(build_path))
 
+    def test_create_monitor_clean_build_path(self):
+        wd = TempDirectory()
+        source_path = wd.makedir('source')
+        build_path = wd.makedir('build')
+        sub_path = os.path.join(build_path, 'sub')
+        os.mkdir(sub_path)
+
+        with chdir(wd.path):
+            assert os.path.exists(build_path)
+            assert os.path.exists(sub_path)
+            m = create_monitor(source_path,
+                               build_path=os.path.basename(build_path),
+                               clean=True)
+            assert not os.path.exists(sub_path)
+            assert not os.path.exists(build_path)
+
     def test_poll_build_test(self):
         reporter = MagicMock(spec=Reporter)
         watcher = MagicMock()

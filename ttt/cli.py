@@ -26,6 +26,8 @@ import platform
           help='cmake generator: refer to cmake documentation')
 @argh.arg('-c', '--config', default='Debug',
           help='build configuration: e.g. Release, Debug')
+@argh.arg('--clean', default=False,
+          help='Remove existing build area to ensure a clean build.')
 @argh.arg('--irc_server', default=None,
           help='IRC server hostname. Requires --watch')
 @argh.arg('--irc_port', default=6667,
