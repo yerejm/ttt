@@ -6,23 +6,23 @@ in a subprocess and capture its output to track the outcome of test execution.
 :copyright: (c) yerejm
 """
 import collections
-import re
-import termstyle
 import os
+import re
 import sys
 
-from ttt.executor import PASSED, FAILED, CRASHED
+import termstyle
+
+from ttt.executor import CRASHED, FAILED, PASSED
 from ttt.terminal import Terminal
 
-TESTCASE_START_RE = re.compile('^\\[----------\\] \\d+ tests? from (.*?)$')
+TESTCASE_START_RE = re.compile("^\\[----------\\] \\d+ tests? from (.*?)$")
 TESTCASE_END_RE = re.compile(
-    '^\\[----------\\] \\d+ tests? from (.*?) \\(\\d+ ms total\\)$'
+    "^\\[----------\\] \\d+ tests? from (.*?) \\(\\d+ ms total\\)$"
 )
-TEST_START_RE = re.compile('^\\[ RUN      \\] (.*?)$')
-TEST_END_RE = re.compile('^\\[  (FAILED |     OK) \\] (.*?)$')
+TEST_START_RE = re.compile("^\\[ RUN      \\] (.*?)$")
+TEST_END_RE = re.compile("^\\[  (FAILED |     OK) \\] (.*?)$")
 TESTCASE_TIME_RE = re.compile(
-    '^\\[==========\\] \\d tests? from \\d test cases? ran. '
-    '\\((\\d+) ms total\\)$'
+    "^\\[==========\\] \\d tests? from \\d test cases? ran. " "\\((\\d+) ms total\\)$"
 )
 
 # The patterns above are to match against the relevant output of a gtest run.
@@ -113,6 +113,7 @@ class GTest(object):
     to indicate the pass or fail state respectively for each test.
     e.g. sanity/test/test_core.cc :: core ....
     """
+
     WAITING_TESTCASE, WAITING_TEST, IN_TEST = range(3)
 
     def __init__(self, source, executable, term=None):
@@ -124,9 +125,9 @@ class GTest(object):
         execution. Default Terminal() will send no output.
         """
         if not source:
-            raise Exception('Invalid source')
+            raise Exception("Invalid source")
         if not executable:
-            raise Exception('Invalid executable')
+            raise Exception("Invalid executable")
 
         self._source = source
         self._executable = executable
@@ -137,7 +138,7 @@ class GTest(object):
         """Print at the specific verbosity level."""
         t = self._term
         verbose = kwargs.pop("verbose", 0)
-        if (verbose == t.verbosity):
+        if verbose == t.verbosity:
             t.writeln(*args, **kwargs)
 
     def reset(self):
@@ -180,9 +181,10 @@ class GTest(object):
         :return a list of failing tests identified by name
         """
         from ttt.subproc import streamed_call
+
         command = [self.executable()]
         if test_filters:
-            command.append("--gtest_filter={}".format(':'.join(test_filters)))
+            command.append("--gtest_filter={}".format(":".join(test_filters)))
         self.reset()
         self.out("Executing {}".format(" ".join(command)), verbose=2)
         rc, stdout, stderr = streamed_call(command, listener=self)
@@ -204,19 +206,18 @@ class GTest(object):
                     self._error,
                 )
                 self._fail_count += 1
-                self.out(' {}'.format(signalstring(rc)),
-                         decorator=[termstyle.bold, termstyle.red],
-                         verbose=0)
+                self.out(
+                    " {}".format(signalstring(rc)),
+                    decorator=[termstyle.bold, termstyle.red],
+                    verbose=0,
+                )
         return self.failures()
 
     def failures(self):
         """Gets the list of tests that failed by name."""
         # results[0] is the first item in the results tuple. This is the
         # boolean indicator of test failure.
-        return [
-            test for test, results in self._tests.items()
-            if results[0] != PASSED
-        ]
+        return [test for test, results in self._tests.items() if results[0] != PASSED]
 
     def __call__(self, channel, line):
         """Listener interface for lines output during test execution.
@@ -262,11 +263,15 @@ class GTest(object):
         leader = line[:13]
         trailer = line[13:]
 
-        decorator = [
-            termstyle.bold,
-            termstyle.red if '[  FAILED  ]' in line else termstyle.green
-        ] if '[' in leader else []
-        self.out(leader, decorator=decorator, end='', verbose=1)
+        decorator = (
+            [
+                termstyle.bold,
+                termstyle.red if "[  FAILED  ]" in line else termstyle.green,
+            ]
+            if "[" in leader
+            else []
+        )
+        self.out(leader, decorator=decorator, end="", verbose=1)
         self.out(trailer, verbose=1)
 
     def begin_testcase(self, line):
@@ -275,11 +280,10 @@ class GTest(object):
         Output is suppressed in verbose mode because line() will have output
         the gtest actual output.
         """
-        testcase = line[line.rfind(' ') + 1:]
+        testcase = line[line.rfind(" ") + 1 :]
         self._testcase = testcase
 
-        self.out('{} :: {} '.format(str(self._source), testcase),
-                 end='', verbose=0)
+        self.out("{} :: {} ".format(str(self._source), testcase), end="", verbose=0)
 
     def end_testcase(self, line):
         """Tracks when a test case ends.
@@ -293,7 +297,7 @@ class GTest(object):
 
     def begin_test(self, line):
         """Tracks when a test starts."""
-        test = line[line.rfind(' ') + 1:]
+        test = line[line.rfind(" ") + 1 :]
         self._test = test
         self._output = []
         self._error = []
@@ -310,21 +314,21 @@ class GTest(object):
         If the test failed, the output is captured.
         """
         if self._testcase is None:
-            raise Exception('Invalid current testcase')
+            raise Exception("Invalid current testcase")
         if self._test is None:
-            raise Exception('Invalid current test')
-        failed = '[  FAILED  ]' in line
+            raise Exception("Invalid current test")
+        failed = "[  FAILED  ]" in line
 
         # windows crash is a failure
         seh = False
-        for l in self._output:
-            if 'error: SEH exception' in l:
+        for line in self._output:
+            if "error: SEH exception" in line:
                 seh = True
                 break
         outcome = PASSED
         if seh:
             outcome = CRASHED
-            self._output = ['SEH Exception'] + self._output
+            self._output = ["SEH Exception"] + self._output
         elif failed:
             outcome = FAILED
 
@@ -336,10 +340,10 @@ class GTest(object):
 
         if failed:
             self._fail_count += 1
-            self.out('X' if seh else 'F', end='', verbose=0)
+            self.out("X" if seh else "F", end="", verbose=0)
         else:
             self._pass_count += 1
-            self.out('.', end='', verbose=0)
+            self.out(".", end="", verbose=0)
         self._test = None
         self._output = []
         self._error = []
@@ -365,18 +369,18 @@ class GTest(object):
 def signalstring(value):
     coresignals = {
         # windows
-        1: 'ERROR',
-        3: 'ABORT',
+        1: "ERROR",
+        3: "ABORT",
         # posix
-        -3: 'SIGQUIT',
-        -4: 'SIGILL',
-        -5: 'SIGTRAP',
-        -6: 'SIGABRT',
-        -7: 'SIGEMT',
-        -8: 'SIGFPE',
-        -10: 'SIGBUS',
-        -11: 'SIGSEGV',
-        -12: 'SIGSYS',
+        -3: "SIGQUIT",
+        -4: "SIGILL",
+        -5: "SIGTRAP",
+        -6: "SIGABRT",
+        -7: "SIGEMT",
+        -8: "SIGFPE",
+        -10: "SIGBUS",
+        -11: "SIGSEGV",
+        -12: "SIGSYS",
     }
     if value in coresignals:
         return coresignals[value]

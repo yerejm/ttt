@@ -8,13 +8,14 @@ powershell.exe.
 
 :copyright: (c) yerejm
 """
+from datetime import datetime, timedelta
 import os
 import sys
-import termstyle
-from six import text_type
-from datetime import timedelta, datetime
 
-from ttt.executor import FAILED, CRASHED
+from six import text_type
+import termstyle
+
+from ttt.executor import CRASHED, FAILED
 from ttt.reporter import Reporter
 
 # When writing to output streams, do not write more than the following width.
@@ -22,82 +23,85 @@ TERMINAL_MAX_WIDTH = 78
 
 
 def DEFAULT_TIMESTAMP():
-    return datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+    return datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
 
 class TerminalReporter(Reporter):
-
-    def __init__(self,
-                 watch_path,
-                 build_path,
-                 terminal=None,
-                 timestamp=DEFAULT_TIMESTAMP):
+    def __init__(
+        self, watch_path, build_path, terminal=None, timestamp=DEFAULT_TIMESTAMP
+    ):
         self.terminal = terminal if terminal else Terminal(stream=sys.stdout)
         self.watch_path = watch_path
         self.build_path = build_path
         self.timestamp = timestamp
 
     def session_start(self, session_descriptor):
-        self.writeln('{} session starts'.format(session_descriptor),
-                     decorator=[termstyle.bold],
-                     pad='=')
+        self.writeln(
+            "{} session starts".format(session_descriptor),
+            decorator=[termstyle.bold],
+            pad="=",
+        )
 
     def session_end(self, session_descriptor, duration=None):
-        s = '{} session ends'.format(session_descriptor)
+        s = "{} session ends".format(session_descriptor)
         if duration is not None:
-            s += '; time to complete: {}'.format(timedelta(seconds=duration))
-        self.writeln(s, decorator=[termstyle.bold], pad='=')
+            s += "; time to complete: {}".format(timedelta(seconds=duration))
+        self.writeln(s, decorator=[termstyle.bold], pad="=")
 
     def report_build_path(self):
-        self.writeln('### Building:   {}'.format(self.build_path),
-                     decorator=[termstyle.bold])
+        self.writeln(
+            "### Building:   {}".format(self.build_path), decorator=[termstyle.bold]
+        )
 
     def report_watchstate(self, watchstate):
-        def report_changes(change, filelist, decorator=[]):
+        def report_changes(change, filelist, decorator):
             for f in filelist:
-                self.writeln('# {} {}'.format(change, f), decorator=decorator)
+                self.writeln(
+                    "# {} {}".format(change, f),
+                    decorator=([] if decorator is None else decorator),
+                )
 
-        report_changes('CREATED', watchstate.inserts, [termstyle.green])
-        report_changes('MODIFIED', watchstate.updates, [termstyle.yellow])
-        report_changes('DELETED', watchstate.deletes, [termstyle.red])
-        self.writeln('### Scan time: {:10.3f}s'.format(watchstate.walk_time))
+        report_changes("CREATED", watchstate.inserts, [termstyle.green])
+        report_changes("MODIFIED", watchstate.updates, [termstyle.yellow])
+        report_changes("DELETED", watchstate.deletes, [termstyle.red])
+        self.writeln("### Scan time: {:10.3f}s".format(watchstate.walk_time))
 
     def report_interrupt(self, interrupt):
-        self.writeln(interrupt.__class__.__name__, pad='!')
+        self.writeln(interrupt.__class__.__name__, pad="!")
 
     def wait_change(self):
-        self.writeln('waiting for changes',
-                     decorator=[termstyle.bold],
-                     pad='#')
-        self.writeln('### Since:      {}'.format(self.timestamp()),
-                     decorator=[termstyle.bold])
-        self.writeln('### Watching:   {}'.format(self.watch_path),
-                     decorator=[termstyle.bold])
-        self.writeln('### Build at:   {}'.format(self.build_path),
-                     decorator=[termstyle.bold])
+        self.writeln("waiting for changes", decorator=[termstyle.bold], pad="#")
+        self.writeln(
+            "### Since:      {}".format(self.timestamp()), decorator=[termstyle.bold]
+        )
+        self.writeln(
+            "### Watching:   {}".format(self.watch_path), decorator=[termstyle.bold]
+        )
+        self.writeln(
+            "### Build at:   {}".format(self.build_path), decorator=[termstyle.bold]
+        )
 
     def report_results(self, results):
-        shortstats = '{} passed in {} seconds'.format(
-            results['total_passed'],
-            results['total_runtime']
+        shortstats = "{} passed in {} seconds".format(
+            results["total_passed"], results["total_runtime"]
         )
-        total_failed = results['total_failed']
+        total_failed = results["total_failed"]
         if total_failed > 0:
-            self.report_failures(results['failures'])
-            self.writeln('{} failed, {}'.format(total_failed, shortstats),
-                         decorator=[termstyle.red, termstyle.bold],
-                         pad='=')
+            self.report_failures(results["failures"])
+            self.writeln(
+                "{} failed, {}".format(total_failed, shortstats),
+                decorator=[termstyle.red, termstyle.bold],
+                pad="=",
+            )
         else:
-            self.writeln(shortstats,
-                         decorator=[termstyle.green, termstyle.bold],
-                         pad='=')
+            self.writeln(
+                shortstats, decorator=[termstyle.green, termstyle.bold], pad="="
+            )
 
     def report_failures(self, results):
-        self.writeln('FAILURES', pad='=')
-        for testname, out, err, outcome in results:
-            self.writeln(testname,
-                         decorator=[termstyle.red, termstyle.bold],
-                         pad='_')
+        self.writeln("FAILURES", pad="=")
+        for testname, out, _err, outcome in results:
+            self.writeln(testname, decorator=[termstyle.red, termstyle.bold], pad="_")
             extra_out = []
             if outcome == FAILED:
                 test_output_pos = find_source_file_line(out, self.watch_path)
@@ -108,10 +112,10 @@ class TerminalReporter(Reporter):
             self.writeln(os.linesep.join(results))
 
             if extra_out:
-                self.writeln('Additional output', pad='-')
+                self.writeln("Additional output", pad="-")
                 self.writeln(os.linesep.join(extra_out))
 
-            trailer = ''
+            trailer = ""
             if outcome == FAILED:
                 if self.watch_path is None:
                     locator = results[0]
@@ -119,11 +123,9 @@ class TerminalReporter(Reporter):
                     locator = strip_path(results[0], self.watch_path)
                 trailer = strip_trailer(locator)
             elif outcome == CRASHED:
-                trailer = ' !!! {} !!!'.format(out[0])
+                trailer = " !!! {} !!!".format(out[0])
 
-            self.writeln(trailer,
-                         decorator=[termstyle.red, termstyle.bold],
-                         pad='_')
+            self.writeln(trailer, decorator=[termstyle.red, termstyle.bold], pad="_")
 
     def interrupt_detected(self):
         self.writeln()
@@ -142,7 +144,7 @@ def strip_path(string, path):
     if realpath not in string:
         realpath = os.path.realpath(path)
     if realpath in string:
-        return string[len(realpath) + 1:]
+        return string[len(realpath) + 1 :]
     else:
         return string
 
@@ -156,7 +158,7 @@ def find_source_file_line(lines, path):
 
 
 def strip_trailer(string):
-    return string[:string.find(' ') - 1]
+    return string[: string.find(" ") - 1]
 
 
 class Terminal(object):
@@ -164,6 +166,7 @@ class Terminal(object):
     VERBOSITY = 0
 
     """A Terminal that will write lines given to it to an output stream."""
+
     def __init__(self, stream=None, verbosity=None):
         """Creates a terminal for a specific verbosity.
 
@@ -201,20 +204,20 @@ class Terminal(object):
         the line is too short, it is padded with the pad string (see pad
         parameter). Default width is 78. The maximum width is 78.
         """
-        level = kwargs.pop('verbose', 0)
-        end = kwargs.pop('end', None)
-        decorator = kwargs.pop('decorator', None)
-        pad = kwargs.pop('pad', None)
-        width = kwargs.pop('width', None)
+        level = kwargs.pop("verbose", 0)
+        end = kwargs.pop("end", None)
+        decorator = kwargs.pop("decorator", None)
+        pad = kwargs.pop("pad", None)
+        width = kwargs.pop("width", None)
 
         if level <= self.verbosity:
             line = "".join([str(a) for a in args])
             if width and not pad:
-                raise Exception('An empty pad cannot be provided with a '
-                                'non-zero width')
+                raise Exception(
+                    "An empty pad cannot be provided with a " "non-zero width"
+                )
             if pad:
-                line = pad_line(line, pad,
-                                term_width() if width is None else width)
+                line = pad_line(line, pad, term_width() if width is None else width)
             if decorator:
                 for d in decorator:
                     line = d(line)
@@ -228,6 +231,7 @@ def term_width():
     """
     try:
         from shutil import get_terminal_size
+
         ts = get_terminal_size()
         return ts.columns
     except ImportError:
@@ -262,9 +266,7 @@ def pad_line(string, pad, width):
     right_padlen = total_padlen - left_padlen
 
     return "{} {} {}".format(
-        ''.ljust(left_padlen, pad),
-        string,
-        ''.ljust(right_padlen, pad)
+        "".ljust(left_padlen, pad), string, "".ljust(right_padlen, pad)
     )
 
 

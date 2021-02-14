@@ -1,15 +1,15 @@
-from . import __version__
-import irc
-from irc.bot import ServerSpec, Channel
-from irc.dict import IRCDict
 from random import random
 import socket
 
+import irc
+from irc.bot import Channel, ServerSpec
+from irc.dict import IRCDict
+
 from ttt.reporter import Reporter
+from . import __version__
 
 
 class IRCReporter(Reporter):
-
     def __init__(self, irc):
         self.irc = irc
         self.irc.connect()
@@ -21,19 +21,18 @@ class IRCReporter(Reporter):
         self.irc.disconnect()
 
     def report_build_failure(self):
-        self.irc.say('TTT: Build failure!')
+        self.irc.say("TTT: Build failure!")
 
     def report_results(self, results):
-        shortstats = '{} passed in {} seconds'.format(
-            results['total_passed'],
-            results['total_runtime']
+        shortstats = "{} passed in {} seconds".format(
+            results["total_passed"], results["total_runtime"]
         )
-        total_failed = results['total_failed']
+        total_failed = results["total_failed"]
         if total_failed > 0:
-            self.irc.say('TTT: {} failed, {}'.format(total_failed, shortstats))
+            self.irc.say("TTT: {} failed, {}".format(total_failed, shortstats))
             self._test_failed = True
         else:
-            self.irc.say('TTT: {}'.format(shortstats))
+            self.irc.say("TTT: {}".format(shortstats))
 
 
 class IRCClient(irc.client.SimpleIRCClient):
@@ -48,6 +47,7 @@ class IRCClient(irc.client.SimpleIRCClient):
     calling poll() so that messages from that external caller are passed to the
     joined IRC channel.
     """
+
     # Heavily influenced by irc.client.SingleServerIRCBot and the example at
     # https://github.com/jaraco/irc/blob/master/scripts/testbot.py
 
@@ -58,26 +58,35 @@ class IRCClient(irc.client.SimpleIRCClient):
         super(IRCClient, self).__init__()
         if server is None:
             raise Exception("IRC Server not provided")
-        if nickname is None or ' ' in nickname:
+        if nickname is None or " " in nickname:
             raise Exception("Invalid nickname: must be one word")
-        if channel is None or ' ' in channel or '#' not in channel:
+        if channel is None or " " in channel or "#" not in channel:
             raise Exception("Invalid channel: must be a word starting with #")
         self.__connect_params = connect_params
         self.channels = IRCDict()
         self.channel = channel
         self.server = ServerSpec(server, port)
         self._nickname = nickname
-        self.clientname = socket.gethostname().split('.')[0]
-        assert 0 <= self.min_reconnect_wait <= self.max_reconnect_wait
+        self.clientname = socket.gethostname().split(".")[0]
+        if 0 <= self.min_reconnect_wait:
+            raise Exception("Minimum reconnect wait must be positive number")
+        if self.min_reconnect_wait <= self.max_reconnect_wait:
+            raise Exception("Maximum reconnect wait must be larger than minimum")
         self._check_scheduled = False
 
         # Global handlers to handle channel/nick associations
         # Mostly when a nick is already in use
-        for i in ["disconnect", "join", "kick", "mode",
-                  "namreply", "nick", "part", "quit"]:
-            self.connection.add_global_handler(
-                i, getattr(self, "_on_" + i), -20
-            )
+        for i in [
+            "disconnect",
+            "join",
+            "kick",
+            "mode",
+            "namreply",
+            "nick",
+            "part",
+            "quit",
+        ]:
+            self.connection.add_global_handler(i, getattr(self, "_on_" + i), -20)
 
     def _on_disconnect(self, c, e):
         self.channels = IRCDict()
@@ -88,6 +97,7 @@ class IRCClient(irc.client.SimpleIRCClient):
         Called on a disconnect event to start a reconnection. The actual
         reconnection is deferred for some random amount of seconds.
         """
+
         def check():
             self._check_scheduled = False
             if not self.connection.is_connected():
@@ -99,8 +109,7 @@ class IRCClient(irc.client.SimpleIRCClient):
         if self._check_scheduled:
             return
         reconnect_wait = max(
-            self.min_reconnect_wait,
-            int(self.max_reconnect_wait * random())
+            self.min_reconnect_wait, int(self.max_reconnect_wait * random())
         )
         self.reactor.scheduler.execute_after(reconnect_wait, check)
         self._check_scheduled = True
@@ -144,7 +153,7 @@ class IRCClient(irc.client.SimpleIRCClient):
 
         ch_type, channel, nick_list = e.arguments
 
-        if channel == '*':
+        if channel == "*":
             # User is not in any visible channel
             # http://tools.ietf.org/html/rfc2812#section-3.2.5
             return
@@ -195,7 +204,7 @@ class IRCClient(irc.client.SimpleIRCClient):
         Automatically join the channel once welcomed by the server.
         """
         c.join(self.channel)
-        self.say('ttt has started on host {}'.format(self.clientname))
+        self.say("ttt has started on host {}".format(self.clientname))
 
     def on_privmsg(self, c, e):
         """
@@ -218,8 +227,7 @@ class IRCClient(irc.client.SimpleIRCClient):
         self.connection.disconnect("Bye!")
 
     def get_version(self):
-        return "irc.client ({version})".format(
-            version=irc.client.VERSION_STRING)
+        return "irc.client ({version})".format(version=irc.client.VERSION_STRING)
 
     def on_ctcp(self, c, e):
         nick = e.source.nick
@@ -232,16 +240,16 @@ class IRCClient(irc.client.SimpleIRCClient):
     def on_pubmsg(self, c, e):
         nick = e.source.nick
         command = e.arguments[0]
-        if 'hello' in command or 'hi' in command:
+        if "hello" in command or "hi" in command:
             self.say("Hello, {}".format(nick))
-        elif 'help' in command:
-            self.say("Commands are: version".format(nick))
-        elif 'version' in command:
-            self.say("I am running ttt {} using {} on {}".format(
-                __version__,
-                self.get_version(),
-                self.clientname
-            ))
+        elif "help" in command:
+            self.say("{}, commands are: version".format(nick))
+        elif "version" in command:
+            self.say(
+                "{}, I am running ttt {} using {} on {}".format(
+                    nick, __version__, self.get_version(), self.clientname
+                )
+            )
 
     def poll(self):
         """
@@ -303,27 +311,23 @@ def main():
     import queue
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('server')
-    parser.add_argument('port', type=int)
-    parser.add_argument('channel')
-    parser.add_argument('nickname')
+    parser.add_argument("server")
+    parser.add_argument("port", type=int)
+    parser.add_argument("channel")
+    parser.add_argument("nickname")
     jaraco.logging.add_arguments(parser)
     args = parser.parse_args()
     jaraco.logging.setup(args)
 
-    irc_reporter = _IRCClient(args.channel,
-                              args.nickname,
-                              args.server,
-                              args.port)
+    irc_reporter = _IRCClient(args.channel, args.nickname, args.server, args.port)
     irc_reporter.connect()
 
     def read_input(stream, q):
-        for line in iter(stream.readline, b''):
+        for line in iter(stream.readline, b""):
             q.put(line.strip())
 
     inputq = queue.Queue()
-    input_thread = threading.Thread(target=read_input,
-                                    args=(sys.stdin, inputq))
+    input_thread = threading.Thread(target=read_input, args=(sys.stdin, inputq))
     input_thread.daemon = True  # Kill thread on main thread exit
     input_thread.start()
     try:

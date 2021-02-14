@@ -13,7 +13,7 @@ with open('README.rst') as readme_file:
 
 _version_re = re.compile(r'__version__\s+=\s+(.*)')
 
-with open('ttt/__init__.py', 'rb') as f:
+with open('src/ttt/__init__.py', 'rb') as f:
     version = str(ast.literal_eval(_version_re.search(
         f.read().decode('utf-8')).group(1)))
 
@@ -68,7 +68,7 @@ setup(
     packages=[
         'ttt',
     ],
-    package_dir={'ttt': 'ttt'},
+    package_dir={'ttt': 'src/ttt'},
     entry_points={
         'console_scripts': [
             'ttt = ttt.__main__:main'
@@ -85,7 +85,7 @@ setup(
         'Natural Language :: English',
         'Programming Language :: Python :: 3',
     ],
-    test_suite='test',
+    test_suite='src/test',
     cmdclass = {'test': PyTest},
     tests_require=test_requirements,
 )

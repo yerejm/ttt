@@ -10,25 +10,25 @@ import collections
 import itertools
 import os
 import platform
+import shutil
 import subprocess
 import sys
 import time
-import shutil
 from timeit import default_timer as timer
 
 from ttt.builder import create_builder
-from ttt.watcher import Watcher, has_changes
 from ttt.executor import Executor
-from ttt.terminal import TerminalReporter, Terminal
-from ttt.ircclient import IRCReporter, IRCClient
+from ttt.ircclient import IRCClient, IRCReporter
+from ttt.terminal import Terminal, TerminalReporter
+from ttt.watcher import has_changes, Watcher
 
 
-DEFAULT_BUILD_PATH_SUFFIX = '-build'
+DEFAULT_BUILD_PATH_SUFFIX = "-build"
 DEFAULT_SOURCE_PATTERNS = [
-    '*.cc',
-    '*.c',
-    '*.h',
-    'CMakeLists.txt',
+    "*.cc",
+    "*.c",
+    "*.h",
+    "CMakeLists.txt",
 ]
 
 
@@ -60,9 +60,9 @@ def create_monitor(watch_path=None, patterns=None, **kwargs):
     build_config = kwargs.pop("config", None)
     generator = kwargs.pop("generator", None)
     watch_path = make_watch_path(watch_path)
-    build_path = make_build_path(kwargs.pop('build_path', None),
-                                 watch_path,
-                                 build_config)
+    build_path = make_build_path(
+        kwargs.pop("build_path", None), watch_path, build_config
+    )
     if kwargs.pop("clean", False) and os.path.exists(build_path):
         shutil.rmtree(build_path)
     term = Terminal(stream=sys.stdout)
@@ -74,27 +74,26 @@ def create_monitor(watch_path=None, patterns=None, **kwargs):
     if run_tests:
         if defines is None:
             defines = []
-        defines.append('ENABLE_TESTS=ON')
+        defines.append("ENABLE_TESTS=ON")
     builder = create_builder(
-            watch_path,
-            build_path,
-            generator,
-            build_config,
-            defines,
-            term
-        )
+        watch_path, build_path, generator, build_config, defines, term
+    )
 
     reporters = [TerminalReporter(watch_path, build_path)]
 
     irc_server = kwargs.pop("irc_server", None)
     if irc_server:
         irc = IRCClient(
-            (kwargs.pop('irc_channel', None) or
-                '#ttt-{}'.format(os.path.basename(watch_path))),
-            (kwargs.pop('irc_nick', None) or
-                '{}_{}'.format(platform.system(), build_config)),
+            (
+                kwargs.pop("irc_channel", None)
+                or "#ttt-{}".format(os.path.basename(watch_path))
+            ),
+            (
+                kwargs.pop("irc_nick", None)
+                or "{}_{}".format(platform.system(), build_config)
+            ),
             irc_server,
-            kwargs.pop("irc_port", None)
+            kwargs.pop("irc_port", None),
         )
         # print('{}@{}:{}/{}'.format(
         #     irc._nickname, irc.server.host, irc.server.port, irc.channel)
@@ -112,17 +111,16 @@ def make_watch_path(watch_path=None):
     watch_abspath = os.path.abspath(watch_path)
     if not os.path.exists(watch_abspath):
         import errno
+
         raise IOError(
-            errno.ENOENT,
-            "Invalid path: {} ({})".format(watch_abspath, watch_path)
+            errno.ENOENT, "Invalid path: {} ({})".format(watch_abspath, watch_path)
         )
     return watch_abspath
 
 
-def make_build_path(build_path,
-                    watch_path=None,
-                    build_type=None,
-                    suffix=DEFAULT_BUILD_PATH_SUFFIX):
+def make_build_path(
+    build_path, watch_path=None, build_type=None, suffix=DEFAULT_BUILD_PATH_SUFFIX
+):
     """Creates a absolute build path.
 
     If the build path is given, returns the absolute version.
@@ -155,9 +153,11 @@ def make_build_path(build_path,
     if not build_path:
         build_path = os.path.join(
             os.getcwd(),
-            "{}{}{}".format(os.path.basename(watch_path),
-                            '' if build_type is None else ('-' + build_type),
-                            suffix)
+            "{}{}{}".format(
+                os.path.basename(watch_path),
+                "" if build_type is None else ("-" + build_type),
+                suffix,
+            ),
         )
     return os.path.abspath(build_path)
 
@@ -167,6 +167,7 @@ class Monitor(object):
 
     Observers of the monitor are notified for each state that provides a hook.
     """
+
     DEFAULT_POLLING_INTERVAL = 1
 
     def __init__(self, watcher, builder, executor, reporters, **kwargs):
@@ -188,8 +189,9 @@ class Monitor(object):
         self.operations = Operations()
         self.runstate = Runstate()
         self.last_failed = 0
-        self.polling_interval = first_value(kwargs.get('interval'),
-                                            Monitor.DEFAULT_POLLING_INTERVAL)
+        self.polling_interval = first_value(
+            kwargs.get("interval"), Monitor.DEFAULT_POLLING_INTERVAL
+        )
 
         # The first poll is to initialise the watcher with the source tree
         # before the actual polling loop.
@@ -209,16 +211,17 @@ class Monitor(object):
                 pass
 
     def report_change(self, watchstate):
-        """Get a function that will notify observers that there was a change.
-        """
+        """Get a function that will notify observers that there was a change."""
+
         def fn():
-            self.notify('report_watchstate', watchstate)
+            self.notify("report_watchstate", watchstate)
+
         return fn
 
     def build(self):
         """Builds the binaries."""
-        self.notify('session_start', 'build')
-        self.notify('report_build_path')
+        self.notify("session_start", "build")
+        self.notify("report_build_path")
         try:
             start = timer()
             self.builder()
@@ -227,33 +230,33 @@ class Monitor(object):
             raise e
         except subprocess.CalledProcessError:
             end = timer()
-            self.notify('report_build_failure')
+            self.notify("report_build_failure")
             self.operations.reset()
-        self.notify('session_end', 'build', end - start)
+        self.notify("session_end", "build", end - start)
 
     def test(self):
         """Executes the tests."""
         if self.executor is None:
             return
-        self.notify('session_start', 'test')
+        self.notify("session_start", "test")
         results = self.executor.test(self.watcher.testlist())
-        self.notify('report_results', results)
-        self.notify('session_end', 'test')
+        self.notify("report_results", results)
+        self.notify("session_end", "test")
 
-        if results['total_failed'] == 0 and self.last_failed > 0:
+        if results["total_failed"] == 0 and self.last_failed > 0:
             self.last_failed = 0
             self.operations.append(self.test)
-        self.last_failed = results['total_failed']
+        self.last_failed = results["total_failed"]
 
     def run(self, **kwargs):
         """The main polling loop of the monitor."""
-        step_mode = first_value(kwargs.get('step'), False)
+        step_mode = first_value(kwargs.get("step"), False)
         while self.runstate.active():
             try:
                 self.check_for_changes()
                 self.wait()
             except KeyboardInterrupt:
-                self.notify('interrupt_detected')
+                self.notify("interrupt_detected")
                 if self.executor is not None:
                     self.executor.clear_filter()
                 self.verify_stop()
@@ -269,16 +272,14 @@ class Monitor(object):
         watchstate = self.watcher.poll()
         if has_changes(watchstate) or self.runstate.allowed_once():
             self.operations.append(
-                self.report_change(watchstate),
-                self.build,
-                self.test
+                self.report_change(watchstate), self.build, self.test
             )
             self.operations.run()
-            self.notify('wait_change')
+            self.notify("wait_change")
 
     def wait(self):
         """The wait side of the polling."""
-        self.notify('wait')
+        self.notify("wait")
         time.sleep(self.polling_interval)
 
     def verify_stop(self):
@@ -288,13 +289,14 @@ class Monitor(object):
             time.sleep(self.polling_interval)
             self.runstate.allow_once()
         except KeyboardInterrupt:
-            self.notify('halt')
+            self.notify("halt")
             self.runstate.stop()
 
 
 class Runstate(object):
     """Tracks the run state of a test session to support KeyboardInterrupt
     control of the current session."""
+
     def __init__(self):
         self._active = True
         self._allow_once = True
@@ -316,6 +318,7 @@ class Runstate(object):
 
 class Operations(object):
     """Maintains the set of operations scheduled to run in the test session."""
+
     def __init__(self):
         self.execution_stack = collections.deque()
 

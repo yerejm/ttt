@@ -59,7 +59,8 @@ class Executor(object):
         # update the test filter for those tests that failed
         self._test_filter = {
             test.executable(): test.failures()
-            for test in test_results if test.failures()
+            for test in test_results
+            if test.failures()
         }
 
         # collate the test results
@@ -77,8 +78,8 @@ class Executor(object):
         runtime /= 1000  # runtime is in milliseconds; summarise using seconds
 
         return {
-            'total_runtime': runtime,
-            'total_passed': pass_count,
-            'total_failed': fail_count,
-            'failures': failures,
+            "total_runtime": runtime,
+            "total_passed": pass_count,
+            "total_failed": fail_count,
+            "failures": failures,
         }

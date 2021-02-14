@@ -19,7 +19,6 @@ potential issue is left to a time when it becomes problematic.
 """
 import collections
 import os
-from os import scandir
 from os import walk as walk_fn
 import platform
 import re
@@ -27,33 +26,29 @@ import stat
 
 try:
     from timeit import default_timer as timer
-except:
+except ImportError:
     # Pick the better resolution timer for the platform
-    if platform.system() == 'Windows':
+    if platform.system() == "Windows":
         from time import clock as timer
     else:
         from time import time as timer
 
 from ttt.gtest import GTest
 
-DEFAULT_TEST_PREFIX = 'test_'
+DEFAULT_TEST_PREFIX = "test_"
 
 # When traversing a directory tree, do not enter the following directories
-EXCLUSIONS = set(['.git', '.hg'])
+EXCLUSIONS = set([".git", ".hg"])
 
-EXE_SUFFIX = ".exe" if platform.system() == 'Windows' else ""
+EXE_SUFFIX = ".exe" if platform.system() == "Windows" else ""
 
 
 WatchState = collections.namedtuple(
-    'WatchState',
-    ['inserts', 'deletes', 'updates', 'walk_time']
+    "WatchState", ["inserts", "deletes", "updates", "walk_time"]
 )
 
 
-WatchedFile = collections.namedtuple(
-    'WatchedFile',
-    ['name', 'relpath', 'mtime']
-)
+WatchedFile = collections.namedtuple("WatchedFile", ["name", "relpath", "mtime"])
 
 
 class Watcher(object):
@@ -74,12 +69,15 @@ class Watcher(object):
         identify the files to be ignored.
     :param term: (optional) output stream for verbose output
     """
-    def __init__(self,
-                 watch_path,
-                 build_path,
-                 source_patterns=None,
-                 source_exclusions=None,
-                 term=None):
+
+    def __init__(
+        self,
+        watch_path,
+        build_path,
+        source_patterns=None,
+        source_exclusions=None,
+        term=None,
+    ):
         if source_patterns is None:
             source_patterns = []  # get everything by default
         if source_exclusions is None:
@@ -123,13 +121,12 @@ class Watcher(object):
         rootdir_end_index = len(self.watch_path) + 1
         with Timer() as t:
             current_filelist = {
-                os.path.join(d, f):
-                    WatchedFile(f, os.path.join(d[rootdir_end_index:], f), t)
+                os.path.join(d, f): WatchedFile(
+                    f, os.path.join(d[rootdir_end_index:], f), t
+                )
                 for d, f, _, t in walk(self.watch_path, EXCLUSIONS)
                 if include_file(
-                    os.path.join(d, f),
-                    self.source_patterns,
-                    self.source_exclusions
+                    os.path.join(d, f), self.source_patterns, self.source_exclusions
                 )
             }
         watchstate = create_watchstate(self.filelist, current_filelist, t.secs)
@@ -155,7 +152,8 @@ class Watcher(object):
         # identification of test binaries easier during build tree scanning.
         testfiles = {
             os.path.splitext(w.name)[0] + EXE_SUFFIX: w.relpath
-            for w in watchedfiles if w.name.startswith(test_prefix)
+            for w in watchedfiles
+            if w.name.startswith(test_prefix)
         }
         # Scan the build tree. If an expected test binary is encountered, add a
         # GTest().
@@ -166,24 +164,24 @@ class Watcher(object):
         ]
 
 
-def create_watchstate(dictA={}, dictB={}, walk_time=0):
+def create_watchstate(dictA, dictB, walk_time=0):
     """Creates sets of differences between two watch path states.
 
     :param dictA: Old dict of files from the watch area
     :param dictB: New dict of files from the watch area
     :param walk_time: (optional) The time in seconds to traverse the watch area
     """
+    dictA = {} if dictA is None else dictA
+    dictB = {} if dictB is None else dictB
     dictAKeys = set(dictA.keys())
     dictBKeys = set(dictB.keys())
     return WatchState(
         inserts=dictBKeys - dictAKeys,
         deletes=dictAKeys - dictBKeys,
-        updates=set([
-            f
-            for f in dictA.keys()
-            if f in dictB and dictB[f].mtime != dictA[f].mtime
-        ]),
-        walk_time=walk_time
+        updates=set(
+            [f for f in dictA.keys() if f in dictB and dictB[f].mtime != dictA[f].mtime]
+        ),
+        walk_time=walk_time,
     )
 
 
@@ -223,7 +221,7 @@ def walk(root_directory, exclusions=None):
                         dirpath,
                         filename,
                         filestat.st_mode,  # file permissions
-                        filestat.st_mtime  # last modified time
+                        filestat.st_mtime,  # last modified time
                     )
             except OSError:
                 # probably FileNotFoundError, but OSError on Windows
@@ -232,7 +230,7 @@ def walk(root_directory, exclusions=None):
 
 def compile_patterns(pattern_list):
     return [
-        re.compile(re.escape(p).replace('\\?', '.').replace('\\*', '.*?'))
+        re.compile(re.escape(p).replace("\\?", ".").replace("\\*", ".*?"))
         for p in pattern_list
     ]
 

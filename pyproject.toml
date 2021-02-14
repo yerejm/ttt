@@ -1,0 +1,47 @@
+[tool.poetry]
+name = "ttt"
+version = "0.5.1"
+description = "Watch, Build, Test"
+authors = ["yerejm <<>>"]
+license = "ISCL"
+readme = "README.rst"
+homepage = "https://github.com/yerejm/ttt"
+repository = "https://github.com/yerejm/ttt"
+keywords = ["ttt"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+six = "^1.15.0"
+python-termstyle = "^0.1.10"
+colorama = "^0.4.4"
+argh = "^0.26.2"
+irc = "16.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.2"
+pytest-xdist = "^2.2.1"
+pytest-cov = "^2.11.1"
+testfixtures = "^6.17.1"
+coverage = {extras = ["toml"], version = "^5.4"}
+black = "^20.8b1"
+flake8 = "^3.8.4"
+flake8-bandit = "^2.1.2"
+flake8-black = "^0.2.1"
+flake8-bugbear = "^20.11.1"
+flake8-import-order = "^0.18.1"
+safety = "^1.10.3"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.coverage.paths]
+source = ["src", "*/site-packages"]
+
+[tool.coverage.run]
+branch = true
+source = ["ttt"]
+
+[tool.coverage.report]
+show_missing = true
+

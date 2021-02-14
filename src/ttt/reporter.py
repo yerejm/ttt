@@ -3,6 +3,7 @@ class Reporter(object):
     Abstract base class describing the interface used by Monitor when notifying
     of events occurring during the watch/build/test cycle.
     """
+
     def session_start(self, session_descriptor):
         pass
 

@@ -5,19 +5,16 @@ This module implements the cmake builder.
 :copyright: (c) yerejm
 """
 
-import os
 import errno
+from functools import partial
+import os
 import shutil
 import subprocess
-from functools import partial
 
 
-def create_builder(watch_path,
-                   build_path,
-                   generator=None,
-                   build_type=None,
-                   defines=None,
-                   term=None):
+def create_builder(
+    watch_path, build_path, generator=None, build_type=None, defines=None, term=None
+):
     """Constructs a partially evaluated function object.
 
     This function object represents the execution of the `cmake` command on
@@ -39,21 +36,23 @@ def create_builder(watch_path,
     :param term: (optional) output stream for verbose output
     """
     if not os.path.isabs(watch_path):
-        raise IOError(
-            errno.EINVAL, "Watch path {} must be absolute".format(watch_path)
-        )
+        raise IOError(errno.EINVAL, "Watch path {} must be absolute".format(watch_path))
     if not os.path.isabs(build_path):
-        raise IOError(
-            errno.EINVAL, "Build path {} must be absolute".format(build_path)
-        )
+        raise IOError(errno.EINVAL, "Build path {} must be absolute".format(build_path))
     return partial(
         execute,
         [
-            partial(cmake_generate, watch_path, build_path,
-                    build_type, generator, defines if defines else []),
-            partial(cmake_build, build_path, build_type)
+            partial(
+                cmake_generate,
+                watch_path,
+                build_path,
+                build_type,
+                generator,
+                defines if defines else [],
+            ),
+            partial(cmake_build, build_path, build_type),
         ],
-        term
+        term,
     )
 
 
@@ -69,6 +68,7 @@ def execute(commands, term=None):
     :param term: (optional) output stream for verbose output
     """
     from ttt.subproc import checked_call
+
     for command_generator in commands:
         command = command_generator()
         if command:  # Note that command may be None (or empty list)
@@ -102,41 +102,41 @@ def cmake_generate(watch_path, build_path, build_type, generator, defines):
     :param defines: (optional) list of var=val strings for CMake's -D option
     :return: command to execute as a subprocess in list form
     """
-    cmake_lists_file = os.path.join(watch_path, 'CMakeLists.txt')
+    cmake_lists_file = os.path.join(watch_path, "CMakeLists.txt")
     if not os.path.exists(cmake_lists_file):
         raise IOError(
             errno.EINVAL, "No CMakeLists.txt detected in {}".format(watch_path)
         )
-    cmake_cache_file = os.path.join(build_path, 'CMakeCache.txt')
+    cmake_cache_file = os.path.join(build_path, "CMakeCache.txt")
     if os.path.exists(cmake_cache_file):
         # If the cmake version has changed since the build area was created,
         # recreate it.
-        with open(cmake_cache_file, 'r') as f:
+        with open(cmake_cache_file, "r") as f:
             for line in f:
-                if 'CMAKE_COMMAND:INTERNAL' in line:
-                    _, cmake_path = line.rstrip().split('=')
+                if "CMAKE_COMMAND:INTERNAL" in line:
+                    _, cmake_path = line.rstrip().split("=")
                     if not os.path.exists(cmake_path):
                         shutil.rmtree(build_path)
                     break
-                if 'ENABLE_TESTS:BOOL=OFF' in line:
+                if "ENABLE_TESTS:BOOL=OFF" in line:
                     for d in defines:
-                        if 'ENABLE_TESTS' in d:
-                            if 'ON' in d:
+                        if "ENABLE_TESTS" in d:
+                            if "ON" in d:
                                 shutil.rmtree(build_path)
                                 break
 
-    if not os.path.exists(os.path.join(build_path, 'CMakeFiles')):
-        command = ['cmake']
+    if not os.path.exists(os.path.join(build_path, "CMakeFiles")):
+        command = ["cmake"]
         if generator is not None:
-            command.append('-G')
+            command.append("-G")
             command.append(generator)
-        command.append('-H{}'.format(watch_path))
-        command.append('-B{}'.format(build_path))
+        command.append("-H{}".format(watch_path))
+        command.append("-B{}".format(build_path))
         # this does nothing for the MSVC generator
         if build_type is not None:
-            command.append('-DCMAKE_BUILD_TYPE={}'.format(build_type))
+            command.append("-DCMAKE_BUILD_TYPE={}".format(build_type))
         for define in defines:
-            command.append('-D{}'.format(define))
+            command.append("-D{}".format(define))
         return command
 
 
@@ -151,13 +151,14 @@ def cmake_build(build_path, build_type):
     :return: command to execute as a subprocess in list form
     """
     command = [
-        'cmake',
+        "cmake",
         # the order is important. --build must come first
-        '--build', build_path,
+        "--build",
+        build_path,
     ]
     if build_type is not None:
         # necessary for multi-configuration build systems, e.g. MSVC
         # should be harmless otherwise
-        command.append('--config')
+        command.append("--config")
         command.append(build_type)
     return command

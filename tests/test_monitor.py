@@ -7,14 +7,15 @@ test_monitor
 
 Tests for `monitor` module.
 """
-import os
 from contextlib import contextmanager
-from testfixtures import TempDirectory
+import os
 from unittest.mock import MagicMock, patch
-from ttt.watcher import WatchState
-from ttt.monitor import Monitor
-from ttt.monitor import create_monitor
+
+from testfixtures import TempDirectory
+
+from ttt.monitor import create_monitor, Monitor
 from ttt.reporter import Reporter
+from ttt.watcher import WatchState
 
 
 @contextmanager
@@ -28,18 +29,17 @@ def chdir(path):
 
 
 class TestMonitor:
-
     def teardown(self):
         TempDirectory.cleanup_all()
 
     def test_create_with_invalid_watch_area(self):
         error = None
-        bad_path = os.path.abspath(os.path.sep + os.path.join('bad', 'path'))
+        bad_path = os.path.abspath(os.path.sep + os.path.join("bad", "path"))
         try:
             create_monitor(bad_path)
         except IOError as e:
             error = e
-        assert 'Invalid path: {bad} ({bad})'.format(bad=bad_path) in str(error)
+        assert "Invalid path: {bad} ({bad})".format(bad=bad_path) in str(error)
 
     def test_create_monitor_default_paths(self):
         m = create_monitor()
@@ -47,46 +47,49 @@ class TestMonitor:
         assert len(m.reporters) == 1
         reporter = m.reporters[0]
         assert reporter.watch_path == cwd
-        assert reporter.build_path == '{}-build'.format(os.path.join(cwd, os.path.basename(cwd))) # noqa
+        assert reporter.build_path == "{}-build".format(
+            os.path.join(cwd, os.path.basename(cwd))
+        )  # noqa
 
     def test_create_monitor_with_watch_path(self):
         wd = TempDirectory()
-        source_path = wd.makedir('source')
-        wd.makedir('build')
+        source_path = wd.makedir("source")
+        wd.makedir("build")
 
         with chdir(wd.path):
             m = create_monitor(source_path)
         assert len(m.reporters) == 1
         reporter = m.reporters[0]
         assert reporter.watch_path == source_path
-        assert reporter.build_path == '{}-build'.format(os.path.realpath(source_path)) # noqa
+        assert reporter.build_path == "{}-build".format(
+            os.path.realpath(source_path)
+        )  # noqa
 
     def test_create_monitor_with_watch_and_build_path(self):
         wd = TempDirectory()
-        source_path = wd.makedir('source')
-        build_path = wd.makedir('build')
+        source_path = wd.makedir("source")
+        build_path = wd.makedir("build")
 
         with chdir(wd.path):
-            m = create_monitor(source_path,
-                               build_path=os.path.basename(build_path))
+            m = create_monitor(source_path, build_path=os.path.basename(build_path))
         assert len(m.reporters) == 1
         reporter = m.reporters[0]
         assert reporter.watch_path == source_path
-        assert reporter.build_path == '{}'.format(os.path.realpath(build_path))
+        assert reporter.build_path == "{}".format(os.path.realpath(build_path))
 
     def test_create_monitor_clean_build_path(self):
         wd = TempDirectory()
-        source_path = wd.makedir('source')
-        build_path = wd.makedir('build')
-        sub_path = os.path.join(build_path, 'sub')
+        source_path = wd.makedir("source")
+        build_path = wd.makedir("build")
+        sub_path = os.path.join(build_path, "sub")
         os.mkdir(sub_path)
 
         with chdir(wd.path):
             assert os.path.exists(build_path)
             assert os.path.exists(sub_path)
-            m = create_monitor(source_path,
-                               build_path=os.path.basename(build_path),
-                               clean=True)
+            create_monitor(
+                source_path, build_path=os.path.basename(build_path), clean=True
+            )
             assert not os.path.exists(sub_path)
             assert not os.path.exists(build_path)
 
@@ -95,44 +98,46 @@ class TestMonitor:
         watcher = MagicMock()
         builder = MagicMock()
         executor = MagicMock()
-        watcher.poll = MagicMock(return_value=WatchState(
-            set(['change']), set(), set(), 0))
-        executor.test = MagicMock(return_value={'total_failed': 0})
+        watcher.poll = MagicMock(
+            return_value=WatchState(set(["change"]), set(), set(), 0)
+        )
+        executor.test = MagicMock(return_value={"total_failed": 0})
         m = Monitor(watcher, builder, executor, [reporter], interval=0)
 
         m.run(step=True)
 
-        assert 'poll' in [c for c, a, kw in watcher.mock_calls]
+        assert "poll" in [c for c, a, kw in watcher.mock_calls]
         # build step is captured as ''
-        assert [c for c, a, kw in builder.mock_calls] == ['']
-        assert [c for c, a, kw in executor.mock_calls] == ['test']
+        assert [c for c, a, kw in builder.mock_calls] == [""]
+        assert [c for c, a, kw in executor.mock_calls] == ["test"]
         assert [c for c, a, kw in reporter.mock_calls] == [
-            'report_watchstate',
-            'session_start',  # build
-            'report_build_path',
-            'session_end',  # build
-            'session_start',  # test
-            'report_results',
-            'session_end',  # test
-            'wait_change'
+            "report_watchstate",
+            "session_start",  # build
+            "report_build_path",
+            "session_end",  # build
+            "session_start",  # test
+            "report_results",
+            "session_end",  # test
+            "wait_change",
         ]
 
     def test_test_again_on_fix(self):
         reporter = MagicMock(spec=Reporter)
         o = watcher = builder = executor = MagicMock()
-        watcher.poll = MagicMock(return_value=WatchState(
-            set(['change']), set(), set(), 0))
-        executor.test = MagicMock(return_value={'total_failed': 1})
+        watcher.poll = MagicMock(
+            return_value=WatchState(set(["change"]), set(), set(), 0)
+        )
+        executor.test = MagicMock(return_value={"total_failed": 1})
         m = Monitor(watcher, builder, executor, [reporter], interval=0)
         m.run(step=True)
 
         o.reset_mock()
 
-        executor.test = MagicMock(return_value={'total_failed': 0})
+        executor.test = MagicMock(return_value={"total_failed": 0})
 
         m.run(step=True)
 
-        assert len([c for c, a, kw in o.method_calls if c == 'test']) == 2
+        assert len([c for c, a, kw in o.method_calls if c == "test"]) == 2
 
     def test_keyboardinterrupt_during_poll(self):
         reporter = MagicMock(spec=Reporter)
@@ -143,45 +148,45 @@ class TestMonitor:
         o.reset_mock()
 
         watcher.poll = MagicMock(
-            return_value=WatchState(set(['change']), set(), set(), 0),
-            side_effect=KeyboardInterrupt
+            return_value=WatchState(set(["change"]), set(), set(), 0),
+            side_effect=KeyboardInterrupt,
         )
 
         m.run(step=True)
 
-        assert 'poll' in [c for c, a, kw in watcher.method_calls]
-        assert [c for c, a, kw in reporter.method_calls] == ['interrupt_detected'] # noqa
+        assert "poll" in [c for c, a, kw in watcher.method_calls]
+        assert [c for c, a, kw in reporter.method_calls] == [
+            "interrupt_detected"
+        ]  # noqa
 
     def test_keyboardinterrupt_during_wait(self):
         reporter = MagicMock(spec=Reporter)
         o = watcher = builder = executor = MagicMock()
-        watcher.poll = MagicMock(return_value=WatchState(
-            set(), set(), set(), 0))
+        watcher.poll = MagicMock(return_value=WatchState(set(), set(), set(), 0))
         m = Monitor(watcher, builder, executor, [reporter], interval=0)
 
         o.reset_mock()
-        with patch('time.sleep', autospec=True, side_effect=KeyboardInterrupt):
+        with patch("time.sleep", autospec=True, side_effect=KeyboardInterrupt):
             m.run(step=True)
 
-        call_filter = set(['interrupt_detected', 'halt'])
+        call_filter = set(["interrupt_detected", "halt"])
         calls = [c for c, a, kw in reporter.method_calls if c in call_filter]
-        assert calls == ['interrupt_detected', 'halt']
+        assert calls == ["interrupt_detected", "halt"]
 
     def test_continue_after_wait_interrupt(self):
         reporter = MagicMock(spec=Reporter)
         o = watcher = builder = executor = MagicMock()
-        watcher.poll = MagicMock(return_value=WatchState(
-            set(), set(), set(), 0))
+        watcher.poll = MagicMock(return_value=WatchState(set(), set(), set(), 0))
         m = Monitor(watcher, builder, executor, [reporter], interval=0)
 
         o.reset_mock()
         m.run(step=True)
-        with patch('time.sleep', autospec=True, side_effect=Interrupter(1)):
+        with patch("time.sleep", autospec=True, side_effect=Interrupter(1)):
             m.run(step=True)
 
-        call_filter = set(['interrupt_detected', 'halt'])
+        call_filter = set(["interrupt_detected", "halt"])
         calls = [c for c, a, kw in reporter.method_calls if c in call_filter]
-        assert calls == ['interrupt_detected']
+        assert calls == ["interrupt_detected"]
 
     def test_keyboardinterrupt_during_operations(self):
         def builder():
@@ -190,15 +195,14 @@ class TestMonitor:
         reporter = MagicMock(spec=Reporter)
         o = watcher = executor = MagicMock()
         watcher.poll = MagicMock(
-            return_value=WatchState(set(['change']), set(), set(), 0)
+            return_value=WatchState(set(["change"]), set(), set(), 0)
         )
         m = Monitor(watcher, builder, executor, [reporter], interval=0)
 
         o.reset_mock()
         m.run(step=True)
 
-        assert 'interrupt_detected' in set(
-            [c for c, a, kw in reporter.method_calls])
+        assert "interrupt_detected" in set([c for c, a, kw in reporter.method_calls])
 
     def test_builderror(self):
         import subprocess
@@ -208,21 +212,20 @@ class TestMonitor:
 
         reporter = MagicMock(spec=Reporter)
         o = watcher = executor = MagicMock()
-        watcher.poll = MagicMock(return_value=WatchState(
-            set(['change']), set(), set(), 0))
+        watcher.poll = MagicMock(
+            return_value=WatchState(set(["change"]), set(), set(), 0)
+        )
         m = Monitor(watcher, builder, executor, [reporter], interval=0)
 
         o.reset_mock()
         m.run(step=True)
 
         calls = set([c for c, a, kw in o.method_calls])
-        assert 'test' not in calls
-        assert 'report_build_failure' in [
-            c for c, a, kw in reporter.method_calls]
+        assert "test" not in calls
+        assert "report_build_failure" in [c for c, a, kw in reporter.method_calls]
 
 
 class Interrupter:
-
     def __init__(self, count):
         self.count = count
 
@@ -234,7 +237,6 @@ class Interrupter:
 
 
 class TestUtils:
-
     def test_first_value(self):
         from ttt.monitor import first_value
 

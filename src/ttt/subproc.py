@@ -11,6 +11,7 @@ import os
 import subprocess
 import sys
 import threading
+
 from six.moves import queue
 
 
@@ -20,7 +21,7 @@ def execute(*args, **kwargs):
 
     Otherwise, operates the same as that function.
     """
-    kwargs['universal_newlines'] = True
+    kwargs["universal_newlines"] = True
     return subprocess.check_output(*args, **kwargs).splitlines()
 
 
@@ -30,7 +31,7 @@ def checked_call(*args, **kwargs):
 
     Otherwise, operates the same as that function.
     """
-    kwargs['universal_newlines'] = True
+    kwargs["universal_newlines"] = True
     return subprocess.check_call(*args, **kwargs)
 
 
@@ -54,7 +55,7 @@ def streamed_call(*args, **kwargs):
     executing subprocess.
     :return (process.returncode, stdout list, stderr list) tuple
     """
-    kwargs['universal_newlines'] = True
+    kwargs["universal_newlines"] = True
     return call_output(*args, **kwargs)
 
 
@@ -69,23 +70,21 @@ def call_output(*popenargs, **kwargs):
     way except it allows the optional provision of a callback that is called
     for each line of output emitted by the subprocess.
     """
+
     def create_process(*popenargs, **kwargs):
         return subprocess.Popen(*popenargs, **kwargs)
 
-    if 'stdout' in kwargs:
-        raise ValueError('stdout argument not allowed, it will be overridden.')
-    if 'stdin' in kwargs:
-        raise ValueError('stdin argument not allowed, it will be overridden.')
+    if "stdout" in kwargs:
+        raise ValueError("stdout argument not allowed, it will be overridden.")
+    if "stdin" in kwargs:
+        raise ValueError("stdin argument not allowed, it will be overridden.")
 
-    kwargs['stdin'] = subprocess.PIPE
-    line_handler = kwargs.pop('listener', None)
+    kwargs["stdin"] = subprocess.PIPE
+    line_handler = kwargs.pop("listener", None)
 
     with create_process(
-        *popenargs,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        **kwargs
-        ) as process:
+        *popenargs, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, **kwargs
+    ) as process:
         return run(process, line_handler)
 
 
@@ -103,13 +102,11 @@ def run(process, line_handler):
 
     io_q = queue.Queue(5)
     threads = {
-        'stdout': threading.Thread(
-            target=read_stream,
-            args=('stdout', process.stdout, io_q)
+        "stdout": threading.Thread(
+            target=read_stream, args=("stdout", process.stdout, io_q)
         ),
-        'stderr': threading.Thread(
-            target=read_stream,
-            args=('stderr', process.stderr, io_q)
+        "stderr": threading.Thread(
+            target=read_stream, args=("stderr", process.stderr, io_q)
         ),
     }
     # Unfortunately, stdout and stderr are not synchronised with each other.
@@ -143,13 +140,13 @@ def run(process, line_handler):
                 break
         else:
             outstream, message = item
-            if message == 'EXIT':
+            if message == "EXIT":
                 threads[outstream].join()
                 del threads[outstream]
             else:
                 message = message.rstrip(os.linesep)
-                channel = sys.stdout if outstream == 'stdout' else sys.stderr
-                (stdout if outstream == 'stdout' else stderr).append(message)
+                channel = sys.stdout if outstream == "stdout" else sys.stderr
+                (stdout if outstream == "stdout" else stderr).append(message)
                 if line_handler is not None:
                     line_handler(channel, message)
                 else:
@@ -175,10 +172,10 @@ def read_stream(stream_name, input_stream, io_q):
     function).
     """
     if not input_stream:
-        io_q.put((stream_name, 'EXIT'))
+        io_q.put((stream_name, "EXIT"))
         return
     for line in input_stream:
         io_q.put((stream_name, line))
     if not input_stream.closed:
         input_stream.close()
-    io_q.put((stream_name, 'EXIT'))
+    io_q.put((stream_name, "EXIT"))
