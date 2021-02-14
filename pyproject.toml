@@ -8,6 +8,14 @@ readme = "README.rst"
 homepage = "https://github.com/yerejm/ttt"
 repository = "https://github.com/yerejm/ttt"
 keywords = ["ttt"]
+classifiers= [
+    "Environment :: Console",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: ISC License (ISCL)",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+]
 
 [tool.poetry.dependencies]
 python = "^3.8"
@@ -16,6 +24,7 @@ python-termstyle = "^0.1.10"
 colorama = "^0.4.4"
 argh = "^0.26.2"
 irc = "16.0"
+importlib-metadata = {version = "^3.4.0", python = "<3.8"}
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.2"
@@ -30,6 +39,9 @@ flake8-black = "^0.2.1"
 flake8-bugbear = "^20.11.1"
 flake8-import-order = "^0.18.1"
 safety = "^1.10.3"
+
+[tool.poetry.scripts]
+ttt = 'ttt.__main__:main'
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
