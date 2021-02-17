@@ -6,21 +6,21 @@ ttt
 Run As
 ------
 
-^^^^^^
-Module
-^^^^^^
-
-Install dependencies: ``pip install -r requirements.txt``
-
-Then: ``PYTHONPATH=/path/to/ttt:$PYTHONPATH python -m ttt source_path``
-
 ^^^^^^^^^^
 Executable
 ^^^^^^^^^^
 
-Install: ``python setup.py install``
+Install: ``brew tap yerejm/tools && brew install ttt``
 
 Then: ``ttt source_path``
+
+^^^^^^
+Module
+^^^^^^
+
+Install dependencies: ``poetry install`` (run inside ``poetry shell``)
+
+Then: ``PYTHONPATH=/path/to/ttt:$PYTHONPATH python -m ttt source_path``
 
 -------
 Caveats

@@ -1,5 +1,0 @@
-six>=1.10.0
-python-termstyle>=0.1.10
-colorama>=0.3.3
-argh>=0.26.1
-irc==16.0
