@@ -10,7 +10,6 @@ import collections
 import itertools
 import os
 import platform
-import shutil
 import subprocess
 import sys
 import time
@@ -63,20 +62,19 @@ def create_monitor(watch_path=None, patterns=None, **kwargs):
     build_path = make_build_path(
         kwargs.pop("build_path", None), watch_path, build_config
     )
-    if kwargs.pop("clean", False) and os.path.exists(build_path):
-        shutil.rmtree(build_path)
     term = Terminal(stream=sys.stdout)
     exclusions = kwargs.pop("exclude", [])
     watcher = Watcher(watch_path, build_path, patterns, exclusions, term)
 
     run_tests = kwargs.pop("test", False)
     defines = kwargs.pop("define", [])
+    clean = kwargs.pop("clean", False)
     if run_tests:
         if defines is None:
             defines = []
         defines.append("ENABLE_TESTS=ON")
     builder = create_builder(
-        watch_path, build_path, generator, build_config, defines, term
+        watch_path, build_path, generator, build_config, defines, term, clean
     )
 
     reporters = [TerminalReporter(watch_path, build_path)]

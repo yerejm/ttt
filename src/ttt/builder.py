@@ -7,13 +7,20 @@ This module implements the cmake builder.
 
 import errno
 from functools import partial
+import glob
 import os
 import shutil
 import subprocess
 
 
 def create_builder(
-    watch_path, build_path, generator=None, build_type=None, defines=None, term=None
+    watch_path,
+    build_path,
+    generator=None,
+    build_type=None,
+    defines=None,
+    term=None,
+    always_clean=False,
 ):
     """Constructs a partially evaluated function object.
 
@@ -34,21 +41,24 @@ def create_builder(
         e.g. release, debug
     :param defines: (optional) list of var=val strings for CMake's -D option
     :param term: (optional) output stream for verbose output
+    :param always_clean: (optional) always remove the build area before build
     """
     if not os.path.isabs(watch_path):
         raise IOError(errno.EINVAL, "Watch path {} must be absolute".format(watch_path))
     if not os.path.isabs(build_path):
         raise IOError(errno.EINVAL, "Build path {} must be absolute".format(build_path))
+    defines = defines if defines else []
     return partial(
         execute,
         [
+            partial(cmake_clean, build_path, defines, always_clean),
             partial(
                 cmake_generate,
                 watch_path,
                 build_path,
                 build_type,
                 generator,
-                defines if defines else [],
+                defines,
             ),
             partial(cmake_build, build_path, build_type),
         ],
@@ -77,6 +87,42 @@ def execute(commands, term=None):
             checked_call(command, stderr=subprocess.STDOUT)
 
 
+GENERATED = ["Makefile", "build.ninja", "*.sln"]
+
+
+def cmake_clean(build_path, defines, always_clean):
+    def cmake_build_area_outdated():
+        # If cmake had not generated a build file, recreate the build area.
+        generated = []
+        for f in GENERATED:
+            generated += glob.glob(os.path.join(build_path, f))
+            if generated:
+                break
+        if len(generated) == 0:
+            return True
+
+        # If the cmake version has changed since the build area was created,
+        # recreate it.
+        cmake_cache_file = os.path.join(build_path, "CMakeCache.txt")
+        if os.path.exists(cmake_cache_file):
+            with open(cmake_cache_file, "r") as f:
+                for line in f:
+                    if "CMAKE_COMMAND:INTERNAL" in line:
+                        _, cmake_path = line.rstrip().split("=")
+                        if not os.path.exists(cmake_path):
+                            return True
+                    if "ENABLE_TESTS:BOOL=OFF" in line:
+                        for d in defines:
+                            if "ENABLE_TESTS" in d:
+                                if "ON" in d:
+                                    return True
+        return False
+
+    if os.path.exists(build_path) and (always_clean or cmake_build_area_outdated()):
+        shutil.rmtree(build_path)
+    return None
+
+
 def cmake_generate(watch_path, build_path, build_type, generator, defines):
     """Generates the command for cmake that will create a build area for a
     source tree.
@@ -100,6 +146,7 @@ def cmake_generate(watch_path, build_path, build_type, generator, defines):
         it is the same as not providing it to the cmake command and will make
         cmake use the default generator for the executing platform
     :param defines: (optional) list of var=val strings for CMake's -D option
+    :param clean: (optional) remove build area before build
     :return: command to execute as a subprocess in list form
     """
     cmake_lists_file = os.path.join(watch_path, "CMakeLists.txt")
@@ -107,24 +154,6 @@ def cmake_generate(watch_path, build_path, build_type, generator, defines):
         raise IOError(
             errno.EINVAL, "No CMakeLists.txt detected in {}".format(watch_path)
         )
-    cmake_cache_file = os.path.join(build_path, "CMakeCache.txt")
-    if os.path.exists(cmake_cache_file):
-        # If the cmake version has changed since the build area was created,
-        # recreate it.
-        with open(cmake_cache_file, "r") as f:
-            for line in f:
-                if "CMAKE_COMMAND:INTERNAL" in line:
-                    _, cmake_path = line.rstrip().split("=")
-                    if not os.path.exists(cmake_path):
-                        shutil.rmtree(build_path)
-                    break
-                if "ENABLE_TESTS:BOOL=OFF" in line:
-                    for d in defines:
-                        if "ENABLE_TESTS" in d:
-                            if "ON" in d:
-                                shutil.rmtree(build_path)
-                                break
-
     if not os.path.exists(os.path.join(build_path, "CMakeFiles")):
         command = ["cmake"]
         if generator is not None:

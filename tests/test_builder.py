@@ -97,7 +97,7 @@ class TestCMake:
         assert exists(join(self.cmake_build_path, "CMakeFiles"))
         assert exists(join(self.cmake_build_path, build_file))
 
-    def test_bad_build(self):
+    def test_no_cmakelists_txt(self):
         source_path = "{}".format(join(os.getcwd(), "dummy"))
         build_path = join(os.getcwd(), "dummy-build")
 
@@ -125,3 +125,23 @@ class TestCMake:
         except IOError as e:
             error = e
         assert "Build path dummy must be absolute" in str(error)
+
+    def test_clean_build(self):
+        cmake_source_directory = TempDirectory()
+        source_path = cmake_source_directory.path
+        cmake_build_directory = TempDirectory()
+        build_path = cmake_build_directory.path
+
+        builder = create_builder(source_path, build_path)
+        raised = None
+        try:
+            builder()
+        except IOError as e:
+            raised = str(e)
+        assert raised == "[Errno 22] No CMakeLists.txt detected in {}".format(
+            source_path
+        )  # noqa
+
+        cmake_source_directory.write("CMakeLists.txt", b"project(test)")
+        builder()
+        assert exists(join(build_path, "CMakeFiles"))

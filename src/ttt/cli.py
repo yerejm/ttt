@@ -40,7 +40,9 @@ from . import __version__
     "-c", "--config", default="Debug", help="build configuration: e.g. Release, Debug"
 )
 @argh.arg(
-    "--clean", default=False, help="Remove existing build area to ensure a clean build."
+    "--clean",
+    default=False,
+    help="Always remove existing build area to ensure a clean build.",
 )
 @argh.arg("--irc_server", default=None, help="IRC server hostname. Requires --watch")
 @argh.arg("--irc_port", default=6667, help="IRC server port. Requires --irc_server")
