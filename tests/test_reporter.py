@@ -13,7 +13,7 @@ from unittest.mock import MagicMock
 
 import termstyle
 
-from ttt import __version__
+from ttt import __progname__, __version__
 from ttt.executor import FAILED
 from ttt.ircclient import IRCReporter
 from ttt.terminal import Terminal, TerminalReporter
@@ -44,7 +44,7 @@ class TestIRCReporter:
         irc.reset_mock()
 
         r.report_build_failure()
-        assert irc.say.call_args == [(("TTT: Build failure!"),)]
+        assert irc.say.call_args == [(("ttt: Build failure!"),)]
 
     def test_report_success(self):
         irc = MagicMock()
@@ -53,7 +53,7 @@ class TestIRCReporter:
         irc.reset_mock()
 
         r.report_results({"total_passed": 1, "total_failed": 0, "total_runtime": 0.01})
-        assert irc.say.call_args == [(("TTT: 1 passed in 0.01 seconds"),)]
+        assert irc.say.call_args == [(("ttt: 1 passed in 0.01 seconds"),)]
 
     def test_report_failure(self):
         irc = MagicMock()
@@ -62,7 +62,7 @@ class TestIRCReporter:
         irc.reset_mock()
 
         r.report_results({"total_passed": 1, "total_failed": 1, "total_runtime": 0.01})
-        assert irc.say.call_args == [(("TTT: 1 failed, 1 passed in 0.01 seconds"),)]
+        assert irc.say.call_args == [(("ttt: 1 failed, 1 passed in 0.01 seconds"),)]
 
     def test_halt(self):
         irc = MagicMock()
@@ -111,7 +111,7 @@ class TestTerminalReporter:
             + os.linesep
             + termstyle.bold("### Build at:   build_path")
             + os.linesep
-            + termstyle.bold("### Using ttt:  {}".format(__version__))
+            + termstyle.bold("### Using {}:  {}".format(__progname__, __version__))
             + os.linesep
         )
 

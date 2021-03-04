@@ -20,6 +20,7 @@ from ttt.executor import Executor
 from ttt.ircclient import IRCClient, IRCReporter
 from ttt.terminal import Terminal, TerminalReporter
 from ttt.watcher import has_changes, Watcher
+from . import __progname__
 
 
 DEFAULT_BUILD_PATH_SUFFIX = "-build"
@@ -84,7 +85,7 @@ def create_monitor(watch_path=None, patterns=None, **kwargs):
         irc = IRCClient(
             (
                 kwargs.pop("irc_channel", None)
-                or "#ttt-{}".format(os.path.basename(watch_path))
+                or "#{}-{}".format(__progname__, os.path.basename(watch_path))
             ),
             (
                 kwargs.pop("irc_nick", None)

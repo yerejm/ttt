@@ -2,7 +2,7 @@ import argh
 
 from ttt import monitor
 from ttt.terminal import Terminal
-from . import __version__
+from . import __progname__, __version__
 
 
 @argh.arg("watch_path", help="Source path to watch.")
@@ -97,7 +97,8 @@ def ttt(watch_path, *filename, **kwargs):
 
 def run():
     parser = argh.ArghParser(
-        prog="ttt", description="Watch, build, and test a cmake enabled source area."
+        prog=__progname__,
+        description="Watch, build, and test a cmake enabled source area.",
     )
     parser.add_argument(
         "--version", action="version", version="%(prog)s " + __version__

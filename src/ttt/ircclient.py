@@ -6,7 +6,7 @@ from irc.bot import Channel, ServerSpec
 from irc.dict import IRCDict
 
 from ttt.reporter import Reporter
-from . import __version__
+from . import __progname__, __version__
 
 
 class IRCReporter(Reporter):
@@ -21,7 +21,7 @@ class IRCReporter(Reporter):
         self.irc.disconnect()
 
     def report_build_failure(self):
-        self.irc.say("TTT: Build failure!")
+        self.irc.say("{}: Build failure!".format(__progname__))
 
     def report_results(self, results):
         shortstats = "{} passed in {} seconds".format(
@@ -29,10 +29,12 @@ class IRCReporter(Reporter):
         )
         total_failed = results["total_failed"]
         if total_failed > 0:
-            self.irc.say("TTT: {} failed, {}".format(total_failed, shortstats))
+            self.irc.say(
+                "{}: {} failed, {}".format(__progname__, total_failed, shortstats)
+            )
             self._test_failed = True
         else:
-            self.irc.say("TTT: {}".format(shortstats))
+            self.irc.say("{}: {}".format(__progname__, shortstats))
 
 
 class IRCClient(irc.client.SimpleIRCClient):
@@ -204,7 +206,7 @@ class IRCClient(irc.client.SimpleIRCClient):
         Automatically join the channel once welcomed by the server.
         """
         c.join(self.channel)
-        self.say("ttt has started on host {}".format(self.clientname))
+        self.say("{} has started on host {}".format(__progname__, self.clientname))
 
     def on_privmsg(self, c, e):
         """
@@ -246,8 +248,8 @@ class IRCClient(irc.client.SimpleIRCClient):
             self.say("{}, commands are: version".format(nick))
         elif "version" in command:
             self.say(
-                "{}, I am running ttt {} using {} on {}".format(
-                    nick, __version__, self.get_version(), self.clientname
+                "{}, I am running {} {} using {} on {}".format(
+                    nick, __progname__, __version__, self.get_version(), self.clientname
                 )
             )
 
