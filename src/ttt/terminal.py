@@ -17,6 +17,7 @@ import termstyle
 
 from ttt.executor import CRASHED, FAILED
 from ttt.reporter import Reporter
+from . import __version__
 
 # When writing to output streams, do not write more than the following width.
 TERMINAL_MAX_WIDTH = 78
@@ -79,6 +80,9 @@ class TerminalReporter(Reporter):
         )
         self.writeln(
             "### Build at:   {}".format(self.build_path), decorator=[termstyle.bold]
+        )
+        self.writeln(
+            "### Using ttt:  {}".format(__version__), decorator=[termstyle.bold]
         )
 
     def report_results(self, results):

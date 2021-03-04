@@ -13,6 +13,7 @@ from unittest.mock import MagicMock
 
 import termstyle
 
+from ttt import __version__
 from ttt.executor import FAILED
 from ttt.ircclient import IRCReporter
 from ttt.terminal import Terminal, TerminalReporter
@@ -109,6 +110,8 @@ class TestTerminalReporter:
             + termstyle.bold("### Watching:   watch_path")
             + os.linesep
             + termstyle.bold("### Build at:   build_path")
+            + os.linesep
+            + termstyle.bold("### Using ttt:  {}".format(__version__))
             + os.linesep
         )
 
