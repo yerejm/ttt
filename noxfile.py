@@ -18,7 +18,8 @@ def install_with_constraints(session, *args, **kwargs):
         session.run(
             "poetry",
             "export",
-            "--dev",
+            "--with",
+            "dev",
             "--without-hashes",
             "--format=requirements.txt",
             f"--output={requirements.name}",
@@ -57,7 +58,8 @@ def safety(session):
         session.run(
             "poetry",
             "export",
-            "--dev",
+            "--with",
+            "dev",
             "--format=requirements.txt",
             "--without-hashes",
             f"--output={requirements.name}",
@@ -73,7 +75,7 @@ def safety(session):
 @nox.session(python=supported_pythons)
 def tests(session):
     args = session.posargs or ["--cov", "-m", "not e2e"]
-    session.run("poetry", "install", "--no-dev", external=True)
+    session.run("poetry", "install", "--with", "main", external=True)
     install_with_constraints(
         session,
         "coverage[toml]",
