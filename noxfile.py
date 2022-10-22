@@ -78,7 +78,7 @@ def tests(session):
     session.run("poetry", "install", "--with", "main", external=True)
     install_with_constraints(
         session,
-        "coverage[toml]",
+        "coverage",
         "pytest",
         "pytest-cov",
         "pytest-mock",
