@@ -1,20 +1,31 @@
-import tempfile
+from operator import itemgetter
+from subprocess import Popen
+from tempfile import NamedTemporaryFile
 
 import nox
 
 
 nox.options.sessions = "lint", "tests"
 locations = "src", "tests", "noxfile.py"
-with open(".tool-versions") as f:
-    versions_line = f.readline()
-supported_pythons = [
-    ".".join(version.split(".")[0:2]) for version in versions_line.split()[1:]
-]
-latest_python = supported_pythons[0]
+with NamedTemporaryFile() as python_versions:
+    proc = Popen(["asdf", "list", "python"], stdout=python_versions)
+    proc.wait()
+    python_versions.seek(0)
+    installed_pythons = [
+        version.decode("utf-8").strip().replace("*", "").split(".")
+        for version in python_versions.readlines()
+    ]
+    installed_pythons.sort(reverse=True, key=itemgetter(0, 1, 2))
+    supported_pythons = [
+        "{}.{}".format(version[0], version[1])
+        for version in installed_pythons
+        if int(version[0]) > 2
+    ]
+    latest_python = supported_pythons[0]
 
 
 def install_with_constraints(session, *args, **kwargs):
-    with tempfile.NamedTemporaryFile() as requirements:
+    with NamedTemporaryFile() as requirements:
         session.run(
             "poetry",
             "export",
@@ -54,7 +65,7 @@ def lint(session):
 
 @nox.session(python=latest_python)
 def safety(session):
-    with tempfile.NamedTemporaryFile() as requirements:
+    with NamedTemporaryFile() as requirements:
         session.run(
             "poetry",
             "export",
