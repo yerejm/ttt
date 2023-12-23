@@ -31,13 +31,17 @@ def create_builder(watch_path, build_path, **kwargs):
         it is the same as not providing it to the cmake command and will make
         cmake use the default generator for the executing platform
     :param build_config: (optional) indicates the type of build,
-        e.g. release, debug
+        e.g. release, debug. Default: debug
     :param defines: (optional) list of var=val strings for CMake's -D option
     :param term: (optional) output stream for verbose output
     :param command_log: (optional) capture commands run and their return codes
     :param always_clean: (optional) always remove the build area before build
     """
-    build_config = kwargs.pop("build_config", None)
+    # There shouldn't be a default for build_config,
+    # but is specified to work around a cmake-conan bug
+    # on windows working out flags to give to the compiler
+    # regarding static linking in debug and release builds.
+    build_config = kwargs.pop("build_config", "Debug")
     generator = kwargs.pop("generator", None)
     defines = kwargs.pop("defines", None)
     term = kwargs.pop("term", None)
@@ -46,9 +50,9 @@ def create_builder(watch_path, build_path, **kwargs):
     command_log = kwargs.pop("command_log", None)
 
     if not os.path.isabs(watch_path):
-        raise IOError(errno.EINVAL, "Watch path {} must be absolute".format(watch_path))
+        raise IOError(errno.EINVAL, f"Watch path {watch_path} must be absolute")
     if not os.path.isabs(build_path):
-        raise IOError(errno.EINVAL, "Build path {} must be absolute".format(build_path))
+        raise IOError(errno.EINVAL, f"Build path {build_path} must be absolute")
     defines = defines if defines else []
     return partial(
         execute,
@@ -87,7 +91,7 @@ def execute(commands, term=None, command_log=None):
         command = command_generator()
         if command:  # Note that command may be None (or empty list)
             if term:
-                term.writeln("execute: {}".format(command), verbose=1)
+                term.writeln(f"execute: {command}", verbose=1)
             rc = 0
             try:
                 rc = checked_call(command, stderr=subprocess.STDOUT)
@@ -164,21 +168,19 @@ def cmake_generate(watch_path, build_path, build_config, generator, defines):
     """
     cmake_lists_file = os.path.join(watch_path, "CMakeLists.txt")
     if not os.path.exists(cmake_lists_file):
-        raise IOError(
-            errno.EINVAL, "No CMakeLists.txt detected in {}".format(watch_path)
-        )
+        raise IOError(errno.EINVAL, f"No CMakeLists.txt detected in {watch_path}")
     if not os.path.exists(os.path.join(build_path, "CMakeFiles")):
         command = ["cmake"]
         if generator is not None:
             command.append("-G")
             command.append(generator)
-        command.append("-H{}".format(watch_path))
-        command.append("-B{}".format(build_path))
-        # this does nothing for the MSVC generator
-        if build_config is not None and platform.system() != "Windows":
-            command.append("-DCMAKE_BUILD_TYPE={}".format(build_config))
+        command.append(f"-H{watch_path}")
+        command.append(f"-B{build_path}")
+        # This does nothing for the MSVC generator
+        if build_config is not None:
+            command.append(f"-DCMAKE_BUILD_TYPE={build_config}")
         for define in defines:
-            command.append("-D{}".format(define))
+            command.append(f"-D{define}")
         return command
 
 
@@ -198,9 +200,9 @@ def cmake_build(build_path, build_config):
         "--build",
         build_path,
     ]
-    if build_config is not None and platform.system() == "Windows":
-        # necessary for multi-configuration build systems, e.g. MSVC
-        # should be harmless otherwise
+    if build_config is not None:
+        # Necessary for multi-configuration build systems, e.g. MSVC
+        # and should be harmless otherwise
         command.append("--config")
         command.append(build_config)
     return command
