@@ -37,7 +37,7 @@ from . import __progname__, __version__
     help="cmake generator: refer to cmake documentation",
 )
 @argh.arg(
-    "-c", "--config", default="Debug", help="build configuration: e.g. Release, Debug"
+    "-c", "--config", default="Debug", help="build configuration: e.g. Release, Debug."
 )
 @argh.arg(
     "--clean",

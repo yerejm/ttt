@@ -9,6 +9,7 @@ import errno
 from functools import partial
 import glob
 import os
+import platform
 import shutil
 import subprocess
 
@@ -20,6 +21,7 @@ def create_builder(
     build_type=None,
     defines=None,
     term=None,
+    command_log=None,
     always_clean=False,
 ):
     """Constructs a partially evaluated function object.
@@ -41,6 +43,7 @@ def create_builder(
         e.g. release, debug
     :param defines: (optional) list of var=val strings for CMake's -D option
     :param term: (optional) output stream for verbose output
+    :param command_log: (optional) capture commands run and their return codes
     :param always_clean: (optional) always remove the build area before build
     """
     if not os.path.isabs(watch_path):
@@ -62,11 +65,12 @@ def create_builder(
             ),
             partial(cmake_build, build_path, build_type),
         ],
-        term,
+        term=term,
+        command_log=command_log,
     )
 
 
-def execute(commands, term=None):
+def execute(commands, term=None, command_log=None):
     """Executes the list of callable objects.
 
     Each callable object is a command generator that when called returns a
@@ -76,6 +80,7 @@ def execute(commands, term=None):
 
     :param commands: a list of callable objects
     :param term: (optional) output stream for verbose output
+    :param command_log: (optional) capture commands run and their return codes
     """
     from ttt.subproc import checked_call
 
@@ -84,7 +89,16 @@ def execute(commands, term=None):
         if command:  # Note that command may be None (or empty list)
             if term:
                 term.writeln("execute: {}".format(command), verbose=1)
-            checked_call(command, stderr=subprocess.STDOUT)
+            rc = 0
+            try:
+                rc = checked_call(command, stderr=subprocess.STDOUT)
+            except subprocess.CalledProcessError as error:
+                rc = error.returncode
+            if command_log is not None:
+                command_log.append((command, rc))
+        else:
+            if command_log is not None:
+                command_log.append(None)
 
 
 GENERATED = ["Makefile", "build.ninja", "*.sln"]
@@ -162,7 +176,7 @@ def cmake_generate(watch_path, build_path, build_type, generator, defines):
         command.append("-H{}".format(watch_path))
         command.append("-B{}".format(build_path))
         # this does nothing for the MSVC generator
-        if build_type is not None:
+        if build_type is not None and platform.system() != "Windows":
             command.append("-DCMAKE_BUILD_TYPE={}".format(build_type))
         for define in defines:
             command.append("-D{}".format(define))
@@ -185,7 +199,7 @@ def cmake_build(build_path, build_type):
         "--build",
         build_path,
     ]
-    if build_type is not None:
+    if build_type is not None and platform.system() == "Windows":
         # necessary for multi-configuration build systems, e.g. MSVC
         # should be harmless otherwise
         command.append("--config")

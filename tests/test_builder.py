@@ -17,14 +17,6 @@ from testfixtures import TempDirectory
 from ttt.builder import create_builder
 
 
-def find_in_file(filename, string):
-    with open(filename, "r") as f:
-        for line in f:
-            if string in line:
-                return line
-    return False
-
-
 class TestCMake:
     def setup_method(self):
         cmake_source_directory = TempDirectory()
@@ -44,53 +36,65 @@ class TestCMake:
         assert exists(join(self.cmake_build_path, "build.ninja"))
 
     def test_build_with_default_build_type(self):
-        builder = create_builder(self.cmake_source_path, self.cmake_build_path)
+        log = []
+        builder = create_builder(
+            self.cmake_source_path, self.cmake_build_path, command_log=log
+        )
         builder()
 
-        cmakecache = join(self.cmake_build_path, "CMakeCache.txt")
-        assert exists(cmakecache)
-        assert not find_in_file(cmakecache, "CMAKE_BUILD_TYPE:UNINITIALIZED=")
+        if platform.system() == "Windows":
+            assert "-DCMAKE_BUILD_TYPE=Debug" not in log[1][0]
+            assert "--config" not in log[2][0]
+        else:
+            assert "-DCMAKE_BUILD_TYPE=Debug" in log[1][0]
+            assert "--config" not in log[2][0]
 
     def test_build_with_build_type(self):
+        log = []
         builder = create_builder(
-            self.cmake_source_path, self.cmake_build_path, build_type="release"
+            self.cmake_source_path,
+            self.cmake_build_path,
+            build_type="Release",
+            command_log=log,
         )
         builder()
 
-        cmakecache = join(self.cmake_build_path, "CMakeCache.txt")
-        assert exists(cmakecache)
-        assert find_in_file(cmakecache, "CMAKE_BUILD_TYPE:STRING=release")
+        if platform.system() == "Windows":
+            assert "-DCMAKE_BUILD_TYPE=Release" not in log[1][0]
+            assert ["--config", "Release"] == log[2][0][-2:]
+        else:
+            assert "-DCMAKE_BUILD_TYPE=Release" in log[1][0]
+            assert ["--config", "Release"] != log[2][0][-2:]
 
     def test_build_with_none_define(self):
+        log = []
         builder = create_builder(
             self.cmake_source_path,
             self.cmake_build_path,
-            build_type="release",
+            build_type="Release",
             defines=None,
+            command_log=log,
         )
         builder()
 
-        cmakecache = join(self.cmake_build_path, "CMakeCache.txt")
-        assert exists(cmakecache)
+        assert [] == [arg for arg in log[1][0] if "-D" in arg]
 
     def test_build_with_define(self):
+        log = []
         builder = create_builder(
             self.cmake_source_path,
             self.cmake_build_path,
-            build_type="release",
+            build_type="Release",
             defines=["FOO=BAR", "A:STRING=VALUE"],
+            command_log=log,
         )
         builder()
 
-        cmakecache = join(self.cmake_build_path, "CMakeCache.txt")
-        assert exists(cmakecache)
-        assert find_in_file(cmakecache, "FOO:UNINITIALIZED=BAR")
-        assert find_in_file(cmakecache, "A:STRING=VALUE")
+        assert "-DFOO=BAR" in log[1][0]
+        assert "-DA:STRING=VALUE" in log[1][0]
 
     def test_good_build(self):
-        build_file = (
-            "test.sln" if platform.system() == "Windows" else "Makefile"
-        )  # noqa
+        build_file = "test.sln" if platform.system() == "Windows" else "Makefile"
         builder = create_builder(self.cmake_source_path, self.cmake_build_path)
         builder()
 
@@ -109,7 +113,7 @@ class TestCMake:
             raised = str(e)
         assert raised == "[Errno 22] No CMakeLists.txt detected in {}".format(
             source_path
-        )  # noqa
+        )
 
     def test_bad_build_from_relative_path(self):
         error = None
@@ -140,7 +144,7 @@ class TestCMake:
             raised = str(e)
         assert raised == "[Errno 22] No CMakeLists.txt detected in {}".format(
             source_path
-        )  # noqa
+        )
 
         cmake_source_directory.write("CMakeLists.txt", b"project(test)")
         builder()
