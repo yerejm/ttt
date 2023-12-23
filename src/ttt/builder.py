@@ -9,7 +9,6 @@ import errno
 from functools import partial
 import glob
 import os
-import platform
 import shutil
 import subprocess
 
