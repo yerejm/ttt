@@ -43,10 +43,10 @@ class TestCMake:
         builder()
 
         if platform.system() == "Windows":
-            assert "-DCMAKE_BUILD_TYPE=Debug" not in log[1][0]
+            assert [] == [arg for arg in log[1][0] if "-D" in arg]
             assert "--config" not in log[2][0]
         else:
-            assert "-DCMAKE_BUILD_TYPE=Debug" in log[1][0]
+            assert [] == [arg for arg in log[1][0] if "-D" in arg]
             assert "--config" not in log[2][0]
 
     def test_build_with_build_type(self):
@@ -60,18 +60,17 @@ class TestCMake:
         builder()
 
         if platform.system() == "Windows":
-            assert "-DCMAKE_BUILD_TYPE=Release" not in log[1][0]
+            assert [] == [arg for arg in log[1][0] if "-D" in arg]
             assert ["--config", "Release"] == log[2][0][-2:]
         else:
             assert "-DCMAKE_BUILD_TYPE=Release" in log[1][0]
-            assert ["--config", "Release"] != log[2][0][-2:]
+            assert "--config" not in log[2][0]
 
     def test_build_with_none_define(self):
         log = []
         builder = create_builder(
             self.cmake_source_path,
             self.cmake_build_path,
-            build_type="Release",
             defines=None,
             command_log=log,
         )
@@ -84,7 +83,6 @@ class TestCMake:
         builder = create_builder(
             self.cmake_source_path,
             self.cmake_build_path,
-            build_type="Release",
             defines=["FOO=BAR", "A:STRING=VALUE"],
             command_log=log,
         )
