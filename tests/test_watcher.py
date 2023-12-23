@@ -17,10 +17,10 @@ from ttt.watcher import create_watchstate, WatchedFile, Watcher
 
 
 class TestWatcher:
-    def setup(self):
+    def setup_method(self):
         pass
 
-    def teardown(self):
+    def teardown_method(self):
         TempDirectory.cleanup_all()
 
     def test_default_watcher_gets_all_files(self):
@@ -47,8 +47,8 @@ class TestWatcher:
         work_directory.write("a.cc", b"")
         work_directory.write("CMakeLists.txt", b"")
         work_directory.write("blah.txt", b"")
-        work_directory.makedir("blah")
-        work_directory.write(["blah", "test_dummy.c"], b"")
+        blah_directory = work_directory.makedir("blah")
+        work_directory.write((blah_directory, "test_dummy.c"), b"")
         wd_len = len(work_directory.path) + 1
 
         w = Watcher(work_directory.path, None, [])
@@ -61,7 +61,7 @@ class TestWatcher:
             "a.cc",
             "a.h",
             "blah.txt",
-            "blah/test_dummy.c",
+            os.path.join("blah", "test_dummy.c"),
         ]
 
         w = Watcher(work_directory.path, None, source_patterns=["CMakeLists.txt"])
@@ -86,13 +86,13 @@ class TestWatcher:
         watchstate = w.poll()
         filelist = [f[wd_len:] for f in watchstate.inserts]
         filelist.sort()
-        assert filelist == ["blah.txt", "blah/test_dummy.c"]
+        assert filelist == ["blah.txt", os.path.join("blah", "test_dummy.c")]
 
-        w = Watcher(work_directory.path, None, source_patterns=["blah/"])
+        w = Watcher(work_directory.path, None, source_patterns=["blah" + os.sep])
         watchstate = w.poll()
         filelist = [f[wd_len:] for f in watchstate.inserts]
         filelist.sort()
-        assert filelist == ["blah/test_dummy.c"]
+        assert filelist == [os.path.join("blah", "test_dummy.c")]
 
         w = Watcher(
             work_directory.path,
@@ -148,19 +148,23 @@ class TestWatcher:
         import stat
 
         work_directory = TempDirectory()
-        work_directory.makedir("test")
-        work_directory.write(["test", "test_dummy.c"], b"")
+        test_directory = work_directory.makedir("test")
+        work_directory.write((test_directory, "test_dummy.c"), b"")
         build_directory = TempDirectory()
-        testbin_path = build_directory.write(["test_dummy"], b"")
+        testbin_path = build_directory.write("test_dummy" + watcher.EXE_SUFFIX, b"")
         st = os.stat(testbin_path)
         os.chmod(testbin_path, st.st_mode | stat.S_IEXEC)
 
         w = Watcher(work_directory.path, build_directory.path)
         w.poll()
 
-        exefile = testbin_path + watcher.EXE_SUFFIX
         testlist = [(g.source(), g.executable()) for g in w.testlist()]
-        assert testlist == [(os.path.join("test", "test_dummy.c"), exefile)]
+        assert testlist == [
+            (
+                os.path.join("test", "test_dummy.c"),
+                os.path.join(build_directory.path, "test_dummy" + watcher.EXE_SUFFIX),
+            )
+        ]
 
 
 class TestWatchState:

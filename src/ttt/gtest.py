@@ -104,6 +104,11 @@ def test_elapsed_at(line):
     return TESTCASE_TIME_RE.match(line)
 
 
+class GTestException(Exception):
+    def __init__(self, message):
+        super().__init__(message)
+
+
 class GTest(object):
     """Representation of the execution, output capture and output parsing of a
     gtest-based binary.
@@ -125,9 +130,9 @@ class GTest(object):
         execution. Default Terminal() will send no output.
         """
         if not source:
-            raise Exception("Invalid source")
+            raise GTestException("Invalid source")
         if not executable:
-            raise Exception("Invalid executable")
+            raise GTestException("Invalid executable")
 
         self._source = source
         self._executable = executable
@@ -314,9 +319,9 @@ class GTest(object):
         If the test failed, the output is captured.
         """
         if self._testcase is None:
-            raise Exception("Invalid current testcase")
+            raise GTestException("Invalid current testcase")
         if self._test is None:
-            raise Exception("Invalid current test")
+            raise GTestException("Invalid current test")
         failed = "[  FAILED  ]" in line
 
         # windows crash is a failure

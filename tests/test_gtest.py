@@ -15,7 +15,7 @@ from unittest.mock import patch
 import pytest
 
 from ttt.executor import CRASHED
-from ttt.gtest import GTest
+from ttt.gtest import GTest, GTestException
 from ttt.terminal import Terminal
 
 
@@ -364,12 +364,12 @@ class TestGTest:
         f = io.StringIO()
         gtest = GTest("/test/test_core.cc", "test_core", term=Terminal(f))
 
-        with pytest.raises(Exception):
+        with pytest.raises(GTestException):
             gtest.end_test("")
 
         gtest._testcase = ""
 
-        with pytest.raises(Exception):
+        with pytest.raises(GTestException):
             gtest.end_test("")
 
         gtest._test = ""

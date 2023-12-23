@@ -150,6 +150,8 @@ class Watcher(object):
         # Create dict of expected test binary names to the relative path of the
         # source files that they were compiled from. This is to make
         # identification of test binaries easier during build tree scanning.
+        # NOTE: On Windows, executables can be identified by %PATHEXT% but
+        # this assumes gtest builds will always create exe.
         testfiles = {
             os.path.splitext(w.name)[0] + EXE_SUFFIX: w.relpath
             for w in watchedfiles

@@ -26,14 +26,14 @@ def find_in_file(filename, string):
 
 
 class TestCMake:
-    def setup(self):
+    def setup_method(self):
         cmake_source_directory = TempDirectory()
         self.cmake_source_path = cmake_source_directory.path
         cmake_build_directory = TempDirectory()
         self.cmake_build_path = cmake_build_directory.path
         cmake_source_directory.write("CMakeLists.txt", b"project(test)")
 
-    def teardown(self):
+    def teardown_method(self):
         TempDirectory.cleanup_all()
 
     def test_build_with_generator(self):
@@ -49,7 +49,7 @@ class TestCMake:
 
         cmakecache = join(self.cmake_build_path, "CMakeCache.txt")
         assert exists(cmakecache)
-        assert find_in_file(cmakecache, "CMAKE_BUILD_TYPE:STRING=" + os.linesep)
+        assert not find_in_file(cmakecache, "CMAKE_BUILD_TYPE:UNINITIALIZED=")
 
     def test_build_with_build_type(self):
         builder = create_builder(
@@ -59,7 +59,7 @@ class TestCMake:
 
         cmakecache = join(self.cmake_build_path, "CMakeCache.txt")
         assert exists(cmakecache)
-        assert find_in_file(cmakecache, "CMAKE_BUILD_TYPE:STRING=release" + os.linesep)
+        assert find_in_file(cmakecache, "CMAKE_BUILD_TYPE:UNINITIALIZED=release")
 
     def test_build_with_none_define(self):
         builder = create_builder(
@@ -84,8 +84,8 @@ class TestCMake:
 
         cmakecache = join(self.cmake_build_path, "CMakeCache.txt")
         assert exists(cmakecache)
-        assert find_in_file(cmakecache, "FOO:UNINITIALIZED=BAR" + os.linesep)
-        assert find_in_file(cmakecache, "A:STRING=VALUE" + os.linesep)
+        assert find_in_file(cmakecache, "FOO:UNINITIALIZED=BAR")
+        assert find_in_file(cmakecache, "A:STRING=VALUE")
 
     def test_good_build(self):
         build_file = (

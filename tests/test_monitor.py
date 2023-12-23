@@ -29,7 +29,7 @@ def chdir(path):
 
 
 class TestMonitor:
-    def teardown(self):
+    def teardown_method(self):
         TempDirectory.cleanup_all()
 
     def test_create_with_invalid_watch_area(self):
@@ -208,7 +208,7 @@ class TestMonitor:
         import subprocess
 
         def builder():
-            subprocess.check_output("false")
+            subprocess.check_output('python -c "import sys; sys.exit(1)"')
 
         reporter = MagicMock(spec=Reporter)
         o = watcher = executor = MagicMock()

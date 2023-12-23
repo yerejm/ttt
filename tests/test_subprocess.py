@@ -43,14 +43,14 @@ def python_command(exefile):
 
 
 class TestSubprocess:
-    def setup(self):
+    def setup_method(self):
         self.wd = wd = TempDirectory()
         wd.write("test1.txt", b"")
         wd.write("dummy2.txt", b"")
         wd.makedir("test")
         wd.write(["test", "test3.txt"], b"")
 
-    def teardown(self):
+    def teardown_method(self):
         TempDirectory.cleanup_all()
 
     def test_execute(self):
