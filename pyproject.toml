@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ttt"
-version = "0.7.0"
+version = "0.8.0"
 description = "Watch, Build, Test"
 authors = ["yerejm <<>>"]
 license = "ISCL"
@@ -25,7 +25,6 @@ colorama = "^0.4.4"
 argh = "^0.26.2"
 irc = "16.0"
 importlib-metadata = {version = "^7.0.0", python = "<3.8"}
-poetry-plugin-export = "^1.6.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.4.3"
@@ -41,6 +40,7 @@ flake8-black = "^0.2.3"
 flake8-bugbear = "^23.12.2"
 flake8-import-order = "^0.18.1"
 safety = "^2.3.5"
+poetry-plugin-export = "^1.6.0"
 
 [tool.poetry.scripts]
 ttt = 'ttt.__main__:main'
