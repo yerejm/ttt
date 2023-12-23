@@ -9,69 +9,13 @@ Tests for `reporter` module.
 """
 import io
 import os
-from unittest.mock import MagicMock
 
 import termstyle
 
 from ttt import __progname__, __version__
 from ttt.executor import FAILED
-from ttt.ircclient import IRCReporter
 from ttt.terminal import Terminal, TerminalReporter
 from ttt.watcher import WatchState
-
-
-class TestIRCReporter:
-    def test_connect(self):
-        irc = MagicMock()
-        irc.connect = MagicMock()
-        IRCReporter(irc)
-
-        assert irc.connect.call_args == [()]
-
-    def test_wait(self):
-        irc = MagicMock()
-        irc.poll = MagicMock()
-        r = IRCReporter(irc)
-        irc.reset_mock()
-
-        r.wait()
-        assert irc.poll.call_args == [()]
-
-    def test_report_build_failure(self):
-        irc = MagicMock()
-        irc.say = MagicMock()
-        r = IRCReporter(irc)
-        irc.reset_mock()
-
-        r.report_build_failure()
-        assert irc.say.call_args == [(("ttt: Build failure!"),)]
-
-    def test_report_success(self):
-        irc = MagicMock()
-        irc.say = MagicMock()
-        r = IRCReporter(irc)
-        irc.reset_mock()
-
-        r.report_results({"total_passed": 1, "total_failed": 0, "total_runtime": 0.01})
-        assert irc.say.call_args == [(("ttt: 1 passed in 0.01 seconds"),)]
-
-    def test_report_failure(self):
-        irc = MagicMock()
-        irc.say = MagicMock()
-        r = IRCReporter(irc)
-        irc.reset_mock()
-
-        r.report_results({"total_passed": 1, "total_failed": 1, "total_runtime": 0.01})
-        assert irc.say.call_args == [(("ttt: 1 failed, 1 passed in 0.01 seconds"),)]
-
-    def test_halt(self):
-        irc = MagicMock()
-        irc.disconnect = MagicMock()
-        r = IRCReporter(irc)
-        irc.reset_mock()
-
-        r.halt()
-        assert irc.disconnect.call_args == [()]
 
 
 class TestTerminalReporter:

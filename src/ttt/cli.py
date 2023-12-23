@@ -44,14 +44,6 @@ from . import __progname__, __version__
     default=False,
     help="Always remove existing build area to ensure a clean build.",
 )
-@argh.arg("--irc_server", default=None, help="IRC server hostname. Requires --watch")
-@argh.arg("--irc_port", default=6667, help="IRC server port. Requires --irc_server")
-@argh.arg("--irc_channel", default=None, help="IRC channel. Requires --irc_server")
-@argh.arg(
-    "--irc_nick",
-    help="IRC nick or derived from the watch path and the build "
-    "configuration. Requires --irc_server",
-)
 @argh.arg(
     "-w",
     "--watch",

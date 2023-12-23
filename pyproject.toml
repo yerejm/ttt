@@ -18,12 +18,11 @@ classifiers= [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11"
 six = "^1.16.0"
 python-termstyle = "^0.1.10"
 colorama = "^0.4.4"
 argh = "^0.26.2"
-irc = "16.0"
 importlib-metadata = {version = "^7.0.0", python = "<3.8"}
 
 [tool.poetry.dev-dependencies]

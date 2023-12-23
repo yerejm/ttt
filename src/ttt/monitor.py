@@ -9,7 +9,6 @@ change and initiate the build and test of the watched source tree.
 import collections
 import itertools
 import os
-import platform
 import subprocess
 import sys
 import time
@@ -17,10 +16,8 @@ from timeit import default_timer as timer
 
 from ttt.builder import create_builder
 from ttt.executor import Executor
-from ttt.ircclient import IRCClient, IRCReporter
 from ttt.terminal import Terminal, TerminalReporter
 from ttt.watcher import has_changes, Watcher
-from . import __progname__
 
 
 DEFAULT_BUILD_PATH_SUFFIX = "-build"
@@ -36,7 +33,6 @@ def create_monitor(watch_path=None, patterns=None, **kwargs):
     """Creates a monitor and its subordinate objects.
 
     By default, one reporter object is created to output to the terminal.
-    An optional IRC reporter may be created if irc_server is provided.
 
     :param watch_path: (optional) the root of the source tree, either relative
         or absolute. If not provided, the current working directory is assumed
@@ -48,14 +44,6 @@ def create_monitor(watch_path=None, patterns=None, **kwargs):
         not provided, it will be generated from the watch path.
     :param generator: (optional) the cmake build system generator
     :param defines: (optional) list of var=val strings for CMake's -D option
-    :param irc_server: (optional) the IRC server host if an IRC reporter is
-        required.
-    :param irc_port (optional) the IRC server port. Has no meaning without
-        irc_server.
-    :param irc_channel (optional) the IRC channel to join once connected. Has
-        no meaning without irc_server.
-    :param irc_nick (optional) the IRC nickname to use once connected. Has
-        no meaning without irc_server.
     """
     build_config = kwargs.pop("config", None)
     generator = kwargs.pop("generator", None)
@@ -85,26 +73,6 @@ def create_monitor(watch_path=None, patterns=None, **kwargs):
     )
 
     reporters = [TerminalReporter(watch_path, build_path)]
-
-    irc_server = kwargs.pop("irc_server", None)
-    if irc_server:
-        irc = IRCClient(
-            (
-                kwargs.pop("irc_channel", None)
-                or "#{}-{}".format(__progname__, os.path.basename(watch_path))
-            ),
-            (
-                kwargs.pop("irc_nick", None)
-                or "{}_{}".format(platform.system(), build_config)
-            ),
-            irc_server,
-            kwargs.pop("irc_port", None),
-        )
-        # print('{}@{}:{}/{}'.format(
-        #     irc._nickname, irc.server.host, irc.server.port, irc.channel)
-        # )
-        r = IRCReporter(irc)
-        reporters.append(r)
 
     executor = Executor() if run_tests else None
     return Monitor(watcher, builder, executor, reporters)
