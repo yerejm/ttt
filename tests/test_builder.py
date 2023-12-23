@@ -29,7 +29,7 @@ class TestCMake:
         TempDirectory.cleanup_all()
 
     def test_build_with_generator(self):
-        builder = create_builder(self.cmake_source_path, self.cmake_build_path, "Ninja")
+        builder = create_builder(self.cmake_source_path, self.cmake_build_path, generator="Ninja")
         builder()
 
         assert exists(join(self.cmake_build_path, "CMakeFiles"))
@@ -54,7 +54,7 @@ class TestCMake:
         builder = create_builder(
             self.cmake_source_path,
             self.cmake_build_path,
-            build_type="Release",
+            build_config="Release",
             command_log=log,
         )
         builder()

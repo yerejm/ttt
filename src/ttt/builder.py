@@ -17,12 +17,7 @@ import subprocess
 def create_builder(
     watch_path,
     build_path,
-    generator=None,
-    build_type=None,
-    defines=None,
-    term=None,
-    command_log=None,
-    always_clean=False,
+    **kwargs
 ):
     """Constructs a partially evaluated function object.
 
@@ -39,13 +34,21 @@ def create_builder(
         This is because it is passed through via the -G option. Not providing
         it is the same as not providing it to the cmake command and will make
         cmake use the default generator for the executing platform
-    :param build_type: (optional) indicates the type of build,
+    :param build_config: (optional) indicates the type of build,
         e.g. release, debug
     :param defines: (optional) list of var=val strings for CMake's -D option
     :param term: (optional) output stream for verbose output
     :param command_log: (optional) capture commands run and their return codes
     :param always_clean: (optional) always remove the build area before build
     """
+    build_config = kwargs.pop("build_config", None)
+    generator = kwargs.pop("generator", None)
+    defines = kwargs.pop("defines", None)
+    term = kwargs.pop("term", None)
+    always_clean = kwargs.pop("clean", False)
+
+    command_log = kwargs.pop("command_log", None)
+
     if not os.path.isabs(watch_path):
         raise IOError(errno.EINVAL, "Watch path {} must be absolute".format(watch_path))
     if not os.path.isabs(build_path):
@@ -59,11 +62,11 @@ def create_builder(
                 cmake_generate,
                 watch_path,
                 build_path,
-                build_type,
+                build_config,
                 generator,
                 defines,
             ),
-            partial(cmake_build, build_path, build_type),
+            partial(cmake_build, build_path, build_config),
         ],
         term=term,
         command_log=command_log,
@@ -137,7 +140,7 @@ def cmake_clean(build_path, defines, always_clean):
     return None
 
 
-def cmake_generate(watch_path, build_path, build_type, generator, defines):
+def cmake_generate(watch_path, build_path, build_config, generator, defines):
     """Generates the command for cmake that will create a build area for a
     source tree.
 
@@ -153,7 +156,7 @@ def cmake_generate(watch_path, build_path, build_type, generator, defines):
         where the CMakeLists.txt file exists
     :param build_path: the absolute root directory path where build objects and
         binaries are output during compilation
-    :param build_type: indicates the type of build, e.g. release, debug
+    :param build_config: indicates the type of build, e.g. release, debug
     :param generator: (optional) the cmake generator. Values are the same as
         provided by the cmake usage output. e.g. "Unix Makefile", "Ninja"
         This is because it is passed through via the -G option. Not providing
@@ -176,21 +179,21 @@ def cmake_generate(watch_path, build_path, build_type, generator, defines):
         command.append("-H{}".format(watch_path))
         command.append("-B{}".format(build_path))
         # this does nothing for the MSVC generator
-        if build_type is not None and platform.system() != "Windows":
-            command.append("-DCMAKE_BUILD_TYPE={}".format(build_type))
+        if build_config is not None and platform.system() != "Windows":
+            command.append("-DCMAKE_BUILD_TYPE={}".format(build_config))
         for define in defines:
             command.append("-D{}".format(define))
         return command
 
 
-def cmake_build(build_path, build_type):
+def cmake_build(build_path, build_config):
     """Generates the cmake command to (re)build the build area.
 
     This is the call to the platform's compiler.
 
     :param build_path: the absolute root directory path where build objects and
         binaries are output during compilation
-    :param build_type: indicates the type of build, e.g. release, debug
+    :param build_config: indicates the type of build, e.g. release, debug
     :return: command to execute as a subprocess in list form
     """
     command = [
@@ -199,9 +202,9 @@ def cmake_build(build_path, build_type):
         "--build",
         build_path,
     ]
-    if build_type is not None and platform.system() == "Windows":
+    if build_config is not None and platform.system() == "Windows":
         # necessary for multi-configuration build systems, e.g. MSVC
         # should be harmless otherwise
         command.append("--config")
-        command.append(build_type)
+        command.append(build_config)
     return command

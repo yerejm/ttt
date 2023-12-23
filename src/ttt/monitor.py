@@ -75,7 +75,12 @@ def create_monitor(watch_path=None, patterns=None, **kwargs):
             defines = []
         defines.append("ENABLE_TESTS=ON")
     builder = create_builder(
-        watch_path, build_path, generator, build_config, defines, term, clean
+        watch_path, build_path,
+        generator=generator,
+        build_config=build_config,
+        defines=defines,
+        term=term,
+        clean=clean
     )
 
     reporters = [TerminalReporter(watch_path, build_path)]
