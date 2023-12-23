@@ -9,6 +9,7 @@ Tests for `monitor` module.
 """
 from contextlib import contextmanager
 import os
+import platform
 from unittest.mock import MagicMock, patch
 
 from testfixtures import TempDirectory
@@ -49,7 +50,7 @@ class TestMonitor:
         assert reporter.watch_path == cwd
         assert reporter.build_path == "{}-build".format(
             os.path.join(cwd, os.path.basename(cwd))
-        )  # noqa
+        )
 
     def test_create_monitor_with_watch_path(self):
         wd = TempDirectory()
@@ -61,9 +62,7 @@ class TestMonitor:
         assert len(m.reporters) == 1
         reporter = m.reporters[0]
         assert reporter.watch_path == source_path
-        assert reporter.build_path == "{}-build".format(
-            os.path.realpath(source_path)
-        )  # noqa
+        assert reporter.build_path == "{}-build".format(os.path.realpath(source_path))
 
     def test_create_monitor_with_watch_and_build_path(self):
         wd = TempDirectory()
@@ -155,9 +154,7 @@ class TestMonitor:
         m.run(step=True)
 
         assert "poll" in [c for c, a, kw in watcher.method_calls]
-        assert [c for c, a, kw in reporter.method_calls] == [
-            "interrupt_detected"
-        ]  # noqa
+        assert [c for c, a, kw in reporter.method_calls] == ["interrupt_detected"]
 
     def test_keyboardinterrupt_during_wait(self):
         reporter = MagicMock(spec=Reporter)
@@ -208,7 +205,12 @@ class TestMonitor:
         import subprocess
 
         def builder():
-            subprocess.check_output('python -c "import sys; sys.exit(1)"')
+            bad_command = (
+                'python -c "import sys; sys.exit(1)"'
+                if platform.system() == "Windows"
+                else "false"
+            )
+            subprocess.check_output(bad_command)
 
         reporter = MagicMock(spec=Reporter)
         o = watcher = executor = MagicMock()

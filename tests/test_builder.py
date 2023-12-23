@@ -59,7 +59,7 @@ class TestCMake:
 
         cmakecache = join(self.cmake_build_path, "CMakeCache.txt")
         assert exists(cmakecache)
-        assert find_in_file(cmakecache, "CMAKE_BUILD_TYPE:UNINITIALIZED=release")
+        assert find_in_file(cmakecache, "CMAKE_BUILD_TYPE:STRING=release")
 
     def test_build_with_none_define(self):
         builder = create_builder(
