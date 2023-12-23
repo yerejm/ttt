@@ -29,7 +29,9 @@ class TestCMake:
         TempDirectory.cleanup_all()
 
     def test_build_with_generator(self):
-        builder = create_builder(self.cmake_source_path, self.cmake_build_path, generator="Ninja")
+        builder = create_builder(
+            self.cmake_source_path, self.cmake_build_path, generator="Ninja"
+        )
         builder()
 
         assert exists(join(self.cmake_build_path, "CMakeFiles"))

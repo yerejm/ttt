@@ -14,11 +14,7 @@ import shutil
 import subprocess
 
 
-def create_builder(
-    watch_path,
-    build_path,
-    **kwargs
-):
+def create_builder(watch_path, build_path, **kwargs):
     """Constructs a partially evaluated function object.
 
     This function object represents the execution of the `cmake` command on
