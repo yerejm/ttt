@@ -1,26 +1,27 @@
 from operator import itemgetter
 import os
 import platform
-from subprocess import Popen
 from tempfile import NamedTemporaryFile
 
 import nox
 
 nox.options.sessions = "lint", "tests"
 locations = "src", "tests", "noxfile.py"
-if os.name == "nt":
+if platform.system() == "Windows":
     version_tuple = platform.python_version_tuple()
     latest_python = ".".join(version_tuple[:2])
     supported_pythons = [latest_python]
 else:
-    with NamedTemporaryFile(delete=False) as python_versions:
-        proc = Popen(["asdf", "list", "python"], stdout=python_versions)
-        proc.wait()
-        python_versions.seek(0)
-        installed_pythons = [
-            version.decode("utf-8").strip().replace("*", "").split(".")
-            for version in python_versions.readlines()
-        ]
+    with open(".tool-versions") as tool_versions:
+        installed_pythons = []
+        for line in tool_versions.readlines():
+            if line.startswith("python"):
+                python_versions = line.strip().split()
+                for version in python_versions[1:]:
+                    vl = version.split(".")
+                    ivs = [int(v) for v in vl]
+                    installed_pythons.append(ivs)
+                break
         installed_pythons.sort(reverse=True, key=itemgetter(0, 1, 2))
         supported_pythons = [
             "{}.{}".format(version[0], version[1])
@@ -30,7 +31,9 @@ else:
         latest_python = supported_pythons[0]
 
 
-def install_with_constraints(session, *args, **kwargs):
+def install_requirements(session, *args, **kwargs):
+    # windows workaround for NamedTemporaryFile behaving differently compared
+    # to macos/linux for session run/install
     requirements = None
     try:
         with NamedTemporaryFile(delete=False) as requirements:
@@ -53,44 +56,20 @@ def install_with_constraints(session, *args, **kwargs):
 @nox.session(python=latest_python)
 def black(session):
     args = session.posargs or locations
-    install_with_constraints(session)
+    install_requirements(session)
     session.run("black", *args)
 
 
-@nox.session(python=supported_pythons)
+@nox.session(python=latest_python)
 def lint(session):
     args = session.posargs or locations
-    install_with_constraints(session)
+    install_requirements(session)
     session.run("flake8", *args)
-
-
-@nox.session(python=latest_python)
-def safety(session):
-    requirements = None
-    try:
-        with NamedTemporaryFile(delete=False) as requirements:
-            session.run(
-                "poetry",
-                "export",
-                "--only",
-                "dev",
-                "--format=requirements.txt",
-                "--without-hashes",
-                f"--output={requirements.name}",
-                external=True,
-            )
-            install_with_constraints(session)
-            session.run(
-                "safety", "check", f"--file={requirements.name}", "--full-report"
-            )
-    finally:
-        if requirements:
-            os.remove(requirements.name)
 
 
 @nox.session(python=supported_pythons)
 def tests(session):
     args = session.posargs or ["--cov", "-m", "not e2e"]
     session.run("poetry", "install", "--only", "main", external=True)
-    install_with_constraints(session)
+    install_requirements(session)
     session.run("pytest", *args)
