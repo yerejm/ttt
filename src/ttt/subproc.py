@@ -8,11 +8,10 @@ of the existing subprocess module.
 """
 
 import os
+import queue
 import subprocess
 import sys
 import threading
-
-from six.moves import queue
 
 
 def execute(*args, **kwargs):

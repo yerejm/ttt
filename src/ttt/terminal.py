@@ -12,7 +12,6 @@ from datetime import datetime, timedelta
 import os
 import sys
 
-from six import text_type
 import termstyle
 
 from ttt.executor import CRASHED, FAILED
@@ -188,7 +187,7 @@ class Terminal(object):
         """Writes a string to the output stream."""
         stream = self.stream
         if stream:
-            stream.write(text_type(string))
+            stream.write(string)
             stream.flush()
 
     def writeln(self, *args, **kwargs):
