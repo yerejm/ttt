@@ -30,7 +30,7 @@ pytest-xdist = "^3.5.0"
 pytest-cov = "^4.1.0"
 testfixtures = "^7.2.2"
 coverage = "^7.3.4"
-black = "^23.12.0"
+black = "^24.3.0"
 flake8 = "^6.1.0"
 # pin bandit for TypeError: __init__() missing 1 required positional argument: 'metrics' error 
 bandit = "1.7.2"

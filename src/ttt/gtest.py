@@ -5,6 +5,7 @@ This module implements the gtest execution wrapper. It will run a gtest binary
 in a subprocess and capture its output to track the outcome of test execution.
 :copyright: (c) yerejm
 """
+
 import collections
 import os
 import re

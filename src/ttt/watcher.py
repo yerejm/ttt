@@ -17,6 +17,7 @@ potential issue is left to a time when it becomes problematic.
 
 :copyright: (c) yerejm
 """
+
 import collections
 import os
 from os import walk as walk_fn
