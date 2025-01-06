@@ -1,12 +1,10 @@
-[tool.poetry]
+[project]
 name = "ttt"
-version = "0.9.0"
+version = "0.10.0"
 description = "Watch, Build, Test"
-authors = ["yerejm <<>>"]
+authors = [{name = "yerejm"}]
 license = "ISCL"
 readme = "README.rst"
-homepage = "https://github.com/yerejm/ttt"
-repository = "https://github.com/yerejm/ttt"
 keywords = ["ttt"]
 classifiers= [
     "Environment :: Console",
@@ -17,14 +15,18 @@ classifiers= [
     "Programming Language :: Python :: 3",
 ]
 
-[tool.poetry.dependencies]
+[project.urls]
+homepage = "https://github.com/yerejm/ttt"
+repository = "https://github.com/yerejm/ttt"
+
+[poetry.group.dependencies]
 python = "^3.8.1"
 python-termstyle = "^0.1.10"
 colorama = "^0.4.4"
 argh = "^0.26.2"
 importlib-metadata = {version = "^7.0.0", python = "<3.8"}
 
-[tool.poetry.dev-dependencies]
+[poetry.group.dev.dependencies]
 pytest = "^7.4.3"
 pytest-xdist = "^3.5.0"
 pytest-cov = "^4.1.0"
@@ -39,8 +41,9 @@ flake8-bugbear = "^23.12.2"
 flake8-import-order = "^0.18.1"
 safety = "^2.3.5"
 poetry-plugin-export = "^1.6.0"
+deptry = "^0.16.1"
 
-[tool.poetry.scripts]
+[poetry.scripts]
 ttt = 'ttt.__main__:main'
 
 [build-system]
