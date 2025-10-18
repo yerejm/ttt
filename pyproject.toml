@@ -19,14 +19,14 @@ classifiers= [
 homepage = "https://github.com/yerejm/ttt"
 repository = "https://github.com/yerejm/ttt"
 
-[poetry.group.dependencies]
+[tool.poetry.group.main.dependencies]
 python = "^3.8.1"
 python-termstyle = "^0.1.10"
 colorama = "^0.4.4"
 argh = "^0.26.2"
 importlib-metadata = {version = "^7.0.0", python = "<3.8"}
 
-[poetry.group.dev.dependencies]
+[tool.poetry.group.dev.dependencies]
 pytest = "^7.4.3"
 pytest-xdist = "^3.5.0"
 pytest-cov = "^4.1.0"
@@ -43,7 +43,7 @@ safety = "^2.3.5"
 poetry-plugin-export = "^1.6.0"
 deptry = "^0.16.1"
 
-[poetry.scripts]
+[tool.poetry.scripts]
 ttt = 'ttt.__main__:main'
 
 [build-system]
