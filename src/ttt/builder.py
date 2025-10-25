@@ -12,6 +12,14 @@ import os
 import shutil
 import subprocess
 
+import requests
+
+
+CONAN_CMAKE_REPO = (
+    "https://raw.githubusercontent.com/conan-io/cmake-conan/refs/heads/develop2/"
+)
+CONAN_CMAKE = "conan_provider.cmake"
+
 
 def create_builder(watch_path, build_path, **kwargs):
     """Constructs a partially evaluated function object.
@@ -57,6 +65,7 @@ def create_builder(watch_path, build_path, **kwargs):
         execute,
         [
             partial(cmake_clean, build_path, defines, always_clean),
+            partial(cmake_pregenerate, watch_path, build_path),
             partial(
                 cmake_generate,
                 watch_path,
@@ -136,7 +145,26 @@ def cmake_clean(build_path, defines, always_clean):
 
     if os.path.exists(build_path) and (always_clean or cmake_build_area_outdated()):
         shutil.rmtree(build_path)
-    return None
+    return []
+
+
+def uses_conan(watch_path):
+    conanfile_py = os.path.join(watch_path, "conanfile.py")
+    conanfile_txt = os.path.join(watch_path, "conanfile.txt")
+    return os.path.exists(conanfile_py) or os.path.exists(conanfile_txt)
+
+
+def cmake_pregenerate(watch_path, build_path):
+    # set up conan-cmake if the build requires it
+    if uses_conan(watch_path):
+        conan_cmake_git = f"{CONAN_CMAKE_REPO}/{CONAN_CMAKE}"
+        conan_cmake_path = os.path.join(build_path, CONAN_CMAKE)
+        response = requests.get(conan_cmake_git)
+        response.raise_for_status()
+        os.mkdir(build_path)
+        with open(conan_cmake_path, "wb") as file:
+            file.write(response.content)
+    return []
 
 
 def cmake_generate(watch_path, build_path, build_config, generator, defines):
@@ -168,19 +196,30 @@ def cmake_generate(watch_path, build_path, build_config, generator, defines):
     cmake_lists_file = os.path.join(watch_path, "CMakeLists.txt")
     if not os.path.exists(cmake_lists_file):
         raise IOError(errno.EINVAL, f"No CMakeLists.txt detected in {watch_path}")
-    if not os.path.exists(os.path.join(build_path, "CMakeFiles")):
-        command = ["cmake"]
-        if generator is not None:
-            command.append("-G")
-            command.append(generator)
-        command.append(f"-H{watch_path}")
-        command.append(f"-B{build_path}")
-        # This does nothing for the MSVC generator
-        if build_config is not None:
-            command.append(f"-DCMAKE_BUILD_TYPE={build_config}")
-        for define in defines:
-            command.append(f"-D{define}")
-        return command
+
+    # fresh build
+    command = ["cmake"]
+
+    if generator is not None:
+        command.append("-G")
+        command.append(generator)
+
+    command.append(f"-H{watch_path}")
+    command.append(f"-B{build_path}")
+
+    # set up conan-cmake if the build requires it
+    if uses_conan(watch_path):
+        conan_cmake_path = os.path.join(build_path, CONAN_CMAKE)
+        command.append(f"-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES={conan_cmake_path}")
+
+    # Always provide a build type. Ignored by the MSVC generator
+    if build_config is not None:
+        command.append(f"-DCMAKE_BUILD_TYPE={build_config}")
+
+    for define in defines:
+        command.append(f"-D{define}")
+
+    return command
 
 
 def cmake_build(build_path, build_config):

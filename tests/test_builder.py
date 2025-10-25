@@ -17,6 +17,10 @@ from testfixtures import TempDirectory
 from ttt.builder import create_builder
 
 
+LOG_IDX_GENERATE = 2
+LOG_IDX_BUILD = 3
+
+
 class TestCMake:
     def setup_method(self):
         cmake_source_directory = TempDirectory()
@@ -44,8 +48,8 @@ class TestCMake:
         )
         builder()
 
-        assert "-DCMAKE_BUILD_TYPE=Debug" in log[1][0]
-        assert ["--config", "Debug"] == log[2][0][-2:]
+        assert "-DCMAKE_BUILD_TYPE=Debug" in log[LOG_IDX_GENERATE][0]
+        assert ["--config", "Debug"] == log[LOG_IDX_BUILD][0][-2:]
 
     def test_build_with_build_type(self):
         log = []
@@ -57,8 +61,8 @@ class TestCMake:
         )
         builder()
 
-        assert "-DCMAKE_BUILD_TYPE=Release" in log[1][0]
-        assert ["--config", "Release"] == log[2][0][-2:]
+        assert "-DCMAKE_BUILD_TYPE=Release" in log[LOG_IDX_GENERATE][0]
+        assert ["--config", "Release"] == log[LOG_IDX_BUILD][0][-2:]
 
     def test_build_with_none_define(self):
         log = []
@@ -70,7 +74,9 @@ class TestCMake:
         )
         builder()
 
-        assert ["-DCMAKE_BUILD_TYPE=Debug"] == [arg for arg in log[1][0] if "-D" in arg]
+        assert ["-DCMAKE_BUILD_TYPE=Debug"] == [
+            arg for arg in log[LOG_IDX_GENERATE][0] if "-D" in arg
+        ]
 
     def test_build_with_define(self):
         log = []
@@ -82,8 +88,47 @@ class TestCMake:
         )
         builder()
 
-        assert "-DFOO=BAR" in log[1][0]
-        assert "-DA:STRING=VALUE" in log[1][0]
+        assert "-DFOO=BAR" in log[LOG_IDX_GENERATE][0]
+        assert "-DA:STRING=VALUE" in log[LOG_IDX_GENERATE][0]
+
+    def test_build_with_conanfile_txt(self):
+        conanfile = os.path.join(self.cmake_source_path, "conanfile.txt")
+        with open(conanfile, "wb") as file:
+            file.write(b"[layout]\ncmake_layout")
+        log = []
+        builder = create_builder(
+            self.cmake_source_path,
+            self.cmake_build_path,
+            defines=None,
+            command_log=log,
+        )
+        builder()
+
+        conan_cmake = os.path.join(self.cmake_build_path, "conan_provider.cmake")
+        assert os.path.exists(conan_cmake)
+        assert f"-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES={conan_cmake}" in [
+            arg for arg in log[LOG_IDX_GENERATE][0] if "-D" in arg
+        ]
+
+    def test_build_with_conanfile_py(self):
+        conanfile = os.path.join(self.cmake_source_path, "conanfile.py")
+        with open(conanfile, "wb") as file:
+            file.write(b"[layout]\ncmake_layout")
+        log = []
+        builder = create_builder(
+            self.cmake_source_path,
+            self.cmake_build_path,
+            defines=None,
+            command_log=log,
+        )
+        builder()
+
+        conan_cmake = os.path.join(self.cmake_build_path, "conan_provider.cmake")
+        assert os.path.exists(conan_cmake)
+        print(log)
+        assert f"-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES={conan_cmake}" in [
+            arg for arg in log[LOG_IDX_GENERATE][0] if "-D" in arg
+        ]
 
     def test_good_build(self):
         build_file = "test.sln" if platform.system() == "Windows" else "Makefile"
@@ -92,6 +137,9 @@ class TestCMake:
 
         assert exists(join(self.cmake_build_path, "CMakeFiles"))
         assert exists(join(self.cmake_build_path, build_file))
+
+        conan_cmake = os.path.join(self.cmake_build_path, "conan_provider.cmake")
+        assert not os.path.exists(conan_cmake)
 
     def test_no_cmakelists_txt(self):
         source_path = "{}".format(join(os.getcwd(), "dummy"))
