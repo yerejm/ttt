@@ -10,11 +10,10 @@ Tests for `reporter` module.
 import io
 import os
 
-import termstyle
-
 from ttt import __progname__, __version__
 from ttt.executor import FAILED
 from ttt.terminal import Terminal, TerminalReporter
+import ttt.termstyle as termstyle
 from ttt.watcher import WatchState
 
 

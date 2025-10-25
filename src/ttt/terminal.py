@@ -13,10 +13,9 @@ from datetime import datetime, timedelta
 import os
 import sys
 
-import termstyle
-
 from ttt.executor import CRASHED, FAILED
 from ttt.reporter import Reporter
+import ttt.termstyle as termstyle
 from . import __progname__, __version__
 
 # When writing to output streams, do not write more than the following width.

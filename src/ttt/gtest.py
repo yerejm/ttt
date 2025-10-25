@@ -11,10 +11,9 @@ import os
 import re
 import sys
 
-import termstyle
-
 from ttt.executor import CRASHED, FAILED, PASSED
 from ttt.terminal import Terminal
+import ttt.termstyle as termstyle
 
 TESTCASE_START_RE = re.compile("^\\[----------\\] \\d+ tests? from (.*?)$")
 TESTCASE_END_RE = re.compile(

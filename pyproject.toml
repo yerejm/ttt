@@ -20,9 +20,7 @@ homepage = "https://github.com/yerejm/ttt"
 repository = "https://github.com/yerejm/ttt"
 
 [tool.poetry.group.main.dependencies]
-python = "^3.11"
-# unmaintained
-python-termstyle = "^0.1.10"
+python = "^3.12"
 colorama = "^0.4.6"
 argh = "=0.30.5" # argh has breaking changes after this version
 requests = "^2.32.5"

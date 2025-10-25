@@ -3,9 +3,8 @@ import io
 from os import linesep
 import sys
 
-from termstyle import bold, red
-
 from ttt.terminal import Terminal
+import ttt.termstyle as termstyle
 
 
 class TestTerminal:
@@ -113,13 +112,13 @@ class TestTerminal:
     def test_writeln_decorator(self):
         f = io.StringIO()
         t = Terminal(stream=f)
-        t.writeln("hello", decorator=[bold])
-        assert f.getvalue() == bold("hello") + linesep
+        t.writeln("hello", decorator=[termstyle.bold])
+        assert f.getvalue() == termstyle.bold("hello") + linesep
 
         f = io.StringIO()
         t = Terminal(stream=f)
-        t.writeln("hello", decorator=[bold, red])
-        assert f.getvalue() == red(bold("hello")) + linesep
+        t.writeln("hello", decorator=[termstyle.bold, termstyle.red])
+        assert f.getvalue() == termstyle.red(termstyle.bold("hello")) + linesep
 
 
 @contextmanager

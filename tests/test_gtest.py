@@ -398,7 +398,7 @@ class TestGTest:
         for line in results:
             gtest(sys.stdout, line)
 
-        import termstyle
+        import ttt.termstyle as termstyle
 
         expected_results = results[:2]
         for line in results[2:]:
