@@ -20,34 +20,34 @@ homepage = "https://github.com/yerejm/ttt"
 repository = "https://github.com/yerejm/ttt"
 
 [tool.poetry.group.main.dependencies]
-python = "^3.8.1"
+python = "^3.11"
+# unmaintained
 python-termstyle = "^0.1.10"
-colorama = "^0.4.4"
-argh = "^0.26.2"
-importlib-metadata = {version = "^7.0.0", python = "<3.8"}
+colorama = "^0.4.6"
+argh = "=0.30.5" # argh has breaking changes after this version
+requests = "^2.32.5"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.4.3"
-pytest-xdist = "^3.5.0"
-pytest-cov = "^4.1.0"
-testfixtures = "^7.2.2"
-coverage = "^7.3.4"
-black = "^24.3.0"
-flake8 = "^6.1.0"
-# pin bandit for TypeError: __init__() missing 1 required positional argument: 'metrics' error 
-bandit = "1.7.2"
-flake8-black = "^0.2.3"
-flake8-bugbear = "^23.12.2"
-flake8-import-order = "^0.18.1"
-safety = "^2.3.5"
-poetry-plugin-export = "^1.6.0"
-deptry = "^0.16.1"
+pytest = "^8.4.2"
+pytest-xdist = "^3.8.0"
+pytest-cov = "^7.0.0"
+testfixtures = "^9.2.0"
+coverage = "^7.11.0"
+black = "^25.9.0"
+flake8 = "^7.3.0"
+bandit = "1.8.6"
+flake8-black = "^0.4.0"
+flake8-bugbear = "^25.10.21"
+flake8-import-order = "^0.19.2"
+safety = "^3.6.2"
+poetry-plugin-export = "^1.9.0"
+deptry = "^0.23.1"
 
 [tool.poetry.scripts]
 ttt = 'ttt.__main__:main'
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.2.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.coverage.paths]
