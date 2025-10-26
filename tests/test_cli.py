@@ -9,84 +9,98 @@ Tests for `cli` module.
 """
 from unittest.mock import patch
 
-import pytest
+from click.testing import CliRunner
 
-from ttt import cli
+from ttt.cli import ttt
 from ttt.terminal import Terminal
 
 
 class TestCLI:
-    @patch("sys.argv", new=["ttt"])
     def test_no_args(self):
-        with patch("ttt.monitor.create_monitor", autospec=True) as monitor:  # noqa
-            with pytest.raises(SystemExit):
-                cli.run()
+        runner = CliRunner()
+        result = runner.invoke(ttt)
+        assert result.exit_code == 2
+        assert "ttt [OPTIONS] WATCH_PATH [FILENAME]..." in result.output
+        assert "Error: Missing argument 'WATCH_PATH'." in result.output
 
-    @patch("sys.argv", new=["ttt", "watch_path", "-b", "buildpath", "-g", "Ninja"])
     def test_args(self):
         with patch("ttt.monitor.create_monitor", autospec=True) as monitor:
-            cli.run()
+            runner = CliRunner()
+            result = runner.invoke(
+                ttt, ["watch_path", "--build-path", "buildpath", "--generator", "Ninja"]
+            )
+            assert result.exit_code == 0
             assert len(monitor.call_args_list)
             args, kwargs = monitor.call_args_list[0]
-            assert "watch_path" in args
+            assert kwargs["watch_path"] == "watch_path"
             assert kwargs["build_path"] == "buildpath"
             assert kwargs["generator"] == "Ninja"
-            assert kwargs["define"] is None
+            assert kwargs["define"] == ()
 
-    @patch("sys.argv", new=["ttt", "watch_path", "-D", "test=y", "-Dfoo=bar"])
     def test_define_list(self):
         with patch("ttt.monitor.create_monitor", autospec=True) as monitor:
-            cli.run()
+            runner = CliRunner()
+            result = runner.invoke(ttt, ["watch_path", "-D", "test=y", "-Dfoo=bar"])
+            assert result.exit_code == 0
             assert len(monitor.call_args_list)
             args, kwargs = monitor.call_args_list[0]
-            assert kwargs["define"] == ["test=y", "foo=bar"]
+            assert kwargs["define"] == ("test=y", "foo=bar")
 
-    @patch("sys.argv", new=["ttt", "watch_path", "-vv"])
     def test_verbosity_multiple(self):
         with patch("ttt.monitor.create_monitor", autospec=True) as monitor:  # noqa
-            cli.run()
+            runner = CliRunner()
+            result = runner.invoke(ttt, ["watch_path", "-vv"])
+            assert result.exit_code == 0
         assert Terminal.VERBOSITY == 2
 
-    @patch("sys.argv", new=["ttt", "watch_path", "-v"])
     def test_verbosity_single(self):
         with patch("ttt.monitor.create_monitor", autospec=True) as monitor:  # noqa
-            cli.run()
+            runner = CliRunner()
+            result = runner.invoke(ttt, ["watch_path", "-v"])
+            assert result.exit_code == 0
         assert Terminal.VERBOSITY == 1
 
-    @patch("sys.argv", new=["ttt", "watch_path"])
     def test_verbosity_none(self):
         with patch("ttt.monitor.create_monitor", autospec=True) as monitor:  # noqa
-            cli.run()
+            runner = CliRunner()
+            result = runner.invoke(ttt, ["watch_path"])
+            assert result.exit_code == 0
         assert Terminal.VERBOSITY == 0
 
-    @patch("sys.argv", new=["ttt", "watch_path", "file1", "file2"])
     def test_patterns(self):
         with patch("ttt.monitor.create_monitor", autospec=True) as monitor:
-            cli.run()
+            runner = CliRunner()
+            result = runner.invoke(ttt, ["watch_path", "file1", "file2"])
+            assert result.exit_code == 0
             assert len(monitor.call_args_list)
             args, kwargs = monitor.call_args_list[0]
-            assert args == ("watch_path", set(["file1", "file2"]))
+            assert kwargs["patterns"] == set(["file1", "file2"])
 
-    @patch("sys.argv", new=["ttt", "watch_path", "-x", "*.o"])
     def test_exclusion(self):
         with patch("ttt.monitor.create_monitor", autospec=True) as monitor:
-            cli.run()
+            runner = CliRunner()
+            result = runner.invoke(ttt, ["watch_path", "--exclude", "*.o"])
+            assert result.exit_code == 0
             assert len(monitor.call_args_list)
             args, kwargs = monitor.call_args_list[0]
-            assert kwargs["exclude"] == ["*.o"]
+            assert kwargs["exclude"] == ("*.o",)
 
-    @patch("sys.argv", new=["ttt", "watch_path", "-x", "*.o", "-x", "blah"])
     def test_exclusion_list(self):
         with patch("ttt.monitor.create_monitor", autospec=True) as monitor:
-            cli.run()
+            runner = CliRunner()
+            result = runner.invoke(
+                ttt, ["watch_path", "--exclude", "*.o", "--exclude", "blah"]
+            )
+            assert result.exit_code == 0
             assert len(monitor.call_args_list)
             args, kwargs = monitor.call_args_list[0]
-            assert kwargs["exclude"] == ["*.o", "blah"]
+            assert kwargs["exclude"] == ("*.o", "blah")
 
-    @patch("sys.argv", new=["ttt", "watch_path", "--clean"])
     def test_clean(self):
         with patch("ttt.monitor.create_monitor", autospec=True) as monitor:
-            cli.run()
+            runner = CliRunner()
+            result = runner.invoke(ttt, ["watch_path", "-c"])
+            assert result.exit_code == 0
             assert len(monitor.call_args_list)
             args, kwargs = monitor.call_args_list[0]
             assert kwargs["clean"]

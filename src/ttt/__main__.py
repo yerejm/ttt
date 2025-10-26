@@ -8,7 +8,7 @@ from ttt import cli
 def main():
     if sys.stdout.isatty():
         colorama.init()
-    cli.run()
+    cli.ttt()
     sys.exit(0)
 
 

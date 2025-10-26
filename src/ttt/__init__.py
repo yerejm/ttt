@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
 
+import sys
+
+import colorama
+
+
 try:
     from importlib.metadata import version, PackageNotFoundError
 except ImportError:
@@ -11,5 +16,7 @@ try:
 except PackageNotFoundError:
     __version__ = "unknown"
 
+if sys.stdout.isatty():
+    colorama.init()
 
 __progname__ = __name__

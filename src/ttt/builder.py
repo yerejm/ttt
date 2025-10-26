@@ -159,11 +159,13 @@ def cmake_pregenerate(watch_path, build_path):
     if uses_conan(watch_path):
         conan_cmake_git = f"{CONAN_CMAKE_REPO}/{CONAN_CMAKE}"
         conan_cmake_path = os.path.join(build_path, CONAN_CMAKE)
-        response = requests.get(conan_cmake_git)
-        response.raise_for_status()
-        os.mkdir(build_path)
-        with open(conan_cmake_path, "wb") as file:
-            file.write(response.content)
+        if not os.path.exists(build_path):
+            os.mkdir(build_path)
+        if not os.path.exists(conan_cmake_path):
+            response = requests.get(conan_cmake_git)
+            response.raise_for_status()
+            with open(conan_cmake_path, "wb") as file:
+                file.write(response.content)
     return []
 
 
@@ -232,15 +234,16 @@ def cmake_build(build_path, build_config):
     :param build_config: indicates the type of build, e.g. release, debug
     :return: command to execute as a subprocess in list form
     """
+    if build_config is None:
+        raise Exception("No build configuration was given.")
     command = [
         "cmake",
         # the order is important. --build must come first
         "--build",
         build_path,
     ]
-    if build_config is not None:
-        # Necessary for multi-configuration build systems, e.g. MSVC
-        # and should be harmless otherwise
-        command.append("--config")
-        command.append(build_config)
+    # Necessary for multi-configuration build systems, e.g. MSVC
+    # and should be harmless otherwise
+    command.append("--config")
+    command.append(build_config)
     return command
