@@ -29,6 +29,7 @@ pip-log.txt
 nosetests.xml
 htmlcov
 .pytest_cache
+CMakeUserPresets.json
 
 # Translations
 *.mo
@@ -42,3 +43,4 @@ output/*/index.html
 
 # Sphinx
 docs/_build
+
