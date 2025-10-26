@@ -17,7 +17,7 @@ import ttt.termstyle as termstyle
 from ttt.watcher import WatchState
 
 
-class TestTerminalReporter:
+class TestReporter:
     def test_session_start(self):
         f = io.StringIO()
         r = TerminalReporter(

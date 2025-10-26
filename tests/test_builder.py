@@ -21,7 +21,7 @@ LOG_IDX_GENERATE = 2
 LOG_IDX_BUILD = 3
 
 
-class TestCMake:
+class TestBuilder:
     def setup_method(self):
         cmake_source_directory = TempDirectory()
         self.cmake_source_path = cmake_source_directory.path
