@@ -1,3 +1,3 @@
 #!/bin/sh
 set -eux -o pipefail
-echo "python $(mise exec python@3.13 -- python --version | awk '{print $2}')" > .tool-versions
+echo "python $(mise ls python | awk '{ver=(NR==1?ver:ver " ")$2}END{print ver}')" > .tool-versions
