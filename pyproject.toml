@@ -2,11 +2,11 @@
 name = "ttt"
 version = "1.0.0"
 description = "Watch, Build, Test"
-authors = [{name = "yerejm"}]
-license = "ISCL"
+authors = [{ name = "yerejm" }]
 readme = "README.rst"
+license = "ISCL"
 keywords = ["ttt"]
-classifiers= [
+classifiers = [
     "Environment :: Console",
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -14,39 +14,45 @@ classifiers= [
     "Natural Language :: English",
     "Programming Language :: Python :: 3",
 ]
+requires-python = ">=3.12"
 
 [project.urls]
 homepage = "https://github.com/yerejm/ttt"
 repository = "https://github.com/yerejm/ttt"
 
-[tool.poetry.group.main.dependencies]
-python = "^3.12"
-colorama = "^0.4.6"
-click = "^8.3.0"
-requests = "^2.32.5"
+[project.scripts]
+ttt = "ttt.cli:ttt"
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.4.2"
-pytest-xdist = "^3.8.0"
-pytest-cov = "^7.0.0"
-testfixtures = "^9.2.0"
-coverage = "^7.11.0"
-black = "^25.9.0"
-flake8 = "^7.3.0"
-bandit = "1.8.6"
-flake8-black = "^0.4.0"
-flake8-bugbear = "^25.10.21"
-flake8-import-order = "^0.19.2"
-safety = "^3.6.2"
-poetry-plugin-export = "^1.9.0"
-deptry = "^0.23.1"
+[dependency-groups]
+main = [
+    "colorama>=0.4.6,<0.5",
+    "click>=8.3.0,<9",
+    "requests>=2.32.5,<3",
+]
+dev = [
+    "pytest>=8.4.2,<9",
+    "pytest-xdist>=3.8.0,<4",
+    "pytest-cov>=7.0.0,<8",
+    "testfixtures>=9.2.0,<10",
+    "coverage>=7.11.0,<8",
+    "black>=25.9.0,<26",
+    "flake8>=7.3.0,<8",
+    "bandit==1.8.6",
+    "flake8-black>=0.4.0,<0.5",
+    "flake8-bugbear>=25.10.21,<26",
+    "flake8-import-order>=0.19.2,<0.20",
+    "safety>=3.6.2,<4",
+]
 
-[tool.poetry.scripts]
-ttt = 'ttt.cli:ttt'
+[tool.uv]
+default-groups = [
+    "main",
+    "dev",
+]
 
 [build-system]
-requires = ["poetry-core>=2.2.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.coverage.paths]
 source = ["src", "*/site-packages"]

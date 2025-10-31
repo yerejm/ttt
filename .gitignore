@@ -34,8 +34,8 @@ CMakeUserPresets.json
 # Translations
 *.mo
 
-# poetry
-poetry.lock
+# uv
+uv.lock
 
 # Complexity
 output/*.html
