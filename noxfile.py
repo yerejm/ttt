@@ -38,16 +38,17 @@ def install_requirements(session, *args, **kwargs):
     try:
         with NamedTemporaryFile(delete=False) as requirements:
             session.run(
-                "poetry",
+                "uv",
                 "export",
-                "--only",
-                "dev",
-                "--without-hashes",
-                "--format=requirements.txt",
-                f"--output={requirements.name}",
+                "--quiet",
+                "--only-dev",
+                "--format",
+                "requirements.txt",
+                "--output-file",
+                requirements.name,
                 external=True,
             )
-            session.install("-r", requirements.name, *args, **kwargs)
+            session.install("--quiet", "-r", requirements.name, *args, **kwargs)
     finally:
         if requirements:
             os.remove(requirements.name)
@@ -67,9 +68,24 @@ def lint(session):
     session.run("flake8", *args)
 
 
-@nox.session(python=supported_pythons)
+@nox.session(python=supported_pythons, venv_backend="uv")
 def tests(session):
     args = session.posargs or ["--cov", "-m", "not e2e"]
-    session.run("poetry", "install", "--only", "main", external=True)
     install_requirements(session)
-    session.run("pytest", *args)
+
+    session.install(
+        "pytest-xdist",
+        "pytest-randomly",
+        "pytest-sugar",
+    )
+
+    session.run(
+        "pytest",
+        # "-v",  # verbose output - interferes with some tests
+        "-s",  # don't capture output
+        "--tb=short",  # shorter traceback format
+        "--strict-markers",  # treat unregistered markers as errors
+        "-n",
+        "auto",  # parallel testing
+        *args,  # allows passing additional pytest args from command line
+    )
