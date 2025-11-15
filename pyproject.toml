@@ -4,7 +4,7 @@ version = "1.0.0"
 description = "Watch, Build, Test"
 authors = [{ name = "yerejm" }]
 readme = "README.rst"
-license = "ISCL"
+license = "ISC"
 keywords = ["ttt"]
 classifiers = [
     "Environment :: Console",
